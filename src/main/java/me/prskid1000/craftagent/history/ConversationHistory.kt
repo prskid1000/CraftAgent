@@ -1,0 +1,54 @@
+package me.prskid1000.craftagent.history
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import me.prskid1000.craftagent.constant.Instructions
+import me.prskid1000.craftagent.llm.LLMClient
+
+class ConversationHistory(
+    private val llmClient: LLMClient,
+    initMessage: String,
+    val latestConversations: MutableList<Message>
+) {
+    companion object {
+        private const val MAX_HISTORY_LENGTH = 30
+        private val objectMapper = ObjectMapper()
+    }
+
+    init {
+        setInitMessage(initMessage)
+    }
+
+    @Synchronized
+    fun add(message: Message) {
+        latestConversations.add(message)
+
+        if (latestConversations.size >= MAX_HISTORY_LENGTH) {
+            updateConversations()
+        }
+    }
+
+    private fun updateConversations() {
+        val removeCount = MAX_HISTORY_LENGTH / 3
+        val toSummarize = latestConversations.subList(1, removeCount).toList()
+        val message = summarize(toSummarize)
+        latestConversations.removeAll(toSummarize)
+        latestConversations.add(1, message)
+    }
+
+    private fun summarize(conversations: List<Message>): Message {
+        val summarizeMessage = Message(
+            Instructions.SUMMARY_PROMPT.format( objectMapper.writeValueAsString(conversations)),
+            "user")
+        // Use chatWithTools and extract content (summarization doesn't need tool calls)
+        val toolResponse = llmClient.chatWithTools(listOf(summarizeMessage))
+        return Message(toolResponse.content, "assistant")
+    }
+
+    private fun setInitMessage(initMessage: String) {
+        latestConversations.add(0, Message(initMessage, "system"))
+    }
+
+    fun getLastMessage(): String {
+        return latestConversations.last().message
+    }
+}

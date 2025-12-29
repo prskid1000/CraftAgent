@@ -31,7 +31,7 @@ CraftAgent is a Minecraft Fabric mod that creates AI-powered NPCs (Non-Player Ch
 ## Core Components
 
 ### 1. **CraftAgent** (Main Entry Point)
-- **Location**: `me.sailex.secondbrain.CraftAgent`
+- **Location**: `me.prskid1000.craftagent.CraftAgent`
 - **Purpose**: Initializes all subsystems and coordinates startup/shutdown
 - **Responsibilities**:
   - Initialize configuration, database, and services
@@ -40,7 +40,7 @@ CraftAgent is a Minecraft Fabric mod that creates AI-powered NPCs (Non-Player Ch
   - Handle server lifecycle events
 
 ### 2. **NPCService**
-- **Location**: `me.sailex.secondbrain.common.NPCService`
+- **Location**: `me.prskid1000.craftagent.common.NPCService`
 - **Purpose**: Manages NPC lifecycle (creation, removal, deletion)
 - **Key Methods**:
   - `createNpc()`: Creates and spawns a new NPC
@@ -49,7 +49,7 @@ CraftAgent is a Minecraft Fabric mod that creates AI-powered NPCs (Non-Player Ch
   - `shutdownNPCs()`: Cleanup on server stop
 
 ### 3. **NPCFactory**
-- **Location**: `me.sailex.secondbrain.common.NPCFactory`
+- **Location**: `me.prskid1000.craftagent.common.NPCFactory`
 - **Purpose**: Factory pattern for creating NPC instances
 - **Responsibilities**:
   - Initialize LLM client (Ollama/LM Studio)
@@ -58,7 +58,7 @@ CraftAgent is a Minecraft Fabric mod that creates AI-powered NPCs (Non-Player Ch
   - Initialize controller (AltoClef for pathfinding/actions)
 
 ### 4. **NPCEventHandler**
-- **Location**: `me.sailex.secondbrain.event.NPCEventHandler`
+- **Location**: `me.prskid1000.craftagent.event.NPCEventHandler`
 - **Purpose**: Processes events and coordinates LLM interactions
 - **Flow**:
   1. Receives event (chat message, initial prompt, etc.)
@@ -69,7 +69,7 @@ CraftAgent is a Minecraft Fabric mod that creates AI-powered NPCs (Non-Player Ch
   6. Sends chat message if needed
 
 ### 5. **ConversationHistory**
-- **Location**: `me.sailex.secondbrain.history.ConversationHistory`
+- **Location**: `me.prskid1000.craftagent.history.ConversationHistory`
 - **Purpose**: Manages conversation context for LLM
 - **Features**:
   - Maintains up to 30 messages
@@ -77,7 +77,7 @@ CraftAgent is a Minecraft Fabric mod that creates AI-powered NPCs (Non-Player Ch
   - Thread-safe message addition
 
 ### 6. **ContextProvider**
-- **Location**: `me.sailex.secondbrain.context.ContextProvider`
+- **Location**: `me.prskid1000.craftagent.context.ContextProvider`
 - **Purpose**: Gathers world state information
 - **Data Collected**:
   - NPC position, health, hunger, biome
@@ -86,7 +86,7 @@ CraftAgent is a Minecraft Fabric mod that creates AI-powered NPCs (Non-Player Ch
   - Nearby entities
 
 ### 7. **ChunkManager**
-- **Location**: `me.sailex.secondbrain.context.ChunkManager`
+- **Location**: `me.prskid1000.craftagent.context.ChunkManager`
 - **Purpose**: Scans and caches nearby blocks
 - **Features**:
   - Periodic refresh (configurable expiry time)
@@ -95,8 +95,8 @@ CraftAgent is a Minecraft Fabric mod that creates AI-powered NPCs (Non-Player Ch
   - Tracks nearest block of each type
 
 ### 8. **LLM Clients**
-- **OllamaClient**: `me.sailex.secondbrain.llm.ollama.OllamaClient`
-- **LMStudioClient**: `me.sailex.secondbrain.llm.lmstudio.LMStudioClient`
+- **OllamaClient**: `me.prskid1000.craftagent.llm.ollama.OllamaClient`
+- **LMStudioClient**: `me.prskid1000.craftagent.llm.lmstudio.LMStudioClient`
 - **Purpose**: Interface with LLM APIs
 - **Methods**:
   - `chat()`: Send messages and get response
@@ -104,14 +104,14 @@ CraftAgent is a Minecraft Fabric mod that creates AI-powered NPCs (Non-Player Ch
   - `stopService()`: Cleanup
 
 ### 9. **ConfigProvider**
-- **Location**: `me.sailex.secondbrain.config.ConfigProvider`
+- **Location**: `me.prskid1000.craftagent.config.ConfigProvider`
 - **Purpose**: Manages configuration persistence
 - **Config Types**:
   - `BaseConfig`: Global settings (timeout, chunk radius, etc.)
   - `NPCConfig`: Per-NPC settings (name, LLM type, model, etc.)
 
 ### 10. **ResourceProvider**
-- **Location**: `me.sailex.secondbrain.database.resources.ResourceProvider`
+- **Location**: `me.prskid1000.craftagent.database.resources.ResourceProvider`
 - **Purpose**: Manages conversation persistence
 - **Features**:
   - Loads conversations on server start

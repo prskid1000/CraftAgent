@@ -185,7 +185,7 @@ Located in `config/craftagent/npcs/{uuid}.json`:
 ### Project Structure
 
 ```
-src/main/java/me/sailex/secondbrain/
+src/main/java/me/prskid1000/craftagent/
 ├── common/          # NPC management (Service, Factory)
 ├── event/           # Event handling (NPCEventHandler)
 ├── llm/             # LLM clients (Ollama, LM Studio)

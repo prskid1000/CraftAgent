@@ -154,7 +154,7 @@ publishMods {
     file.set(tasks.named<RemapJarTask>("remapJar").get().archiveFile)
 
     github {
-        displayName.set("v$modVersion [$mcVersion] SecondBrain")
+        displayName.set("v$modVersion [$mcVersion] CraftAgent")
         accessToken.set(providers.environmentVariable("GITHUB_TOKEN"))
         repository.set(providers.gradleProperty("github.repo"))
         tagName.set("v$modVersion-$mcVersion")
@@ -170,14 +170,14 @@ publishMods {
     }
 
     modrinth {
-        displayName.set("v$modVersion [$mcVersion] SecondBrain")
+        displayName.set("v$modVersion [$mcVersion] CraftAgent")
         accessToken.set(providers.environmentVariable("MODRINTH_TOKEN"))
         projectId.set(property("publish.modrinth").toString())
         minecraftVersions.add(mcVersion)
     }
 
     curseforge {
-        displayName.set("v$modVersion [$mcVersion] SecondBrain")
+        displayName.set("v$modVersion [$mcVersion] CraftAgent")
         accessToken.set(providers.environmentVariable("CURSEFORGE_API_KEY"))
         projectId.set(property("publish.curseforge").toString())
         minecraftVersions.add(mcVersion)

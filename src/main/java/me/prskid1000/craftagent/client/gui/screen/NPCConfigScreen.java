@@ -1,0 +1,128 @@
+package me.prskid1000.craftagent.client.gui.screen;
+
+import io.wispforest.owo.ui.component.*;
+import io.wispforest.owo.ui.container.FlowLayout;
+
+import io.wispforest.owo.ui.core.Insets;
+import io.wispforest.owo.ui.core.Sizing;
+import me.prskid1000.craftagent.client.networking.ClientNetworkManager;
+import me.prskid1000.craftagent.config.NPCConfig;
+import me.prskid1000.craftagent.llm.LLMType;
+import me.prskid1000.craftagent.networking.packet.CreateNpcPacket;
+import me.prskid1000.craftagent.networking.packet.UpdateNpcConfigPacket;
+
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+
+import static me.prskid1000.craftagent.CraftAgent.MOD_ID;
+
+public class NPCConfigScreen extends ConfigScreen<NPCConfig> {
+
+    private static final Identifier ID = Identifier.of(MOD_ID, "npcconfig");
+
+    public NPCConfigScreen(
+        ClientNetworkManager networkManager,
+        NPCConfig npcConfig,
+        boolean isEdit
+    ) {
+        super(networkManager, npcConfig, isEdit, ID);
+    }
+
+    @Override
+    protected void build(FlowLayout rootComponent) {
+        FlowLayout panel = rootComponent.childById(FlowLayout.class, "panel");
+
+        LabelComponent npcNameLabel = panel.childById(LabelComponent.class, "npcName-label");
+        if (isEdit) {
+            npcNameLabel.text(Text.of(NPCConfig.EDIT_NPC.formatted(config.getNpcName())));
+        } else {
+            npcNameLabel.text(Text.of(NPCConfig.NPC_NAME));
+            TextAreaComponent npcName = Components.textArea(Sizing.fill(35), Sizing.fill(7))
+                    .text(config.getNpcName());
+            npcName.onChanged().subscribe(config::setNpcName);
+            panel.childById(FlowLayout.class, "npcName").child(npcName);
+        }
+
+        drawLLMTypeDropDown(panel);
+        drawLLMModelInput(panel);
+
+        //draw without any dropdown click the fields of active llmType
+        drawLlmInfo(panel);
+
+        onPressSaveButton(rootComponent, button -> {
+            if (isEdit) {
+                networkManager.sendPacket(new UpdateNpcConfigPacket(config));
+                close();
+            } else {
+                networkManager.sendPacket(new CreateNpcPacket(config));
+                close();
+            }
+        });
+    }
+
+    private void drawLlmInfo(FlowLayout panel) {
+        FlowLayout llmInfo = panel.childById(FlowLayout.class, "llmInfo");
+        llmInfo.clearChildren();
+
+        //either show ollamaUrl or lm studio url
+        TextAreaComponent llmInfoTextArea = Components.textArea(Sizing.fill(35), Sizing.fill(7));
+        switch (config.getLlmType()) {
+            case OLLAMA -> {
+                //ollama url
+                llmInfo.child(Components.label(Text.of(NPCConfig.OLLAMA_URL)).shadow(true));
+                llmInfoTextArea.text(config.getOllamaUrl())
+                        .onChanged()
+                        .subscribe(config::setOllamaUrl);
+                llmInfo.child(llmInfoTextArea);
+            }
+            case LM_STUDIO -> {
+                llmInfo.child(Components.label(Text.of(NPCConfig.LM_STUDIO_URL)).shadow(true));
+                llmInfoTextArea.text(config.getLmStudioUrl())
+                        .onChanged()
+                        .subscribe(config::setLmStudioUrl);
+                llmInfo.child(llmInfoTextArea);
+            }
+        }
+        //system prompt
+        llmInfo.child(Components.label(Text.of(NPCConfig.LLM_CHARACTER)).shadow(true).margins(Insets.top(7)));
+        TextAreaComponent llmCharacter = Components.textArea(Sizing.fill(35), Sizing.fill(25));
+        llmCharacter.text(config.getLlmCharacter())
+                .onChanged()
+                .subscribe(config::setLlmCharacter);
+        llmInfo.child(llmCharacter);
+    }
+
+    private void drawLLMTypeDropDown(FlowLayout panel) {
+        panel.childById(LabelComponent.class, "llmType-label").text(Text.of(NPCConfig.LLM_TYPE));
+        DropdownComponent llmTypeDropDown = panel.childById(DropdownComponent.class, "llmType");
+        if (isEdit) {
+            llmTypeDropDown.button(
+                    Text.of(config.getLlmType().toString()), button -> {});
+        } else {
+            llmTypeDropDown.button(
+                    Text.of(LLMType.OLLAMA.toString()),
+                    button -> {
+                        config.setLlmType(LLMType.OLLAMA);
+                        drawLlmInfo(panel);
+                    });
+            llmTypeDropDown.button(
+                    Text.of(LLMType.LM_STUDIO.toString()),
+                    button -> {
+                        config.setLlmType(LLMType.LM_STUDIO);
+                        drawLlmInfo(panel);
+                    });
+        }
+    }
+
+    private void drawLLMModelInput(FlowLayout panel) {
+        panel.childById(LabelComponent.class, "llmModel-label").text(Text.of(NPCConfig.LLM_MODEL));
+        switch (config.getLlmType()) {
+            case OLLAMA, LM_STUDIO -> {
+                TextAreaComponent llmModel = Components.textArea(Sizing.fill(17), Sizing.fill(7))
+                        .text(config.getLlmModel());
+                llmModel.onChanged().subscribe(config::setLlmModel);
+                panel.childById(FlowLayout.class, "llmModel").child(llmModel);
+            }
+        }
+    }
+}
