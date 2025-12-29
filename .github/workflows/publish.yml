@@ -1,0 +1,60 @@
+name: publish
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+  DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+  CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from properties
+        id: get_version
+        run: |
+          VERSION=$(grep "mod.version" gradle.properties | cut -d'=' -f2)
+          echo "MOD_VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "set Release Version to: $VERSION"
+
+      - name: Generate Changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --verbose --unreleased --tag ${{ steps.get_version.outputs.MOD_VERSION }}
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ vars.REPOSITORY_NAME }}
+
+      - name: Commit Changelog
+        run: |
+          git config --global user.email "${{ vars.GIT_EMAIL }}"
+          git config --global user.name "${{ vars.GIT_USERNAME }}"
+          set +e
+          git checkout -b main
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog for version ${{ steps.get_version.outputs.MOD_VERSION }}"
+          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ vars.REPOSITORY_NAME }}.git main
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'oracle'
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Release Mods
+        run: ./gradlew publishMods

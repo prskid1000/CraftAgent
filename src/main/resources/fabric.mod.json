@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "craftagent",
+  "version": "${version}",
+  "name": "CraftAgent",
+  "description": "A Fabric mod that brings intelligent AI-powered NPCs to your minecraft world.",
+  "authors": ["sailex428"],
+  "contact": {},
+  "icon": "assets/craftagent/icon.png",
+  "license": "LGPL-3.0",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "me.sailex.secondbrain.CraftAgent"
+    ],
+    "client": [
+      "me.sailex.secondbrain.client.CraftAgentClient"
+    ]
+  },
+  "mixins": [
+    "me.sailex.secondbrain.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${fabricLoader}",
+    "minecraft": "${mcDep}"
+  }
+}
