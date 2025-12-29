@@ -2,6 +2,8 @@
 
 A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NPCs can understand context, perform tasks, and interact with players using Large Language Models (LLMs).
 
+> **Note**: This project takes inspiration from and includes code from [SecondBrain](https://github.com/sailex428/SecondBrain/tree/main/src/main).
+
 ## Features
 
 - 🤖 **AI-Powered NPCs**: NPCs use LLMs (Ollama, LM Studio) to understand context and make decisions
@@ -249,12 +251,13 @@ This project is licensed under LGPL-3.0.
 
 - [Modrinth](https://modrinth.com/mod/craftagent)
 - [CurseForge](https://www.curseforge.com/minecraft/mc-mods/craftagent)
-- [GitHub](https://github.com/sailex428/CraftAgent)
+- [GitHub](https://github.com/prskid1000/CraftAgent)
 - [Architecture Documentation](ARCHITECTURE.md)
 
 ## Credits
 
-- **Author**: sailex428
+- **Author**: prskid1000
+- **Project Inspiration & Code Source**: [SecondBrain](https://github.com/sailex428/SecondBrain/tree/main/src/main) - This project takes inspiration from and includes code from the SecondBrain project
 - **AltoClef**: Pathfinding and command execution
 - **Fabric**: Mod loader framework
 - **Ollama**: Local LLM runtime
