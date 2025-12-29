@@ -28,8 +28,11 @@ public class ChunkManager {
     private final ScheduledExecutorService threadPool;
     private final List<BlockData> currentLoadedBlocks;
 
-    @Getter
     private final List<BlockData> nearbyBlocks = new ArrayList<>();
+    
+    public List<BlockData> getNearbyBlocks() {
+        return nearbyBlocks;
+    }
 
 
     public ChunkManager(ServerPlayerEntity npcEntity, BaseConfig config) {

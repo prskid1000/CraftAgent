@@ -22,8 +22,11 @@ public class STTHudElement implements HudRenderCallback {
 
     private final MinecraftClient client = MinecraftClient.getInstance();
 
-    @Setter
     private boolean isActive = false;
+    
+    public void setActive(boolean active) {
+        this.isActive = active;
+    }
 
     @Override
     public void onHudRender(DrawContext drawContext, /*? <=1.20.1 {*/ float tickDelta /*?} else {*/  /*RenderTickCounter renderTickCounter  *//*?}*/) {

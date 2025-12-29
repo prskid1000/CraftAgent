@@ -131,4 +131,8 @@ public class ConfigProvider {
     public BaseConfig getBaseConfig() {
         return baseConfig;
     }
+    
+    public synchronized void setBaseConfig(BaseConfig baseConfig) {
+        this.baseConfig = baseConfig;
+    }
 }
