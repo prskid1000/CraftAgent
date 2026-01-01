@@ -63,6 +63,12 @@ public class BaseConfigScreen extends ConfigScreen<BaseConfig> {
         verbose.checked(config.isVerbose());
         verbose.onChanged(config::setVerbose);
 
+        bindSlider(content, "llmProcessingInterval-label", "llmProcessingInterval",
+                BaseConfig.LLM_PROCESSING_INTERVAL_KEY, config.getLlmProcessingInterval(), config::setLlmProcessingInterval);
+
+        bindSlider(content, "llmMinInterval-label", "llmMinInterval",
+                BaseConfig.LLM_MIN_INTERVAL_KEY, config.getLlmMinInterval(), config::setLlmMinInterval);
+
         onPressSaveButton(rootComponent, button -> {
             networkManager.sendPacket(new UpdateBaseConfigPacket(config));
             close();

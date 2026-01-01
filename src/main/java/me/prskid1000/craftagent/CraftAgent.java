@@ -55,7 +55,7 @@ public class CraftAgent implements ModInitializer {
         NetworkHandler networkManager = new NetworkHandler(configProvider, npcService, authorizer);
         networkManager.registerPacketReceiver();
 
-        EventListenerRegisterer eventListenerRegisterer = new EventListenerRegisterer(npcService);
+        EventListenerRegisterer eventListenerRegisterer = new EventListenerRegisterer(npcService, configProvider);
         eventListenerRegisterer.register();
 
         CommandManager commandManager = new CommandManager(npcService, configProvider, networkManager);

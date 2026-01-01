@@ -173,6 +173,32 @@
                                         </children>
                                     </flow-layout>
 
+                                    <flow-layout direction="vertical" id="llmProcessingIntervalRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="llmProcessingInterval-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="llmProcessingInterval" min="1" max="60">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
+
+                                    <flow-layout direction="vertical" id="llmMinIntervalRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="llmMinInterval-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="llmMinInterval" min="5" max="300">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
+
                                     <button id="save">
                                         <text>Save</text>
                                     </button>

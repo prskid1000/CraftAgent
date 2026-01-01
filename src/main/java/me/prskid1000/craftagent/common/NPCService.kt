@@ -53,11 +53,14 @@ class NPCService(
         messageRepository.insert(message, maxMessages)
         LogUtil.info("Player $playerName sent message to NPC $npcUuid: $messageContent")
         
-        // Trigger NPC to check mail (optional - they can also check it naturally via context)
+        // Display message in chat and update state
         val npc = uuidToNpc[npcUuid]
         if (npc != null) {
-            // Optionally trigger a mail check event
-            npc.eventHandler.onEvent("You have received a new message. Check your mail using readMessage tool.")
+            // Display in chat
+            val chatMessage = "$playerName says to ${npc.config.npcName}: $messageContent"
+            npc.controller.controllerExtras.chat(chatMessage)
+            // Update state (store in history, no LLM trigger)
+            npc.eventHandler.updateState("Player $playerName sent you a message: $messageContent")
         }
     }
 
@@ -138,7 +141,8 @@ class NPCService(
                         // Notify all other NPCs about the new NPC
                         coordinationService.notifyNpcAdded(npc)
                         
-                        npc.eventHandler.onEvent(Instructions.getInitialPromptWithContext(config.npcName, config.age, config.gender))
+                        // Store initial prompt in state (will be processed by scheduler)
+                        npc.eventHandler.updateState(Instructions.getInitialPromptWithContext(config.npcName, config.age, config.gender))
                     } catch (e: Exception) {
                         LogUtil.error("Error creating NPC: $name", e)
                         LogUtil.errorInChat("Failed to initialize NPC: ${e.message}")

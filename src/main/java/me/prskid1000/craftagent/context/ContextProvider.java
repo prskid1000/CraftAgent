@@ -41,6 +41,10 @@ public class ContextProvider {
 		return baseConfig;
 	}
 
+	public MessageRepository getMessageRepository() {
+		return messageRepository;
+	}
+
 	public void setRepositories(MessageRepository messageRepository, SharebookRepository sharebookRepository, UUID npcUuid) {
 		this.messageRepository = messageRepository;
 		this.sharebookRepository = sharebookRepository;

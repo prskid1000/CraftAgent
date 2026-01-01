@@ -12,7 +12,8 @@ class CoordinationService(
     private val npcService: NPCService
 ) {
     /**
-     * Broadcast a message to all NPCs and optionally to a specific player
+     * Broadcast a message to all NPCs and optionally to a specific player.
+     * Updates state only (no LLM trigger).
      */
     fun broadcastMessage(message: String, excludeUuid: UUID? = null, targetPlayer: String? = null) {
         npcService.uuidToNpc.forEach { (uuid, npc) ->
@@ -20,7 +21,8 @@ class CoordinationService(
                 return@forEach
             }
             try {
-                npc.eventHandler.onEvent(message)
+                // Just update state, no LLM trigger
+                npc.eventHandler.updateState(message)
             } catch (e: Exception) {
                 LogUtil.error("Error broadcasting message to NPC: ${npc.config.npcName}", e)
             }
@@ -136,17 +138,40 @@ class CoordinationService(
     }
 
     /**
-     * Send a direct message from one NPC to another
+     * Send a direct message from one NPC to another.
+     * Stores in database, displays in chat, and updates state (no LLM trigger).
      */
     fun sendDirectMessage(fromNpc: NPC, toNpcUuid: UUID, message: String) {
-        val targetNpc = npcService.uuidToNpc[toNpcUuid]
-        if (targetNpc != null) {
-            val formattedMessage = "${fromNpc.config.npcName} says to you: $message"
-            targetNpc.eventHandler.onEvent(formattedMessage)
-            
-            // Update last seen
-            targetNpc.contextProvider.memoryManager?.updateContactLastSeen(fromNpc.config.uuid)
-        }
+        val targetNpc = npcService.uuidToNpc[toNpcUuid] ?: return
+        
+        // Get message repository from target NPC's context provider
+        val messageRepository = targetNpc.contextProvider.getMessageRepository() ?: return
+        
+        // Store message in database
+        val dbMessage = me.prskid1000.craftagent.model.database.Message(
+            recipientUuid = toNpcUuid,
+            senderUuid = fromNpc.config.uuid,
+            senderName = fromNpc.config.npcName,
+            senderType = "npc",
+            subject = "Direct message from ${fromNpc.config.npcName}",
+            content = message
+        )
+        
+        val maxMessages = targetNpc.contextProvider.getBaseConfig().getMaxMessages()
+        messageRepository.insert(dbMessage, maxMessages)
+        
+        // Display in chat
+        val chatMessage = "${fromNpc.config.npcName} says to ${targetNpc.config.npcName}: $message"
+        targetNpc.controller.controllerExtras.chat(chatMessage)
+        
+        // Update state (no LLM trigger)
+        val formattedMessage = "${fromNpc.config.npcName} says to you: $message"
+        targetNpc.eventHandler.updateState(formattedMessage)
+        
+        // Update last seen
+        targetNpc.contextProvider.memoryManager?.updateContactLastSeen(fromNpc.config.uuid)
+        
+        LogUtil.info("NPC ${fromNpc.config.npcName} sent direct message to ${targetNpc.config.npcName}: $message")
     }
 
     /**

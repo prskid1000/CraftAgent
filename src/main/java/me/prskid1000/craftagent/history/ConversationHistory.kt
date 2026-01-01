@@ -18,21 +18,49 @@ class ConversationHistory(
         setInitMessage(initMessage)
     }
 
+    private var needsSummarization = false
+
     @Synchronized
     fun add(message: Message) {
         latestConversations.add(message)
 
         if (latestConversations.size >= maxHistoryLength) {
-            updateConversations()
+            // Mark that summarization is needed, but don't do it immediately
+            // The scheduler will handle it during the next processLLM() call
+            needsSummarization = true
         }
     }
 
-    private fun updateConversations() {
+    /**
+     * Checks if summarization is needed and performs it if so.
+     * Should be called during processLLM() to ensure it goes through the scheduler.
+     * @return true if summarization was performed, false otherwise
+     */
+    @Synchronized
+    fun performSummarizationIfNeeded(): Boolean {
+        if (!needsSummarization || latestConversations.size < maxHistoryLength) {
+            needsSummarization = false
+            return false
+        }
+
         val removeCount = maxHistoryLength / 3
-        val toSummarize = latestConversations.subList(1, removeCount).toList()
+        if (latestConversations.size < removeCount + 1) {
+            needsSummarization = false
+            return false
+        }
+
+        val toSummarize = latestConversations.subList(1, removeCount + 1).toList()
         val message = summarize(toSummarize)
         latestConversations.removeAll(toSummarize)
         latestConversations.add(1, message)
+        needsSummarization = false
+        return true
+    }
+
+    private fun updateConversations() {
+        // This method is now deprecated - use performSummarizationIfNeeded() instead
+        // Kept for backward compatibility but should not be called directly
+        performSummarizationIfNeeded()
     }
 
     private fun summarize(conversations: List<Message>): Message {
@@ -40,6 +68,7 @@ class ConversationHistory(
             Instructions.SUMMARY_PROMPT.format( objectMapper.writeValueAsString(conversations)),
             "user")
         // Use chatWithTools and extract content (summarization doesn't need tool calls)
+        // NOTE: This is called during processLLM(), so it's within the scheduler's control
         val toolResponse = llmClient.chatWithTools(listOf(summarizeMessage))
         return Message(toolResponse.content, "assistant")
     }
