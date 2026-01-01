@@ -78,6 +78,8 @@ public class ContextProvider {
 			contactMap.put("relationship", contact.getRelationship());
 			contactMap.put("notes", contact.getNotes());
 			contactMap.put("lastSeen", contact.getLastSeen());
+			contactMap.put("enmityLevel", contact.getEnmityLevel());
+			contactMap.put("friendshipLevel", contact.getFriendshipLevel());
 			contacts.add(contactMap);
 		});
 		memory.put("contacts", contacts);
@@ -157,5 +159,9 @@ public class ContextProvider {
 
 	public WorldContext getCachedContext() {
 		return cachedContext;
+	}
+
+	public ServerPlayerEntity getNpcEntity() {
+		return npcEntity;
 	}
 }

@@ -23,10 +23,30 @@ class ContactRepository(
                 relationship TEXT NOT NULL,
                 last_seen INTEGER NOT NULL,
                 notes TEXT NOT NULL,
+                enmity_level REAL NOT NULL DEFAULT 0.0,
+                friendship_level REAL NOT NULL DEFAULT 0.0,
                 UNIQUE(npc_uuid, contact_uuid)
             );
         """
         sqliteClient.update(sql)
+        
+        // Migration: Add new columns if they don't exist (for existing databases)
+        try {
+            sqliteClient.update("ALTER TABLE contacts ADD COLUMN enmity_level REAL NOT NULL DEFAULT 0.0;")
+        } catch (e: Exception) {
+            // Column already exists, ignore
+        }
+        // Migration: Rename old enmity column to enmity_level if it exists
+        try {
+            sqliteClient.update("ALTER TABLE contacts RENAME COLUMN enmity TO enmity_level;")
+        } catch (e: Exception) {
+            // Column doesn't exist or already renamed, ignore
+        }
+        try {
+            sqliteClient.update("ALTER TABLE contacts ADD COLUMN friendship_level REAL NOT NULL DEFAULT 0.0;")
+        } catch (e: Exception) {
+            // Column already exists, ignore
+        }
         
         // Create indexes
         val indexSql1 = "CREATE INDEX IF NOT EXISTS idx_contact_npc_uuid ON contacts(npc_uuid);"
@@ -45,14 +65,16 @@ class ContactRepository(
         }
         
         val statement = sqliteClient.buildPreparedStatement(
-            """INSERT INTO contacts (npc_uuid, contact_uuid, contact_name, contact_type, relationship, last_seen, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?)
+            """INSERT INTO contacts (npc_uuid, contact_uuid, contact_name, contact_type, relationship, last_seen, notes, enmity_level, friendship_level)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(npc_uuid, contact_uuid) DO UPDATE SET
                contact_name = excluded.contact_name,
                contact_type = excluded.contact_type,
                relationship = excluded.relationship,
                last_seen = excluded.last_seen,
-               notes = excluded.notes""",
+               notes = excluded.notes,
+               enmity_level = excluded.enmity_level,
+               friendship_level = excluded.friendship_level""",
         )
         statement?.setString(1, contact.npcUuid.toString())
         statement?.setString(2, contact.contactUuid.toString())
@@ -61,6 +83,8 @@ class ContactRepository(
         statement?.setString(5, contact.relationship)
         statement?.setLong(6, contact.lastSeen)
         statement?.setString(7, contact.notes)
+        statement?.setDouble(8, contact.enmityLevel)
+        statement?.setDouble(9, contact.friendshipLevel)
         sqliteClient.update(statement)
     }
 
@@ -93,7 +117,11 @@ class ContactRepository(
                 result.getString("contact_type"),
                 result.getString("relationship"),
                 result.getLong("last_seen"),
-                result.getString("notes")
+                result.getString("notes"),
+                try { result.getDouble("enmity_level") } catch (e: Exception) { 
+                    try { result.getDouble("enmity") } catch (e2: Exception) { 0.0 }
+                },
+                try { result.getDouble("friendship_level") } catch (e: Exception) { 0.0 }
             )
             contacts.add(contact)
         }

@@ -17,7 +17,7 @@ public class NPCConfig implements Configurable {
 	private String gender = "neutral"; // "male", "female", "neutral"
 	private int age = 20; // Age in years
 	private long lastAgeUpdateTick = 0; // Last server tick when age was updated
-	private LLMType llmType = LLMType.OLLAMA;
+	private LLMType llmType = LLMType.LM_STUDIO;
 	private String ollamaUrl = "http://localhost:11434";
     private String llmModel = "nvidia_nemotron-3-nano-30b-a3b";
 	private String lmStudioUrl = "http://localhost:1234/v1";

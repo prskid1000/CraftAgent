@@ -69,10 +69,10 @@
 
                                 <!-- padding belongs here now (NOT on panel) -->
                                 <margins>
-                                    <top>11</top>
-                                    <left>11</left>
-                                    <bottom>11</bottom>
-                                    <right>16</right>
+                                    <top>16</top>
+                                    <left>16</left>
+                                    <bottom>16</bottom>
+                                    <right>24</right>
                                 </margins>
 
                                 <gap>7</gap>

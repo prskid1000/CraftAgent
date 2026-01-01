@@ -168,11 +168,13 @@ public class NPCConfigScreen extends ConfigScreen<NPCConfig> {
         boolean active = value.equalsIgnoreCase(current);
 
         ButtonComponent btn = Components.button(Text.of(label), b -> {
+            if (isEdit) return;
             config.setGender(value);
             drawGenderRow(content);
         });
 
         if (active) btn.active(false);
+        if (isEdit) btn.active(false);
         return btn;
     }
 
@@ -186,10 +188,12 @@ public class NPCConfigScreen extends ConfigScreen<NPCConfig> {
                 .text(String.valueOf(config.getAge()));
 
         ageInput.onChanged().subscribe(v -> {
+            if (isEdit) return;
             try { config.setAge(Integer.parseInt(v)); }
             catch (NumberFormatException ignored) {}
         });
 
+        if (isEdit) ageInput.active(false);
         ageRow.child(ageInput);
     }
 }

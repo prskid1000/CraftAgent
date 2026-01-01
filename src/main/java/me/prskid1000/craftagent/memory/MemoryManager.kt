@@ -79,7 +79,7 @@ class MemoryManager(
     }
 
     // Contact Methods
-    fun addOrUpdateContact(contactUuid: UUID, contactName: String, contactType: String, relationship: String = "neutral", notes: String = "") {
+    fun addOrUpdateContact(contactUuid: UUID, contactName: String, contactType: String, relationship: String = "neutral", notes: String = "", enmityLevel: Double = 0.0, friendshipLevel: Double = 0.0) {
         // Delete oldest contact if at limit (only for new contacts, not updates)
         if (!cachedContacts.containsKey(contactUuid)) {
             val existing = getContacts()
@@ -98,7 +98,9 @@ class MemoryManager(
             contactType,
             relationship,
             System.currentTimeMillis(),
-            notes
+            notes,
+            enmityLevel.coerceIn(0.0, 1.0),
+            friendshipLevel.coerceIn(0.0, 1.0)
         )
         cachedContacts[contactUuid] = contact
         try {
@@ -133,6 +135,69 @@ class MemoryManager(
             contactRepository.delete(npcUuid, contactUuid)
         } catch (e: Exception) {
             LogUtil.error("Error removing contact: $contactUuid", e)
+        }
+    }
+
+    /**
+     * Updates the relationship type for a contact
+     */
+    fun updateContactRelationship(contactUuid: UUID, relationship: String) {
+        val contact = cachedContacts[contactUuid] ?: return
+        val updated = contact.copy(relationship = relationship)
+        cachedContacts[contactUuid] = updated
+        try {
+            contactRepository.insertOrUpdate(updated, config.maxContacts)
+        } catch (e: Exception) {
+            LogUtil.error("Error updating contact relationship: $contactUuid", e)
+        }
+    }
+
+    /**
+     * Updates the enmity level for a contact (0.0 to 1.0)
+     * Increases enmity when negative interactions occur (e.g., being hit)
+     */
+    fun updateContactEnmity(contactUuid: UUID, enmityChange: Double) {
+        val contact = cachedContacts[contactUuid] ?: return
+        val newEnmity = (contact.enmityLevel + enmityChange).coerceIn(0.0, 1.0)
+        val updated = contact.copy(enmityLevel = newEnmity)
+        cachedContacts[contactUuid] = updated
+        try {
+            contactRepository.insertOrUpdate(updated, config.maxContacts)
+        } catch (e: Exception) {
+            LogUtil.error("Error updating contact enmity: $contactUuid", e)
+        }
+    }
+
+    /**
+     * Updates the friendship level for a contact (0.0 to 1.0)
+     * Increases friendship when positive interactions occur
+     */
+    fun updateContactFriendship(contactUuid: UUID, friendshipChange: Double) {
+        val contact = cachedContacts[contactUuid] ?: return
+        val newFriendship = (contact.friendshipLevel + friendshipChange).coerceIn(0.0, 1.0)
+        val updated = contact.copy(friendshipLevel = newFriendship)
+        cachedContacts[contactUuid] = updated
+        try {
+            contactRepository.insertOrUpdate(updated, config.maxContacts)
+        } catch (e: Exception) {
+            LogUtil.error("Error updating contact friendship: $contactUuid", e)
+        }
+    }
+
+    /**
+     * Sets enmity and friendship levels directly
+     */
+    fun setContactEnmityAndFriendship(contactUuid: UUID, enmityLevel: Double, friendshipLevel: Double) {
+        val contact = cachedContacts[contactUuid] ?: return
+        val updated = contact.copy(
+            enmityLevel = enmityLevel.coerceIn(0.0, 1.0),
+            friendshipLevel = friendshipLevel.coerceIn(0.0, 1.0)
+        )
+        cachedContacts[contactUuid] = updated
+        try {
+            contactRepository.insertOrUpdate(updated, config.maxContacts)
+        } catch (e: Exception) {
+            LogUtil.error("Error setting contact enmity/friendship: $contactUuid", e)
         }
     }
 

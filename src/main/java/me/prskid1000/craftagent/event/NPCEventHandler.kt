@@ -60,12 +60,22 @@ class NPCEventHandler(
             // Use tool calling for commands, structured output for messages (hybrid approach)
             val toolResponse = llmClient.chatWithTools(messagesForLLM)
             
-            // Extract command from tool calls
+            // Process tool calls (commands and memory management)
             var command: String? = null
             if (toolResponse.hasToolCalls()) {
-                val executeCommandCall = toolResponse.toolCalls.firstOrNull { it.name == "execute_command" }
-                if (executeCommandCall != null) {
-                    command = executeCommandCall.getCommand()
+                // Handle memory management tools first
+                toolResponse.toolCalls.forEach { toolCall ->
+                    when (toolCall.name) {
+                        "execute_command" -> {
+                            command = toolCall.getCommand()
+                        }
+                        "addOrUpdateInfo" -> {
+                            handleAddOrUpdateInfo(toolCall)
+                        }
+                        "removeInfo" -> {
+                            handleRemoveInfo(toolCall)
+                        }
+                    }
                 }
             }
             
@@ -199,6 +209,228 @@ class NPCEventHandler(
             return custom.message
         }
         return generateSequence(exception) { it.cause }.last().message
+    }
+
+    private fun handleAddContact(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
+        val memoryManager = contextProvider.memoryManager ?: return
+        val args = toolCall.arguments
+        
+        val contactName = args["contactName"]?.toString() ?: return
+        val relationship = args["relationship"]?.toString() ?: "neutral"
+        val notes = args["notes"]?.toString() ?: ""
+        val initialEnmity = when (val enmity = args["initialEnmity"]) {
+            is Number -> enmity.toDouble().coerceIn(0.0, 1.0)
+            is String -> enmity.toDoubleOrNull()?.coerceIn(0.0, 1.0) ?: 0.0
+            else -> 0.0
+        }
+        val initialFriendship = when (val friendship = args["initialFriendship"]) {
+            is Number -> friendship.toDouble().coerceIn(0.0, 1.0)
+            is String -> friendship.toDoubleOrNull()?.coerceIn(0.0, 1.0) ?: 0.0
+            else -> 0.0
+        }
+        
+        // Find the entity from nearby entities in context
+        val nearbyEntities = contextProvider.buildContext().nearbyEntities()
+        val entity = nearbyEntities.firstOrNull { 
+            it.name().equals(contactName, ignoreCase = true) 
+        }
+        
+        if (entity != null) {
+            val world = contextProvider.getNpcEntity().world
+            val entityById = world.getEntityById(entity.id())
+            if (entityById != null) {
+                val contactType = if (entityById.isPlayer) "player" else "npc"
+                memoryManager.addOrUpdateContact(
+                    entityById.uuid,
+                    contactName,
+                    contactType,
+                    relationship,
+                    notes,
+                    initialEnmity,
+                    initialFriendship
+                )
+                LogUtil.info("Added contact: $contactName (type: $contactType, relationship: $relationship)")
+            } else {
+                LogUtil.debugInChat("Could not find entity in world: $contactName")
+            }
+        } else {
+            LogUtil.debugInChat("Contact not found in nearby entities: $contactName. Make sure they are visible in your context.")
+        }
+    }
+
+    /**
+     * Finds a contact UUID by name from nearby entities or existing contacts
+     */
+    private fun findContactUuidByName(contactName: String): java.util.UUID? {
+        val memoryManager = contextProvider.memoryManager ?: return null
+        
+        // First, check existing contacts
+        val existingContact = memoryManager.getContacts().firstOrNull { 
+            it.contactName.equals(contactName, ignoreCase = true) 
+        }
+        if (existingContact != null) {
+            return existingContact.contactUuid
+        }
+        
+        // Then check nearby entities
+        val nearbyEntities = contextProvider.buildContext().nearbyEntities()
+        val entity = nearbyEntities.firstOrNull { 
+            it.name().equals(contactName, ignoreCase = true) 
+        }
+        if (entity != null) {
+            // Try to find the actual entity in the world to get its UUID
+            val world = contextProvider.npcEntity.world
+            val entityById = world.getEntityById(entity.id())
+            if (entityById != null) {
+                return entityById.uuid
+            }
+        }
+        
+        return null
+    }
+
+    private fun handleUpdateContactRelationship(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
+        val memoryManager = contextProvider.memoryManager ?: return
+        val args = toolCall.arguments
+        
+        val contactName = args["contactName"]?.toString() ?: return
+        val relationship = args["relationship"]?.toString() ?: return
+        
+        val contactUuid = findContactUuidByName(contactName)
+        if (contactUuid != null) {
+            memoryManager.updateContactRelationship(contactUuid, relationship)
+            LogUtil.info("Updated relationship with $contactName to $relationship")
+        } else {
+            LogUtil.debugInChat("Could not find contact: $contactName")
+        }
+    }
+
+    private fun handleUpdateContactEnmity(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
+        val memoryManager = contextProvider.memoryManager ?: return
+        val args = toolCall.arguments
+        
+        val contactName = args["contactName"]?.toString() ?: return
+        val enmityChange = when (val change = args["enmityChange"]) {
+            is Number -> change.toDouble()
+            is String -> change.toDoubleOrNull() ?: return
+            else -> return
+        }
+        
+        val contactUuid = findContactUuidByName(contactName)
+        if (contactUuid != null) {
+            memoryManager.updateContactEnmity(contactUuid, enmityChange)
+            LogUtil.info("Updated enmity with $contactName by $enmityChange")
+        } else {
+            // If contact doesn't exist, create it first
+            val nearbyEntities = contextProvider.buildContext().nearbyEntities()
+            val entity = nearbyEntities.firstOrNull { 
+                it.name().equals(contactName, ignoreCase = true) 
+            }
+            if (entity != null) {
+                val world = contextProvider.getNpcEntity().world
+                val entityById = world.getEntityById(entity.id())
+                if (entityById != null) {
+                    val contactType = if (entityById.isPlayer) "player" else "npc"
+                    val initialEnmity = enmityChange.coerceIn(0.0, 1.0)
+                    memoryManager.addOrUpdateContact(
+                        entityById.uuid,
+                        contactName,
+                        contactType,
+                        "neutral",
+                        "",
+                        initialEnmity,
+                        0.0
+                    )
+                    LogUtil.info("Created contact $contactName with enmity $initialEnmity")
+                }
+            }
+        }
+    }
+
+    private fun handleUpdateContactFriendship(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
+        val memoryManager = contextProvider.memoryManager ?: return
+        val args = toolCall.arguments
+        
+        val contactName = args["contactName"]?.toString() ?: return
+        val friendshipChange = when (val change = args["friendshipChange"]) {
+            is Number -> change.toDouble()
+            is String -> change.toDoubleOrNull() ?: return
+            else -> return
+        }
+        
+        val contactUuid = findContactUuidByName(contactName)
+        if (contactUuid != null) {
+            memoryManager.updateContactFriendship(contactUuid, friendshipChange)
+            LogUtil.info("Updated friendship with $contactName by $friendshipChange")
+        } else {
+            // If contact doesn't exist, create it first
+            val nearbyEntities = contextProvider.buildContext().nearbyEntities()
+            val entity = nearbyEntities.firstOrNull { 
+                it.name().equals(contactName, ignoreCase = true) 
+            }
+            if (entity != null) {
+                val world = contextProvider.getNpcEntity().world
+                val entityById = world.getEntityById(entity.id())
+                if (entityById != null) {
+                    val contactType = if (entityById.isPlayer) "player" else "npc"
+                    val initialFriendship = friendshipChange.coerceIn(0.0, 1.0)
+                    memoryManager.addOrUpdateContact(
+                        entityById.uuid,
+                        contactName,
+                        contactType,
+                        "neutral",
+                        "",
+                        0.0,
+                        initialFriendship
+                    )
+                    LogUtil.info("Created contact $contactName with friendship $initialFriendship")
+                }
+            }
+        }
+    }
+
+    private fun handleSaveLocation(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
+        val memoryManager = contextProvider.memoryManager ?: return
+        val args = toolCall.arguments
+        
+        val locationName = args["locationName"]?.toString() ?: return
+        val description = args["description"]?.toString() ?: ""
+        
+        val position = contextProvider.getNpcEntity().blockPos
+        memoryManager.saveLocation(locationName, position, description)
+        LogUtil.info("Saved location: $locationName at ${position.x}, ${position.y}, ${position.z}")
+    }
+
+    private fun handleRemoveContact(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
+        val memoryManager = contextProvider.memoryManager ?: return
+        val args = toolCall.arguments
+        
+        val contactName = args["contactName"]?.toString() ?: return
+        
+        val contact = memoryManager.getContacts().firstOrNull { 
+            it.contactName.equals(contactName, ignoreCase = true) 
+        }
+        if (contact != null) {
+            memoryManager.removeContact(contact.contactUuid)
+            LogUtil.info("Removed contact: $contactName")
+        } else {
+            LogUtil.debugInChat("Could not find contact to remove: $contactName")
+        }
+    }
+
+    private fun handleRemoveLocation(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
+        val memoryManager = contextProvider.memoryManager ?: return
+        val args = toolCall.arguments
+        
+        val locationName = args["locationName"]?.toString() ?: return
+        
+        val location = memoryManager.getLocation(locationName)
+        if (location != null) {
+            memoryManager.deleteLocation(locationName)
+            LogUtil.info("Removed location: $locationName")
+        } else {
+            LogUtil.debugInChat("Could not find location to remove: $locationName")
+        }
     }
 
 }
