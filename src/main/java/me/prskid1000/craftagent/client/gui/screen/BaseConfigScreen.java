@@ -16,80 +16,65 @@ public class BaseConfigScreen extends ConfigScreen<BaseConfig> {
 
     private static final Identifier ID = Identifier.of(MOD_ID, "baseconfig");
 
-    public BaseConfigScreen(
-        ClientNetworkManager networkManager,
-        BaseConfig baseConfig,
-        boolean isEdit
-    ) {
+    public BaseConfigScreen(ClientNetworkManager networkManager, BaseConfig baseConfig, boolean isEdit) {
         super(networkManager, baseConfig, isEdit, ID);
     }
 
     @Override
     protected void build(FlowLayout rootComponent) {
-        FlowLayout panel = rootComponent.childById(FlowLayout.class, "panel");
+        // IMPORTANT: operate on padded inner content container
+        FlowLayout content = rootComponent.childById(FlowLayout.class, "content");
 
-        panel.childById(LabelComponent.class, "llmTimeout-label").text(Text.of(BaseConfig.LLM_TIMEOUT_KEY));
-        panel.childById(DiscreteSliderComponent.class, "llmTimeout")
-                .setFromDiscreteValue(config.getLlmTimeout())
-                .onChanged()
-                .subscribe(value -> config.setLlmTimeout((int) Math.round(value)));
+        bindSlider(content, "llmTimeout-label", "llmTimeout",
+                BaseConfig.LLM_TIMEOUT_KEY, config.getLlmTimeout(), config::setLlmTimeout);
 
-        panel.childById(LabelComponent.class, "chunkRadius-label").text(Text.of(BaseConfig.CONTEXT_CHUNK_RADIUS_KEY));
-        panel.childById(DiscreteSliderComponent.class, "chunkRadius")
-                .setFromDiscreteValue(config.getContextChunkRadius())
-                .onChanged()
-                .subscribe(value -> config.setContextChunkRadius((int) Math.round(value)));
+        bindSlider(content, "chunkRadius-label", "chunkRadius",
+                BaseConfig.CONTEXT_CHUNK_RADIUS_KEY, config.getContextChunkRadius(), config::setContextChunkRadius);
 
-        panel.childById(LabelComponent.class, "verticalScanRange-label").text(Text.of(BaseConfig.CONTEXT_VERTICAL_RANGE_KEY));
-        panel.childById(DiscreteSliderComponent.class, "verticalScanRange")
-                .setFromDiscreteValue(config.getContextVerticalScanRange())
-                .onChanged()
-                .subscribe(value -> config.setContextVerticalScanRange((int) Math.round(value)));
+        bindSlider(content, "verticalScanRange-label", "verticalScanRange",
+                BaseConfig.CONTEXT_VERTICAL_RANGE_KEY, config.getContextVerticalScanRange(), config::setContextVerticalScanRange);
 
-        panel.childById(LabelComponent.class, "cacheExpiryTime-label").text(Text.of(BaseConfig.CHUNK_EXPIRY_TIME_KEY));
-        panel.childById(DiscreteSliderComponent.class, "cacheExpiryTime")
-                .setFromDiscreteValue(config.getChunkExpiryTime())
-                .onChanged()
-                .subscribe(value -> config.setChunkExpiryTime((int) Math.round(value)));
+        bindSlider(content, "cacheExpiryTime-label", "cacheExpiryTime",
+                BaseConfig.CHUNK_EXPIRY_TIME_KEY, config.getChunkExpiryTime(), config::setChunkExpiryTime);
 
-        panel.childById(LabelComponent.class, "conversationHistoryLength-label").text(Text.of(BaseConfig.CONVERSATION_HISTORY_LENGTH_KEY));
-        panel.childById(DiscreteSliderComponent.class, "conversationHistoryLength")
-                .setFromDiscreteValue(config.getConversationHistoryLength())
-                .onChanged()
-                .subscribe(value -> config.setConversationHistoryLength((int) Math.round(value)));
+        bindSlider(content, "conversationHistoryLength-label", "conversationHistoryLength",
+                BaseConfig.CONVERSATION_HISTORY_LENGTH_KEY, config.getConversationHistoryLength(), config::setConversationHistoryLength);
 
-        panel.childById(LabelComponent.class, "maxLocations-label").text(Text.of(BaseConfig.MAX_LOCATIONS_KEY));
-        panel.childById(DiscreteSliderComponent.class, "maxLocations")
-                .setFromDiscreteValue(config.getMaxLocations())
-                .onChanged()
-                .subscribe(value -> config.setMaxLocations((int) Math.round(value)));
+        bindSlider(content, "maxLocations-label", "maxLocations",
+                BaseConfig.MAX_LOCATIONS_KEY, config.getMaxLocations(), config::setMaxLocations);
 
-        panel.childById(LabelComponent.class, "maxContacts-label").text(Text.of(BaseConfig.MAX_CONTACTS_KEY));
-        panel.childById(DiscreteSliderComponent.class, "maxContacts")
-                .setFromDiscreteValue(config.getMaxContacts())
-                .onChanged()
-                .subscribe(value -> config.setMaxContacts((int) Math.round(value)));
+        bindSlider(content, "maxContacts-label", "maxContacts",
+                BaseConfig.MAX_CONTACTS_KEY, config.getMaxContacts(), config::setMaxContacts);
 
-        panel.childById(LabelComponent.class, "maxNearbyBlocks-label").text(Text.of(BaseConfig.MAX_NEARBY_BLOCKS_KEY));
-        panel.childById(DiscreteSliderComponent.class, "maxNearbyBlocks")
-                .setFromDiscreteValue(config.getMaxNearbyBlocks())
-                .onChanged()
-                .subscribe(value -> config.setMaxNearbyBlocks((int) Math.round(value)));
+        bindSlider(content, "maxNearbyBlocks-label", "maxNearbyBlocks",
+                BaseConfig.MAX_NEARBY_BLOCKS_KEY, config.getMaxNearbyBlocks(), config::setMaxNearbyBlocks);
 
-        panel.childById(LabelComponent.class, "maxNearbyEntities-label").text(Text.of(BaseConfig.MAX_NEARBY_ENTITIES_KEY));
-        panel.childById(DiscreteSliderComponent.class, "maxNearbyEntities")
-                .setFromDiscreteValue(config.getMaxNearbyEntities())
-                .onChanged()
-                .subscribe(value -> config.setMaxNearbyEntities((int) Math.round(value)));
+        bindSlider(content, "maxNearbyEntities-label", "maxNearbyEntities",
+                BaseConfig.MAX_NEARBY_ENTITIES_KEY, config.getMaxNearbyEntities(), config::setMaxNearbyEntities);
 
-        panel.childById(LabelComponent.class, "verbose-label").text(Text.of(BaseConfig.VERBOSE_KEY));
-        panel.childById(CheckboxComponent.class, "verbose")
-                .checked(config.isVerbose())
-                .onChanged(listener -> config.setVerbose(!config.isVerbose()));
+        content.childById(LabelComponent.class, "verbose-label").text(Text.of(BaseConfig.VERBOSE_KEY));
+        CheckboxComponent verbose = content.childById(CheckboxComponent.class, "verbose");
+        verbose.checked(config.isVerbose());
+        verbose.onChanged(config::setVerbose);
 
-        onPressSaveButton(panel, button -> {
+        onPressSaveButton(rootComponent, button -> {
             networkManager.sendPacket(new UpdateBaseConfigPacket(config));
             close();
         });
+    }
+
+    private void bindSlider(
+            FlowLayout content,
+            String labelId,
+            String sliderId,
+            String labelText,
+            int initialValue,
+            java.util.function.IntConsumer setter
+    ) {
+        content.childById(LabelComponent.class, labelId).text(Text.of(labelText));
+
+        DiscreteSliderComponent slider = content.childById(DiscreteSliderComponent.class, sliderId);
+        slider.setFromDiscreteValue(initialValue);
+        slider.onChanged().subscribe(v -> setter.accept((int) Math.round(v)));
     }
 }

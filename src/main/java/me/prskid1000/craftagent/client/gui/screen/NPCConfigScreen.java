@@ -19,197 +19,177 @@ public class NPCConfigScreen extends ConfigScreen<NPCConfig> {
 
     private static final Identifier ID = Identifier.of(MOD_ID, "npcconfig");
 
-    public NPCConfigScreen(
-            ClientNetworkManager networkManager,
-            NPCConfig npcConfig,
-            boolean isEdit
-    ) {
+    private static final Sizing INPUT_H = Sizing.fixed(18);
+    private static final Sizing PROMPT_H = Sizing.fixed(110);
+
+    public NPCConfigScreen(ClientNetworkManager networkManager, NPCConfig npcConfig, boolean isEdit) {
         super(networkManager, npcConfig, isEdit, ID);
     }
 
     @Override
     protected void build(FlowLayout rootComponent) {
-        FlowLayout panel = rootComponent.childById(FlowLayout.class, "panel");
+        // IMPORTANT: operate on the padded inner content container
+        FlowLayout content = rootComponent.childById(FlowLayout.class, "content");
 
-        drawNpcNameRow(panel);
-        drawLLMTypeButtons(panel);
+        drawNpcNameRow(content);
+        drawLLMTypeButtons(content);
 
-        // these depend on llmType, so build once + rebuild on change
-        redrawLlmDependentFields(panel);
+        redrawLlmDependentFields(content);
 
-        drawGenderRow(panel);
-        drawAgeRow(panel);
+        drawGenderRow(content);
+        drawAgeRow(content);
 
         onPressSaveButton(rootComponent, button -> {
-            if (isEdit) {
-                networkManager.sendPacket(new UpdateNpcConfigPacket(config));
-            } else {
-                networkManager.sendPacket(new CreateNpcPacket(config));
-            }
+            if (isEdit) networkManager.sendPacket(new UpdateNpcConfigPacket(config));
+            else networkManager.sendPacket(new CreateNpcPacket(config));
             close();
         });
     }
 
-    private void drawNpcNameRow(FlowLayout panel) {
-        LabelComponent npcNameLabel = panel.childById(LabelComponent.class, "npcName-label");
+    private void drawNpcNameRow(FlowLayout content) {
+        LabelComponent npcNameLabel = content.childById(LabelComponent.class, "npcName-label");
 
         if (isEdit) {
             npcNameLabel.text(Text.of(NPCConfig.EDIT_NPC.formatted(config.getNpcName())));
         } else {
             npcNameLabel.text(Text.of(NPCConfig.NPC_NAME));
-            TextAreaComponent npcName = Components.textArea(Sizing.fill(35), Sizing.fill(7))
+
+            TextAreaComponent npcName = Components.textArea(Sizing.fill(100), INPUT_H)
                     .text(config.getNpcName());
             npcName.onChanged().subscribe(config::setNpcName);
 
-            panel.childById(FlowLayout.class, "npcNameRow").child(npcName);
+            content.childById(FlowLayout.class, "npcNameRow").child(npcName);
         }
     }
 
-    /**
-     * LLM Type as buttons in a single row instead of dropdown
-     */
-    private void drawLLMTypeButtons(FlowLayout panel) {
-        panel.childById(LabelComponent.class, "llmType-label").text(Text.of(NPCConfig.LLM_TYPE));
+    private void drawLLMTypeButtons(FlowLayout content) {
+        content.childById(LabelComponent.class, "llmType-label").text(Text.of(NPCConfig.LLM_TYPE));
 
-        FlowLayout llmTypeRow = panel.childById(FlowLayout.class, "llmTypeRow");
-
-        // Remove any old button row if rebuild happens (safe)
-        // Keep the label (first child), clear everything after it:
+        FlowLayout llmTypeRow = content.childById(FlowLayout.class, "llmTypeRow");
         while (llmTypeRow.children().size() > 1) {
             llmTypeRow.removeChild(llmTypeRow.children().get(1));
         }
 
-        FlowLayout buttonRow = Containers.horizontalFlow(Sizing.fill(35), Sizing.content());
+        FlowLayout buttonRow = Containers.horizontalFlow(Sizing.fill(100), Sizing.content());
         buttonRow.gap(6);
 
-        // If editing, you can lock selection (or still allow switching - your choice)
-        buttonRow.child(typeButton(LLMType.OLLAMA, panel, isEdit));
-        buttonRow.child(typeButton(LLMType.LM_STUDIO, panel, isEdit));
+        buttonRow.child(llmTypeButton(content, LLMType.OLLAMA));
+        buttonRow.child(llmTypeButton(content, LLMType.LM_STUDIO));
 
         llmTypeRow.child(buttonRow);
     }
 
-    private ButtonComponent typeButton(LLMType type, FlowLayout panel, boolean disabled) {
+    private ButtonComponent llmTypeButton(FlowLayout content, LLMType type) {
         boolean active = config.getLlmType() == type;
 
-        ButtonComponent btn = Components.button(Text.of(type.toString()), button -> {
-            if (disabled) return;
+        ButtonComponent btn = Components.button(Text.of(type.toString()), b -> {
+            if (isEdit) return;
             config.setLlmType(type);
-            redrawLlmDependentFields(panel);
-            // optionally also refresh visual state by rebuilding type row
-            drawLLMTypeButtons(panel);
+            redrawLlmDependentFields(content);
+            drawLLMTypeButtons(content);
         });
 
-        // Light visual hint: add top margin; you can also add tooltip etc.
-        btn.margins(Insets.top(2));
-
-        // Optional: disable current active button to make it feel “selected”
-        if (active) btn.active(!disabled && false);
-        if (disabled) btn.active(false);
-
+        if (active) btn.active(false);
+        if (isEdit) btn.active(false);
         return btn;
     }
 
-    /**
-     * Rebuild model row + llmInfo whenever llmType changes
-     */
-    private void redrawLlmDependentFields(FlowLayout panel) {
-        drawLLMModelRow(panel);
-        drawLlmInfo(panel);
+    private void redrawLlmDependentFields(FlowLayout content) {
+        drawLLMModelRow(content);
+        drawLlmInfo(content);
     }
 
-    private void drawLLMModelRow(FlowLayout panel) {
-        panel.childById(LabelComponent.class, "llmModel-label").text(Text.of(NPCConfig.LLM_MODEL));
+    private void drawLLMModelRow(FlowLayout content) {
+        content.childById(LabelComponent.class, "llmModel-label").text(Text.of(NPCConfig.LLM_MODEL));
 
-        FlowLayout llmModelRow = panel.childById(FlowLayout.class, "llmModelRow");
-
-        // Clear old model input(s) but keep label
+        FlowLayout llmModelRow = content.childById(FlowLayout.class, "llmModelRow");
         while (llmModelRow.children().size() > 1) {
             llmModelRow.removeChild(llmModelRow.children().get(1));
         }
 
-        // Both types use model text input
-        TextAreaComponent llmModel = Components.textArea(Sizing.fill(35), Sizing.fill(7))
+        TextAreaComponent llmModel = Components.textArea(Sizing.fill(100), INPUT_H)
                 .text(config.getLlmModel());
         llmModel.onChanged().subscribe(config::setLlmModel);
 
         llmModelRow.child(llmModel);
     }
 
-    private void drawLlmInfo(FlowLayout panel) {
-        FlowLayout llmInfo = panel.childById(FlowLayout.class, "llmInfo");
+    private void drawLlmInfo(FlowLayout content) {
+        FlowLayout llmInfo = content.childById(FlowLayout.class, "llmInfo");
         llmInfo.clearChildren();
 
-        // URL row
-        TextAreaComponent urlInput = Components.textArea(Sizing.fill(35), Sizing.fill(7));
+        TextAreaComponent urlInput = Components.textArea(Sizing.fill(100), INPUT_H);
 
         switch (config.getLlmType()) {
             case OLLAMA -> {
                 llmInfo.child(Components.label(Text.of(NPCConfig.OLLAMA_URL)).shadow(true));
                 urlInput.text(config.getOllamaUrl()).onChanged().subscribe(config::setOllamaUrl);
-                llmInfo.child(urlInput);
             }
             case LM_STUDIO -> {
                 llmInfo.child(Components.label(Text.of(NPCConfig.LM_STUDIO_URL)).shadow(true));
                 urlInput.text(config.getLmStudioUrl()).onChanged().subscribe(config::setLmStudioUrl);
-                llmInfo.child(urlInput);
             }
         }
+        llmInfo.child(urlInput);
 
-        // System prompt row
         llmInfo.child(
                 Components.label(Text.of(NPCConfig.CUSTOM_SYSTEM_PROMPT))
                         .shadow(true)
                         .margins(Insets.top(7))
         );
 
-        TextAreaComponent customSystemPrompt = Components.textArea(Sizing.fill(35), Sizing.fill(40));
-        customSystemPrompt.text(config.getCustomSystemPrompt())
-                .onChanged()
-                .subscribe(config::setCustomSystemPrompt);
+        TextAreaComponent prompt = Components.textArea(Sizing.fill(100), PROMPT_H)
+                .text(config.getCustomSystemPrompt());
+        prompt.onChanged().subscribe(config::setCustomSystemPrompt);
 
-        llmInfo.child(customSystemPrompt);
+        llmInfo.child(prompt);
     }
 
-    private void drawGenderRow(FlowLayout panel) {
-        FlowLayout genderRow = panel.childById(FlowLayout.class, "genderRow");
+    private void drawGenderRow(FlowLayout content) {
+        FlowLayout genderRow = content.childById(FlowLayout.class, "genderRow");
         genderRow.clearChildren();
 
         genderRow.child(Components.label(Text.of(NPCConfig.GENDER)).shadow(true));
 
-        DropdownComponent genderDropdown = Components.dropdown(Sizing.fill(35));
-        String currentGender = config.getGender();
-        if (currentGender == null || currentGender.isEmpty()) currentGender = "neutral";
+        FlowLayout buttons = Containers.horizontalFlow(Sizing.fill(100), Sizing.content());
+        buttons.gap(6);
 
-        genderDropdown.button(Text.of(capitalize(currentGender)), b -> {});
-        genderDropdown.button(Text.of("Male"), b -> config.setGender("male"));
-        genderDropdown.button(Text.of("Female"), b -> config.setGender("female"));
-        genderDropdown.button(Text.of("Neutral"), b -> config.setGender("neutral"));
+        buttons.child(genderButton(content, "male", "Male"));
+        buttons.child(genderButton(content, "female", "Female"));
+        buttons.child(genderButton(content, "neutral", "Neutral"));
 
-        genderRow.child(genderDropdown);
+        genderRow.child(buttons);
     }
 
-    private void drawAgeRow(FlowLayout panel) {
-        FlowLayout ageRow = panel.childById(FlowLayout.class, "ageRow");
+    private ButtonComponent genderButton(FlowLayout content, String value, String label) {
+        String current = config.getGender();
+        if (current == null || current.isEmpty()) current = "neutral";
+
+        boolean active = value.equalsIgnoreCase(current);
+
+        ButtonComponent btn = Components.button(Text.of(label), b -> {
+            config.setGender(value);
+            drawGenderRow(content);
+        });
+
+        if (active) btn.active(false);
+        return btn;
+    }
+
+    private void drawAgeRow(FlowLayout content) {
+        FlowLayout ageRow = content.childById(FlowLayout.class, "ageRow");
         ageRow.clearChildren();
 
         ageRow.child(Components.label(Text.of(NPCConfig.AGE)).shadow(true));
 
-        TextAreaComponent ageInput = Components.textArea(Sizing.fill(35), Sizing.fill(7))
+        TextAreaComponent ageInput = Components.textArea(Sizing.fill(100), INPUT_H)
                 .text(String.valueOf(config.getAge()));
 
-        ageInput.onChanged().subscribe(value -> {
-            try {
-                int age = Integer.parseInt(value);
-                config.setAge(age);
-            } catch (NumberFormatException ignored) {}
+        ageInput.onChanged().subscribe(v -> {
+            try { config.setAge(Integer.parseInt(v)); }
+            catch (NumberFormatException ignored) {}
         });
 
         ageRow.child(ageInput);
-    }
-
-    private String capitalize(String str) {
-        if (str == null || str.isEmpty()) return str;
-        return str.substring(0, 1).toUpperCase() + str.substring(1);
     }
 }

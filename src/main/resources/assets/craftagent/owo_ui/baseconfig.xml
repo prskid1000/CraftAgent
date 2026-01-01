@@ -3,190 +3,183 @@
     <components>
         <flow-layout direction="vertical">
             <children>
+
                 <scroll direction="vertical">
+                    <!-- ONE component child only -->
                     <flow-layout direction="vertical" id="panel">
                         <sizing>
                             <horizontal method="fill">100</horizontal>
+                            <vertical method="content"/>
                         </sizing>
-                        <children>
 
-                            <flow-layout direction="vertical">
+                        <children>
+                            <!-- Inner padded container -->
+                            <flow-layout direction="vertical" id="content">
+                                <sizing>
+                                    <horizontal method="fill">100</horizontal>
+                                    <vertical method="content"/>
+                                </sizing>
+
                                 <children>
 
-                                <flow-layout direction="vertical">
-                                    <children>
-                                        <label id="llmTimeout-label">
-                                            <shadow>true</shadow>
-                                        </label>
-                                        <discrete-slider id="llmTimeout" min="1" max="300">
-                                            <sizing>
-                                                <horizontal method="fill">25</horizontal>
-                                                <vertical method="fill">7</vertical>
-                                            </sizing>
-                                        </discrete-slider>
-                                    </children>
-                                </flow-layout>
+                                    <flow-layout direction="vertical" id="llmTimeoutRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="llmTimeout-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="llmTimeout" min="1" max="300">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
 
+                                    <flow-layout direction="vertical" id="chunkRadiusRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="chunkRadius-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="chunkRadius" min="1" max="7">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
 
-                                <flow-layout direction="vertical">
-                                    <children>
-                                        <label id="chunkRadius-label">
-                                            <shadow>true</shadow>
-                                        </label>
-                                        <discrete-slider id="chunkRadius" min="1" max="7">
-                                            <sizing>
-                                                <horizontal method="fill">25</horizontal>
-                                                <vertical method="fill">7</vertical>
-                                            </sizing>
-                                        </discrete-slider>
-                                    </children>
-                                </flow-layout>
+                                    <flow-layout direction="vertical" id="verticalScanRangeRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="verticalScanRange-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="verticalScanRange" min="4" max="16">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
 
+                                    <flow-layout direction="vertical" id="cacheExpiryTimeRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="cacheExpiryTime-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="cacheExpiryTime" min="20" max="120">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
 
-                                <flow-layout direction="vertical">
-                                    <children>
-                                        <label id="verticalScanRange-label">
-                                            <shadow>true</shadow>
-                                        </label>
-                                        <discrete-slider id="verticalScanRange" min="4" max="16">
-                                            <sizing>
-                                                <horizontal method="fill">25</horizontal>
-                                                <vertical method="fill">7</vertical>
-                                            </sizing>
-                                        </discrete-slider>
-                                    </children>
-                                </flow-layout>
+                                    <flow-layout direction="vertical" id="conversationHistoryLengthRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="conversationHistoryLength-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="conversationHistoryLength" min="10" max="100">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
 
+                                    <flow-layout direction="vertical" id="maxLocationsRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="maxLocations-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="maxLocations" min="5" max="50">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
 
-                                <flow-layout direction="vertical">
-                                    <children>
-                                        <label id="cacheExpiryTime-label">
-                                            <shadow>true</shadow>
-                                        </label>
-                                        <discrete-slider id="cacheExpiryTime" min="20" max="120">
-                                            <sizing>
-                                                <horizontal method="fill">25</horizontal>
-                                                <vertical method="fill">7</vertical>
-                                            </sizing>
-                                        </discrete-slider>
-                                    </children>
-                                </flow-layout>
+                                    <flow-layout direction="vertical" id="maxContactsRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="maxContacts-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="maxContacts" min="5" max="100">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
 
-                                <flow-layout direction="vertical">
-                                    <children>
-                                        <label id="conversationHistoryLength-label">
-                                            <shadow>true</shadow>
-                                        </label>
-                                        <discrete-slider id="conversationHistoryLength" min="10" max="100">
-                                            <sizing>
-                                                <horizontal method="fill">25</horizontal>
-                                                <vertical method="fill">7</vertical>
-                                            </sizing>
-                                        </discrete-slider>
-                                    </children>
-                                </flow-layout>
+                                    <flow-layout direction="vertical" id="maxNearbyBlocksRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="maxNearbyBlocks-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="maxNearbyBlocks" min="10" max="100">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
 
-                                <flow-layout direction="vertical">
-                                    <children>
-                                        <label id="maxLocations-label">
-                                            <shadow>true</shadow>
-                                        </label>
-                                        <discrete-slider id="maxLocations" min="5" max="50">
-                                            <sizing>
-                                                <horizontal method="fill">25</horizontal>
-                                                <vertical method="fill">7</vertical>
-                                            </sizing>
-                                        </discrete-slider>
-                                    </children>
-                                </flow-layout>
+                                    <flow-layout direction="vertical" id="maxNearbyEntitiesRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="maxNearbyEntities-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="maxNearbyEntities" min="5" max="50">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
 
-                                <flow-layout direction="vertical">
-                                    <children>
-                                        <label id="maxContacts-label">
-                                            <shadow>true</shadow>
-                                        </label>
-                                        <discrete-slider id="maxContacts" min="5" max="100">
-                                            <sizing>
-                                                <horizontal method="fill">25</horizontal>
-                                                <vertical method="fill">7</vertical>
-                                            </sizing>
-                                        </discrete-slider>
-                                    </children>
-                                </flow-layout>
+                                    <flow-layout direction="vertical" id="verboseRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="verbose-label"><shadow>true</shadow></label>
+                                            <checkbox id="verbose"/>
+                                        </children>
+                                    </flow-layout>
 
-                                <flow-layout direction="vertical">
-                                    <children>
-                                        <label id="maxNearbyBlocks-label">
-                                            <shadow>true</shadow>
-                                        </label>
-                                        <discrete-slider id="maxNearbyBlocks" min="10" max="100">
-                                            <sizing>
-                                                <horizontal method="fill">25</horizontal>
-                                                <vertical method="fill">7</vertical>
-                                            </sizing>
-                                        </discrete-slider>
-                                    </children>
-                                </flow-layout>
+                                    <button id="save">
+                                        <text>Save</text>
+                                    </button>
 
-                                <flow-layout direction="vertical">
-                                    <children>
-                                        <label id="maxNearbyEntities-label">
-                                            <shadow>true</shadow>
-                                        </label>
-                                        <discrete-slider id="maxNearbyEntities" min="5" max="50">
-                                            <sizing>
-                                                <horizontal method="fill">25</horizontal>
-                                                <vertical method="fill">7</vertical>
-                                            </sizing>
-                                        </discrete-slider>
-                                    </children>
-                                </flow-layout>
+                                </children>
 
-                                <flow-layout direction="vertical">
-                                    <children>
-                                        <label id="verbose-label">
-                                            <shadow>true</shadow>
-                                        </label>
-                                        <checkbox id="verbose">
-                                            <sizing>
-                                                <horizontal method="fill">25</horizontal>
-                                                <vertical method="fill">7</vertical>
-                                            </sizing>
-                                        </checkbox>
-                                    </children>
-                                </flow-layout>
+                                <margins>
+                                    <top>11</top>
+                                    <left>11</left>
+                                    <bottom>11</bottom>
+                                    <right>16</right>
+                                </margins>
 
-                                <button id="save">
-                                    <text>Save</text>
-                                </button>
-
-                            </children>
-
-                            <margins>
-                                <all>11</all>
-                            </margins>
-
-                            <gap>7</gap>
-
-                            <horizontal-alignment>left</horizontal-alignment>
-                            <vertical-alignment>center</vertical-alignment>
-
-                        </flow-layout>
-
+                                <gap>7</gap>
+                                <horizontal-alignment>left</horizontal-alignment>
+                                <vertical-alignment>top</vertical-alignment>
+                            </flow-layout>
                         </children>
 
                         <horizontal-alignment>center</horizontal-alignment>
-                        <vertical-alignment>center</vertical-alignment>
+                        <vertical-alignment>top</vertical-alignment>
 
                         <surface>
                             <panel dark="true"/>
                         </surface>
                     </flow-layout>
+
                     <sizing>
                         <horizontal method="fill">80</horizontal>
                         <vertical method="fill">80</vertical>
                     </sizing>
                 </scroll>
+
             </children>
 
             <horizontal-alignment>center</horizontal-alignment>

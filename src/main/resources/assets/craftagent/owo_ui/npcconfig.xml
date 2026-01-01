@@ -3,69 +3,85 @@
     <components>
         <flow-layout direction="vertical">
             <children>
+
                 <scroll direction="vertical">
+                    <!-- ONE component child only -->
                     <flow-layout direction="vertical" id="panel">
                         <sizing>
                             <horizontal method="fill">100</horizontal>
+                            <vertical method="content"/>
                         </sizing>
 
                         <children>
+                            <!-- Inner padded container -->
+                            <flow-layout direction="vertical" id="content">
+                                <sizing>
+                                    <horizontal method="fill">100</horizontal>
+                                    <vertical method="content"/>
+                                </sizing>
 
-                            <!-- Title / name row -->
-                            <flow-layout direction="vertical" id="npcNameRow">
                                 <children>
-                                    <label id="npcName-label">
-                                        <shadow>true</shadow>
-                                    </label>
+
+                                    <flow-layout direction="vertical" id="npcNameRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="npcName-label"><shadow>true</shadow></label>
+                                        </children>
+                                    </flow-layout>
+
+                                    <flow-layout direction="vertical" id="llmTypeRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="llmType-label"><shadow>true</shadow></label>
+                                        </children>
+                                    </flow-layout>
+
+                                    <flow-layout direction="vertical" id="llmModelRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="llmModel-label"><shadow>true</shadow></label>
+                                        </children>
+                                    </flow-layout>
+
+                                    <flow-layout direction="vertical" id="genderRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children/>
+                                    </flow-layout>
+
+                                    <flow-layout direction="vertical" id="ageRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children/>
+                                    </flow-layout>
+
+                                    <flow-layout direction="vertical" id="llmInfo">
+                                        <sizing>
+                                            <horizontal method="fill">100</horizontal>
+                                            <vertical method="content"/>
+                                        </sizing>
+                                        <children/>
+                                    </flow-layout>
+
+                                    <button id="save">
+                                        <text>Save</text>
+                                    </button>
+
                                 </children>
+
+                                <!-- padding belongs here now (NOT on panel) -->
+                                <margins>
+                                    <top>11</top>
+                                    <left>11</left>
+                                    <bottom>11</bottom>
+                                    <right>16</right>
+                                </margins>
+
+                                <gap>7</gap>
+                                <horizontal-alignment>left</horizontal-alignment>
+                                <vertical-alignment>top</vertical-alignment>
                             </flow-layout>
-
-                            <!-- LLM type row (buttons injected from code) -->
-                            <flow-layout direction="vertical" id="llmTypeRow">
-                                <children>
-                                    <label id="llmType-label">
-                                        <shadow>true</shadow>
-                                    </label>
-                                </children>
-                            </flow-layout>
-
-                            <!-- LLM model row (input injected from code) -->
-                            <flow-layout direction="vertical" id="llmModelRow">
-                                <children>
-                                    <label id="llmModel-label">
-                                        <shadow>true</shadow>
-                                    </label>
-                                </children>
-                            </flow-layout>
-
-                            <!-- Gender row (dropdown injected from code) -->
-                            <flow-layout direction="vertical" id="genderRow">
-                                <children/>
-                            </flow-layout>
-
-                            <!-- Age row (input injected from code) -->
-                            <flow-layout direction="vertical" id="ageRow">
-                                <children/>
-                            </flow-layout>
-
-                            <!-- LLM info rows (url + system prompt injected from code) -->
-                            <flow-layout direction="vertical" id="llmInfo">
-                                <children/>
-                            </flow-layout>
-
-                            <!-- Save last -->
-                            <button id="save">
-                                <text>Save</text>
-                            </button>
-
                         </children>
 
-                        <margins>
-                            <all>11</all>
-                        </margins>
-                        <gap>7</gap>
-
-                        <horizontal-alignment>left</horizontal-alignment>
+                        <horizontal-alignment>center</horizontal-alignment>
                         <vertical-alignment>top</vertical-alignment>
 
                         <surface>
@@ -73,11 +89,13 @@
                         </surface>
                     </flow-layout>
 
+                    <!-- Scroll viewport size (80% screen) -->
                     <sizing>
                         <horizontal method="fill">80</horizontal>
                         <vertical method="fill">80</vertical>
                     </sizing>
                 </scroll>
+
             </children>
 
             <horizontal-alignment>center</horizontal-alignment>
