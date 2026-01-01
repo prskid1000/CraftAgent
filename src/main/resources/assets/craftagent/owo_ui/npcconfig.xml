@@ -8,77 +8,71 @@
                         <sizing>
                             <horizontal method="fill">100</horizontal>
                         </sizing>
+
                         <children>
 
-                            <flow-layout direction="vertical">
+                            <!-- Title / name row -->
+                            <flow-layout direction="vertical" id="npcNameRow">
                                 <children>
+                                    <label id="npcName-label">
+                                        <shadow>true</shadow>
+                                    </label>
+                                </children>
+                            </flow-layout>
 
-                                <flow-layout direction="vertical" id="npcName">
-                                    <children>
-                                        <label id="npcName-label">
-                                            <shadow>true</shadow>
-                                        </label>
-                                    </children>
-                                </flow-layout>
+                            <!-- LLM type row (buttons injected from code) -->
+                            <flow-layout direction="vertical" id="llmTypeRow">
+                                <children>
+                                    <label id="llmType-label">
+                                        <shadow>true</shadow>
+                                    </label>
+                                </children>
+                            </flow-layout>
 
-                                <flow-layout direction="horizontal">
-                                    <children>
+                            <!-- LLM model row (input injected from code) -->
+                            <flow-layout direction="vertical" id="llmModelRow">
+                                <children>
+                                    <label id="llmModel-label">
+                                        <shadow>true</shadow>
+                                    </label>
+                                </children>
+                            </flow-layout>
 
-                                        <flow-layout direction="vertical">
-                                            <children>
-                                                <label id="llmType-label">
-                                                    <shadow>true</shadow>
-                                                </label>
-                                                <dropdown id="llmType">
-                                                    <sizing>
-                                                        <horizontal method="fill">18</horizontal>
-                                                    </sizing>
-                                                </dropdown>
-                                            </children>
-                                        </flow-layout>
+                            <!-- Gender row (dropdown injected from code) -->
+                            <flow-layout direction="vertical" id="genderRow">
+                                <children/>
+                            </flow-layout>
 
-                                        <flow-layout direction="vertical" id="llmModel">
-                                            <children>
-                                                <label id="llmModel-label">
-                                                    <shadow>true</shadow>
-                                                </label>
-                                            </children>
-                                        </flow-layout>
+                            <!-- Age row (input injected from code) -->
+                            <flow-layout direction="vertical" id="ageRow">
+                                <children/>
+                            </flow-layout>
 
-                                    </children>
-                                </flow-layout>
+                            <!-- LLM info rows (url + system prompt injected from code) -->
+                            <flow-layout direction="vertical" id="llmInfo">
+                                <children/>
+                            </flow-layout>
 
-                                <flow-layout direction="vertical" id="llmInfo">
-                                    <children>
-                                    </children>
-                                </flow-layout>
-
-                                <button id="save">
-                                    <text>Save</text>
-                                </button>
-
-                            </children>
-
-                            <margins>
-                                <all>11</all>
-                            </margins>
-
-                            <gap>7</gap>
-
-                            <horizontal-alignment>left</horizontal-alignment>
-                            <vertical-alignment>center</vertical-alignment>
-
-                        </flow-layout>
+                            <!-- Save last -->
+                            <button id="save">
+                                <text>Save</text>
+                            </button>
 
                         </children>
 
-                        <horizontal-alignment>center</horizontal-alignment>
-                        <vertical-alignment>center</vertical-alignment>
+                        <margins>
+                            <all>11</all>
+                        </margins>
+                        <gap>7</gap>
+
+                        <horizontal-alignment>left</horizontal-alignment>
+                        <vertical-alignment>top</vertical-alignment>
 
                         <surface>
                             <panel dark="true"/>
                         </surface>
                     </flow-layout>
+
                     <sizing>
                         <horizontal method="fill">80</horizontal>
                         <vertical method="fill">80</vertical>
