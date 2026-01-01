@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.sashirestela.openai.domain.chat.ChatMessage;
 import io.github.sashirestela.openai.domain.chat.ChatRequest;
 import me.prskid1000.craftagent.exception.LLMServiceException;
+import me.prskid1000.craftagent.util.LogUtil;
 import me.prskid1000.craftagent.history.Message;
 import me.prskid1000.craftagent.history.MessageConverter;
 import me.prskid1000.craftagent.llm.LLMClient;
@@ -92,6 +93,10 @@ public class LMStudioClient implements LLMClient {
 			// Re-serialize with tools and response_format
 			String requestBody = objectMapper.writeValueAsString(requestMap);
 
+			// Log request (always visible)
+			LogUtil.infoAlways("LLM Request (LM Studio): " + requestBody);
+			LogUtil.debugInChat("LLM Request sent to LM Studio");
+
 			// Create HTTP request
 			HttpRequest request = HttpRequest.newBuilder()
 					.uri(URI.create(baseUrl + "/chat/completions"))
@@ -102,6 +107,10 @@ public class LMStudioClient implements LLMClient {
 
 			// Send request and get response
 			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+			// Log response (always visible)
+			LogUtil.infoAlways("LLM Response (LM Studio): " + response.body());
+			LogUtil.debugInChat("LLM Response received from LM Studio");
 
 			if (response.statusCode() != 200) {
 				throw new LLMServiceException("LM Studio API returned status code: " + response.statusCode() + 
@@ -130,23 +139,33 @@ public class LMStudioClient implements LLMClient {
 					Map<String, Object> functionMap = (Map<String, Object>) toolCallMap.get("function");
 					if (functionMap != null) {
 						String name = (String) functionMap.get("name");
-						String argumentsStr = (String) functionMap.get("arguments");
+						Object argumentsObj = functionMap.get("arguments");
 						Map<String, Object> arguments = new HashMap<>();
-						if (argumentsStr != null) {
-							try {
+						if (argumentsObj != null) {
+							// Handle both cases: arguments can be a Map (already parsed) or a String (JSON to parse)
+							if (argumentsObj instanceof Map) {
+								// Already a Map, use it directly
 								@SuppressWarnings("unchecked")
-								Map<String, Object> parsedArgs = objectMapper.readValue(argumentsStr, Map.class);
+								Map<String, Object> parsedArgs = (Map<String, Object>) argumentsObj;
 								arguments = parsedArgs;
-							} catch (Exception e) {
-								// If parsing fails, try to extract command directly
-								if (argumentsStr.contains("\"command\"")) {
-									int start = argumentsStr.indexOf("\"command\"");
-									if (start >= 0) {
-										start = argumentsStr.indexOf("\"", start + 9) + 1;
-										int end = argumentsStr.indexOf("\"", start);
-										if (end > start) {
-											String cmd = argumentsStr.substring(start, end);
-											arguments.put("command", cmd);
+							} else if (argumentsObj instanceof String) {
+								// It's a JSON string, parse it
+								String argumentsStr = (String) argumentsObj;
+								try {
+									@SuppressWarnings("unchecked")
+									Map<String, Object> parsedArgs = objectMapper.readValue(argumentsStr, Map.class);
+									arguments = parsedArgs;
+								} catch (Exception e) {
+									// If parsing fails, try to extract command directly
+									if (argumentsStr.contains("\"command\"")) {
+										int start = argumentsStr.indexOf("\"command\"");
+										if (start >= 0) {
+											start = argumentsStr.indexOf("\"", start + 9) + 1;
+											int end = argumentsStr.indexOf("\"", start);
+											if (end > start) {
+												String cmd = argumentsStr.substring(start, end);
+												arguments.put("command", cmd);
+											}
 										}
 									}
 								}

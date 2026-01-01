@@ -3,6 +3,7 @@ package me.prskid1000.craftagent.llm.ollama;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.prskid1000.craftagent.exception.LLMServiceException;
+import me.prskid1000.craftagent.util.LogUtil;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -144,6 +145,10 @@ public class OllamaClient implements LLMClient {
 			
 			String requestBodyJson = objectMapper.writeValueAsString(requestBody);
 			
+			// Log request (always visible)
+			LogUtil.infoAlways("LLM Request (Ollama): " + requestBodyJson);
+			LogUtil.debugInChat("LLM Request sent to Ollama");
+			
 			// Create HTTP request
 			HttpRequest request = HttpRequest.newBuilder()
 					.uri(URI.create(url + "/api/chat"))
@@ -154,6 +159,10 @@ public class OllamaClient implements LLMClient {
 			
 			// Send request and get response
 			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+			
+			// Log response (always visible)
+			LogUtil.infoAlways("LLM Response (Ollama): " + response.body());
+			LogUtil.debugInChat("LLM Response received from Ollama");
 			
 			if (response.statusCode() != 200) {
 				throw new LLMServiceException("Ollama API returned status code: " + response.statusCode() + 
@@ -181,24 +190,34 @@ public class OllamaClient implements LLMClient {
 					Map<String, Object> functionMap = (Map<String, Object>) toolCallMap.get("function");
 					if (functionMap != null) {
 						String name = (String) functionMap.get("name");
-						String argumentsStr = (String) functionMap.get("arguments");
+						Object argumentsObj = functionMap.get("arguments");
 						Map<String, Object> arguments = new HashMap<>();
-						if (argumentsStr != null) {
-							try {
+						if (argumentsObj != null) {
+							// Handle both cases: arguments can be a Map (already parsed) or a String (JSON to parse)
+							if (argumentsObj instanceof Map) {
+								// Already a Map, use it directly
 								@SuppressWarnings("unchecked")
-								Map<String, Object> parsedArgs = objectMapper.readValue(argumentsStr, Map.class);
+								Map<String, Object> parsedArgs = (Map<String, Object>) argumentsObj;
 								arguments = parsedArgs;
-							} catch (Exception e) {
-								// If parsing fails, try to extract command directly
-								if (argumentsStr.contains("\"command\"")) {
-									// Simple extraction
-									int start = argumentsStr.indexOf("\"command\"");
-									if (start >= 0) {
-										start = argumentsStr.indexOf("\"", start + 9) + 1;
-										int end = argumentsStr.indexOf("\"", start);
-										if (end > start) {
-											String cmd = argumentsStr.substring(start, end);
-											arguments.put("command", cmd);
+							} else if (argumentsObj instanceof String) {
+								// It's a JSON string, parse it
+								String argumentsStr = (String) argumentsObj;
+								try {
+									@SuppressWarnings("unchecked")
+									Map<String, Object> parsedArgs = objectMapper.readValue(argumentsStr, Map.class);
+									arguments = parsedArgs;
+								} catch (Exception e) {
+									// If parsing fails, try to extract command directly
+									if (argumentsStr.contains("\"command\"")) {
+										// Simple extraction
+										int start = argumentsStr.indexOf("\"command\"");
+										if (start >= 0) {
+											start = argumentsStr.indexOf("\"", start + 9) + 1;
+											int end = argumentsStr.indexOf("\"", start);
+											if (end > start) {
+												String cmd = argumentsStr.substring(start, end);
+												arguments.put("command", cmd);
+											}
 										}
 									}
 								}

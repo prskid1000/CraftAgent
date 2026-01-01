@@ -13,6 +13,7 @@ public class BaseConfig implements Configurable {
     private int contextChunkRadius = 4;
     private int contextVerticalScanRange = 8;
     private int chunkExpiryTime = 60;
+    private int conversationHistoryLength = 5;
     private boolean verbose = false;
 
     public int getLlmTimeout() {
@@ -55,6 +56,14 @@ public class BaseConfig implements Configurable {
         this.verbose = verbose;
     }
 
+    public int getConversationHistoryLength() {
+        return conversationHistoryLength;
+    }
+
+    public void setConversationHistoryLength(int conversationHistoryLength) {
+        this.conversationHistoryLength = conversationHistoryLength;
+    }
+
     @Override
     public String getConfigName() {
         return "base";
@@ -65,6 +74,7 @@ public class BaseConfig implements Configurable {
             Endec.INT.fieldOf("contextChunkRadius", BaseConfig::getContextChunkRadius),
             Endec.INT.fieldOf("contextVerticalScanRange", BaseConfig::getContextVerticalScanRange),
             Endec.INT.fieldOf("chunkExpiryTime", BaseConfig::getChunkExpiryTime),
+            Endec.INT.fieldOf("conversationHistoryLength", BaseConfig::getConversationHistoryLength),
             Endec.BOOLEAN.fieldOf("verbose", BaseConfig::isVerbose),
             BaseConfig::new
     );
@@ -76,6 +86,7 @@ public class BaseConfig implements Configurable {
                 ",contextChunkRadius=" + contextChunkRadius +
                 ",contextVerticalScanRange=" + contextVerticalScanRange +
                 ",chunkExpiryTime=" + chunkExpiryTime +
+                ",conversationHistoryLength=" + conversationHistoryLength +
                 ",verbose=" + verbose +"}";
     }
 
@@ -83,5 +94,6 @@ public class BaseConfig implements Configurable {
     public static final String CONTEXT_CHUNK_RADIUS_KEY = "Chunk Radius";
     public static final String CONTEXT_VERTICAL_RANGE_KEY = "Vertical Scan Range";
     public static final String CHUNK_EXPIRY_TIME_KEY = "Chunk Expiry Time";
+    public static final String CONVERSATION_HISTORY_LENGTH_KEY = "Conversation History Length";
     public static final String VERBOSE_KEY = "Debug Mode";
 }

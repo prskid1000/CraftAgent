@@ -7,10 +7,10 @@ import me.prskid1000.craftagent.llm.LLMClient
 class ConversationHistory(
     private val llmClient: LLMClient,
     initMessage: String,
-    val latestConversations: MutableList<Message>
+    val latestConversations: MutableList<Message>,
+    private val maxHistoryLength: Int = 5
 ) {
     companion object {
-        private const val MAX_HISTORY_LENGTH = 30
         private val objectMapper = ObjectMapper()
     }
 
@@ -22,13 +22,13 @@ class ConversationHistory(
     fun add(message: Message) {
         latestConversations.add(message)
 
-        if (latestConversations.size >= MAX_HISTORY_LENGTH) {
+        if (latestConversations.size >= maxHistoryLength) {
             updateConversations()
         }
     }
 
     private fun updateConversations() {
-        val removeCount = MAX_HISTORY_LENGTH / 3
+        val removeCount = maxHistoryLength / 3
         val toSummarize = latestConversations.subList(1, removeCount).toList()
         val message = summarize(toSummarize)
         latestConversations.removeAll(toSummarize)
@@ -45,7 +45,11 @@ class ConversationHistory(
     }
 
     private fun setInitMessage(initMessage: String) {
-        latestConversations.add(0, Message(initMessage, "system"))
+        // Only add system message if it doesn't already exist (avoid duplicates when loading from DB)
+        val hasSystemMessage = latestConversations.any { it.role == "system" }
+        if (!hasSystemMessage) {
+            latestConversations.add(0, Message(initMessage, "system"))
+        }
     }
 
     fun getLastMessage(): String {

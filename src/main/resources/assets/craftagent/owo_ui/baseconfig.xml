@@ -70,6 +70,20 @@
 
                                 <flow-layout direction="vertical">
                                     <children>
+                                        <label id="conversationHistoryLength-label">
+                                            <shadow>true</shadow>
+                                        </label>
+                                        <discrete-slider id="conversationHistoryLength" min="10" max="100">
+                                            <sizing>
+                                                <horizontal method="fill">25</horizontal>
+                                                <vertical method="fill">7</vertical>
+                                            </sizing>
+                                        </discrete-slider>
+                                    </children>
+                                </flow-layout>
+
+                                <flow-layout direction="vertical">
+                                    <children>
                                         <label id="verbose-label">
                                             <shadow>true</shadow>
                                         </label>

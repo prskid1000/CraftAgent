@@ -22,7 +22,7 @@ public class LogUtil {
 	private LogUtil() {}
 
 	private static final Logger LOGGER = LogManager.getLogger(LogUtil.class);
-	private static final MutableText PREFIX = Text.literal("[SecondBrain] ").formatted(Formatting.DARK_PURPLE);
+	private static final MutableText PREFIX = Text.literal("[CraftAgent] ").formatted(Formatting.DARK_PURPLE);
 
 	private static MutableText formatDebug(String message) {
 		return Text.literal(PREFIX.getString()).append(message).setStyle(Style.EMPTY.withFormatting(Formatting.DARK_GRAY));
@@ -58,6 +58,14 @@ public class LogUtil {
 
 	public static void info(String message) {
 		if (configProvider.getBaseConfig().isVerbose()) LOGGER.info(formatInfo(message).getString());
+	}
+
+	/**
+	 * Always logs to console/log file, regardless of verbose mode.
+	 * Used for important logs like LLM requests/responses.
+	 */
+	public static void infoAlways(String message) {
+		LOGGER.info(formatInfo(message).getString());
 	}
 
 	public static void error(String message) {

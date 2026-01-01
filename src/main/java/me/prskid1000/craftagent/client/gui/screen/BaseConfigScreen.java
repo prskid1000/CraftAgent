@@ -52,6 +52,12 @@ public class BaseConfigScreen extends ConfigScreen<BaseConfig> {
                 .onChanged()
                 .subscribe(value -> config.setChunkExpiryTime((int) Math.round(value)));
 
+        panel.childById(LabelComponent.class, "conversationHistoryLength-label").text(Text.of(BaseConfig.CONVERSATION_HISTORY_LENGTH_KEY));
+        panel.childById(DiscreteSliderComponent.class, "conversationHistoryLength")
+                .setFromDiscreteValue(config.getConversationHistoryLength())
+                .onChanged()
+                .subscribe(value -> config.setConversationHistoryLength((int) Math.round(value)));
+
         panel.childById(LabelComponent.class, "verbose-label").text(Text.of(BaseConfig.VERBOSE_KEY));
         panel.childById(CheckboxComponent.class, "verbose")
                 .checked(config.isVerbose())

@@ -47,12 +47,19 @@ class NPCEventHandler(
         CompletableFuture.runAsync({
             LogUtil.info("onEvent: $prompt")
 
+            // Store only the original prompt in history (without context to avoid duplication)
+            history.add(Message(prompt, "user"))
+            
+            // Build messages for LLM: history + current message with context
+            val messagesForLLM = mutableListOf<Message>()
+            // Add all history messages (without context)
+            messagesForLLM.addAll(history.latestConversations)
+            // Replace the last message (current user message) with formatted version that includes context
             val formattedPrompt: String = StructuredInputFormatter.formatStructured(prompt, contextProvider.buildContext())
-
-            history.add(Message(formattedPrompt, "user"))
+            messagesForLLM[messagesForLLM.size - 1] = Message(formattedPrompt, "user")
             
             // Use tool calling for commands, structured output for messages (hybrid approach)
-            val toolResponse = llmClient.chatWithTools(history.latestConversations)
+            val toolResponse = llmClient.chatWithTools(messagesForLLM)
             
             // Extract command from tool calls
             var command: String? = null

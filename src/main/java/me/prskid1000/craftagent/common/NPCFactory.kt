@@ -36,7 +36,7 @@ class NPCFactory(
         val messages = loadedConversation
             ?.map { Message(it.message, it.role) }
             ?.toMutableList() ?: mutableListOf()
-        val history = ConversationHistory(llmClient, defaultPrompt, messages)
+        val history = ConversationHistory(llmClient, defaultPrompt, messages, baseConfig.conversationHistoryLength)
         val eventHandler = NPCEventHandler(llmClient, history, contextProvider, controller, config)
         return NPC(npcEntity, llmClient, history, eventHandler, controller, contextProvider, config)
     }

@@ -16,7 +16,7 @@ import org.lwjgl.glfw.GLFW;
 public class STTKeybind {
 
     /*? >=1.21.10 {*/
-    /*private static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(Identifier.of("secondbrain", "main"));
+    /*private static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(Identifier.of("craftagent", "main"));
     *//*?}*/
     private final ClientNetworkManager networkManager;
     private final STTHudElement sttHudElement;
@@ -33,7 +33,7 @@ public class STTKeybind {
                 "keybinding.tts",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_LEFT_ALT,
-                /*? >=1.21.10 {*/ /*CATEGORY *//*?} else {*/ "SecondBrain" /*?}*/
+                /*? >=1.21.10 {*/ /*CATEGORY *//*?} else {*/ "CraftAgent" /*?}*/
         ));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             boolean isCurrentlyPressed = keyBinding.isPressed();
