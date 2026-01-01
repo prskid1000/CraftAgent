@@ -8,6 +8,8 @@ import me.prskid1000.craftagent.constant.Instructions
 import me.prskid1000.craftagent.context.ContextProvider
 import me.prskid1000.craftagent.database.repositories.ContactRepository
 import me.prskid1000.craftagent.database.repositories.LocationMemoryRepository
+import me.prskid1000.craftagent.database.repositories.MessageRepository
+import me.prskid1000.craftagent.database.repositories.SharebookRepository
 import me.prskid1000.craftagent.event.NPCEventHandler
 import me.prskid1000.craftagent.exception.NPCCreationException
 import me.prskid1000.craftagent.history.ConversationHistory
@@ -24,7 +26,9 @@ import net.minecraft.server.network.ServerPlayerEntity
 class NPCFactory(
     private val configProvider: ConfigProvider,
     private val locationRepository: LocationMemoryRepository,
-    private val contactRepository: ContactRepository
+    private val contactRepository: ContactRepository,
+    private val messageRepository: MessageRepository,
+    private val sharebookRepository: SharebookRepository
 ) {
      fun createNpc(npcEntity: ServerPlayerEntity, config: NPCConfig, loadedConversation: List<Conversation>?): NPC {
         val baseConfig = configProvider.baseConfig
@@ -33,6 +37,9 @@ class NPCFactory(
         // Create memory manager
         val memoryManager = MemoryManager(locationRepository, contactRepository, config.uuid, baseConfig)
         contextProvider.memoryManager = memoryManager
+        
+        // Set repositories for mail and sharebook
+        contextProvider.setRepositories(messageRepository, sharebookRepository, config.uuid)
 
         val llmClient = initLLMClient(config)
 
@@ -51,7 +58,7 @@ class NPCFactory(
             ?.map { Message(it.message, it.role) }
             ?.toMutableList() ?: mutableListOf()
         val history = ConversationHistory(llmClient, defaultPrompt, messages, baseConfig.conversationHistoryLength)
-        val eventHandler = NPCEventHandler(llmClient, history, contextProvider, controller, config)
+        val eventHandler = NPCEventHandler(llmClient, history, contextProvider, controller, config, messageRepository, sharebookRepository)
         return NPC(npcEntity, llmClient, history, eventHandler, controller, contextProvider, config)
     }
 

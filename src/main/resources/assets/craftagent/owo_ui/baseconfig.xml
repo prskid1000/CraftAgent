@@ -113,6 +113,32 @@
                                         </children>
                                     </flow-layout>
 
+                                    <flow-layout direction="vertical" id="maxMessagesRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="maxMessages-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="maxMessages" min="10" max="200">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
+
+                                    <flow-layout direction="vertical" id="maxSharebookPagesRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="maxSharebookPages-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="maxSharebookPages" min="5" max="100">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
+
                                     <flow-layout direction="vertical" id="maxNearbyBlocksRow">
                                         <sizing><horizontal method="fill">100</horizontal></sizing>
                                         <children>

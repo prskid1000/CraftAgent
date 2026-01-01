@@ -154,14 +154,171 @@ public class ToolDefinitions {
     }
 
     /**
+     * Creates the sendMessage tool definition.
+     * Allows LLM to send messages to other NPCs or players.
+     */
+    public static Map<String, Object> getSendMessageTool() {
+        Map<String, Object> tool = new HashMap<>();
+        tool.put("type", "function");
+        
+        Map<String, Object> function = new HashMap<>();
+        function.put("name", "sendMessage");
+        function.put("description", "Send a message to another NPC or player. " +
+                "Messages are stored in a mail system and can be read by the recipient later. " +
+                "Use this for asynchronous communication (not immediate chat). " +
+                "The recipient must be a known contact or visible in nearbyEntities.");
+        
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("type", "object");
+        
+        Map<String, Object> properties = new HashMap<>();
+        
+        Map<String, Object> recipientNameParam = new HashMap<>();
+        recipientNameParam.put("type", "string");
+        recipientNameParam.put("description", "Name of the recipient (NPC or player) from contacts or nearbyEntities");
+        properties.put("recipientName", recipientNameParam);
+        
+        Map<String, Object> subjectParam = new HashMap<>();
+        subjectParam.put("type", "string");
+        subjectParam.put("description", "Subject/title of the message");
+        properties.put("subject", subjectParam);
+        
+        Map<String, Object> contentParam = new HashMap<>();
+        contentParam.put("type", "string");
+        contentParam.put("description", "Content of the message");
+        properties.put("content", contentParam);
+        
+        parameters.put("properties", properties);
+        parameters.put("required", List.of("recipientName", "subject", "content"));
+        
+        function.put("parameters", parameters);
+        tool.put("function", function);
+        
+        return tool;
+    }
+
+    /**
+     * Creates the readMessage tool definition.
+     * Allows LLM to read received messages.
+     */
+    public static Map<String, Object> getReadMessageTool() {
+        Map<String, Object> tool = new HashMap<>();
+        tool.put("type", "function");
+        
+        Map<String, Object> function = new HashMap<>();
+        function.put("name", "readMessage");
+        function.put("description", "Read your received messages. " +
+                "Use this to check your mail and see messages from other NPCs or players. " +
+                "Messages are automatically marked as read when you read them.");
+        
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("type", "object");
+        
+        Map<String, Object> properties = new HashMap<>();
+        
+        Map<String, Object> unreadOnlyParam = new HashMap<>();
+        unreadOnlyParam.put("type", "boolean");
+        unreadOnlyParam.put("description", "If true, only return unread messages. If false, return all messages (default: false)");
+        properties.put("unreadOnly", unreadOnlyParam);
+        
+        Map<String, Object> limitParam = new HashMap<>();
+        limitParam.put("type", "integer");
+        limitParam.put("description", "Maximum number of messages to return (default: 10, max: 50)");
+        properties.put("limit", limitParam);
+        
+        parameters.put("properties", properties);
+        parameters.put("required", List.of());
+        
+        function.put("parameters", parameters);
+        tool.put("function", function);
+        
+        return tool;
+    }
+
+    /**
+     * Creates the addOrUpdatePageToBook tool definition.
+     * Allows LLM to add or update pages in the shared book.
+     */
+    public static Map<String, Object> getAddOrUpdatePageToBookTool() {
+        Map<String, Object> tool = new HashMap<>();
+        tool.put("type", "function");
+        
+        Map<String, Object> function = new HashMap<>();
+        function.put("name", "addOrUpdatePageToBook");
+        function.put("description", "Add or update a page in the shared book. " +
+                "The shared book is accessible to all NPCs and contains common information " +
+                "(e.g., community rules, shared locations, warnings, announcements). " +
+                "This is NOT for chatting - use sendMessage for that.");
+        
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("type", "object");
+        
+        Map<String, Object> properties = new HashMap<>();
+        
+        Map<String, Object> pageTitleParam = new HashMap<>();
+        pageTitleParam.put("type", "string");
+        pageTitleParam.put("description", "Title of the page (e.g., 'Community Rules', 'Dangerous Areas', 'Trading Post Location')");
+        properties.put("pageTitle", pageTitleParam);
+        
+        Map<String, Object> contentParam = new HashMap<>();
+        contentParam.put("type", "string");
+        contentParam.put("description", "Content of the page. This will replace existing content if the page already exists.");
+        properties.put("content", contentParam);
+        
+        parameters.put("properties", properties);
+        parameters.put("required", List.of("pageTitle", "content"));
+        
+        function.put("parameters", parameters);
+        tool.put("function", function);
+        
+        return tool;
+    }
+
+    /**
+     * Creates the removePageFromBook tool definition.
+     * Allows LLM to remove pages from the shared book.
+     */
+    public static Map<String, Object> getRemovePageFromBookTool() {
+        Map<String, Object> tool = new HashMap<>();
+        tool.put("type", "function");
+        
+        Map<String, Object> function = new HashMap<>();
+        function.put("name", "removePageFromBook");
+        function.put("description", "Remove a page from the shared book. " +
+                "Use this when information is outdated or no longer relevant.");
+        
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("type", "object");
+        
+        Map<String, Object> properties = new HashMap<>();
+        
+        Map<String, Object> pageTitleParam = new HashMap<>();
+        pageTitleParam.put("type", "string");
+        pageTitleParam.put("description", "Title of the page to remove");
+        properties.put("pageTitle", pageTitleParam);
+        
+        parameters.put("properties", properties);
+        parameters.put("required", List.of("pageTitle"));
+        
+        function.put("parameters", parameters);
+        tool.put("function", function);
+        
+        return tool;
+    }
+
+    /**
      * Returns the list of tools for tool calling.
-     * Includes execute_command and memory management tools.
+     * Includes execute_command, memory management, mail, and sharebook tools.
      */
     public static List<Map<String, Object>> getTools() {
         List<Map<String, Object>> tools = new ArrayList<>();
         tools.add(getExecuteCommandTool());
         tools.add(getAddOrUpdateInfoTool());
         tools.add(getRemoveInfoTool());
+        tools.add(getSendMessageTool());
+        tools.add(getReadMessageTool());
+        tools.add(getAddOrUpdatePageToBookTool());
+        tools.add(getRemovePageFromBookTool());
         return tools;
     }
 

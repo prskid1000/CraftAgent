@@ -7,11 +7,15 @@ import me.sailex.altoclef.tasks.LookAtOwnerTask
 import me.prskid1000.craftagent.config.NPCConfig
 import me.prskid1000.craftagent.constant.Instructions
 import me.prskid1000.craftagent.context.ContextProvider
+import me.prskid1000.craftagent.database.repositories.MessageRepository
+import me.prskid1000.craftagent.database.repositories.SharebookRepository
 import me.prskid1000.craftagent.history.ConversationHistory
 import me.prskid1000.craftagent.history.Message
 import me.prskid1000.craftagent.llm.LLMClient
+import me.prskid1000.craftagent.model.database.Message as DatabaseMessage
 import me.prskid1000.craftagent.util.LogUtil
 import me.prskid1000.craftagent.util.StructuredInputFormatter
+import java.util.UUID
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ThreadPoolExecutor
@@ -23,6 +27,8 @@ class NPCEventHandler(
     private val contextProvider: ContextProvider,
     private val controller: AltoClefController,
     private val config: NPCConfig,
+    private val messageRepository: MessageRepository,
+    private val sharebookRepository: SharebookRepository
 ): EventHandler {
     companion object {
         private val gson = GsonBuilder()
@@ -74,6 +80,18 @@ class NPCEventHandler(
                         }
                         "removeInfo" -> {
                             handleRemoveInfo(toolCall)
+                        }
+                        "sendMessage" -> {
+                            handleSendMessage(toolCall)
+                        }
+                        "readMessage" -> {
+                            handleReadMessage(toolCall)
+                        }
+                        "addOrUpdatePageToBook" -> {
+                            handleAddOrUpdatePageToBook(toolCall)
+                        }
+                        "removePageFromBook" -> {
+                            handleRemovePageFromBook(toolCall)
                         }
                     }
                 }
@@ -211,53 +229,6 @@ class NPCEventHandler(
         return generateSequence(exception) { it.cause }.last().message
     }
 
-    private fun handleAddContact(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
-        val memoryManager = contextProvider.memoryManager ?: return
-        val args = toolCall.arguments
-        
-        val contactName = args["contactName"]?.toString() ?: return
-        val relationship = args["relationship"]?.toString() ?: "neutral"
-        val notes = args["notes"]?.toString() ?: ""
-        val initialEnmity = when (val enmity = args["initialEnmity"]) {
-            is Number -> enmity.toDouble().coerceIn(0.0, 1.0)
-            is String -> enmity.toDoubleOrNull()?.coerceIn(0.0, 1.0) ?: 0.0
-            else -> 0.0
-        }
-        val initialFriendship = when (val friendship = args["initialFriendship"]) {
-            is Number -> friendship.toDouble().coerceIn(0.0, 1.0)
-            is String -> friendship.toDoubleOrNull()?.coerceIn(0.0, 1.0) ?: 0.0
-            else -> 0.0
-        }
-        
-        // Find the entity from nearby entities in context
-        val nearbyEntities = contextProvider.buildContext().nearbyEntities()
-        val entity = nearbyEntities.firstOrNull { 
-            it.name().equals(contactName, ignoreCase = true) 
-        }
-        
-        if (entity != null) {
-            val world = contextProvider.getNpcEntity().world
-            val entityById = world.getEntityById(entity.id())
-            if (entityById != null) {
-                val contactType = if (entityById.isPlayer) "player" else "npc"
-                memoryManager.addOrUpdateContact(
-                    entityById.uuid,
-                    contactName,
-                    contactType,
-                    relationship,
-                    notes,
-                    initialEnmity,
-                    initialFriendship
-                )
-                LogUtil.info("Added contact: $contactName (type: $contactType, relationship: $relationship)")
-            } else {
-                LogUtil.debugInChat("Could not find entity in world: $contactName")
-            }
-        } else {
-            LogUtil.debugInChat("Contact not found in nearby entities: $contactName. Make sure they are visible in your context.")
-        }
-    }
-
     /**
      * Finds a contact UUID by name from nearby entities or existing contacts
      */
@@ -279,7 +250,7 @@ class NPCEventHandler(
         }
         if (entity != null) {
             // Try to find the actual entity in the world to get its UUID
-            val world = contextProvider.npcEntity.world
+            val world = contextProvider.getNpcEntity().world
             val entityById = world.getEntityById(entity.id())
             if (entityById != null) {
                 return entityById.uuid
@@ -289,148 +260,223 @@ class NPCEventHandler(
         return null
     }
 
-    private fun handleUpdateContactRelationship(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
+    private fun handleAddOrUpdateInfo(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
         val memoryManager = contextProvider.memoryManager ?: return
         val args = toolCall.arguments
         
-        val contactName = args["contactName"]?.toString() ?: return
-        val relationship = args["relationship"]?.toString() ?: return
+        val infoType = args["infoType"]?.toString() ?: return
+        val name = args["name"]?.toString() ?: return
         
-        val contactUuid = findContactUuidByName(contactName)
-        if (contactUuid != null) {
-            memoryManager.updateContactRelationship(contactUuid, relationship)
-            LogUtil.info("Updated relationship with $contactName to $relationship")
-        } else {
-            LogUtil.debugInChat("Could not find contact: $contactName")
+        when (infoType) {
+            "contact" -> {
+                // Get or find contact UUID
+                var contactUuid = findContactUuidByName(name)
+                
+                // If contact doesn't exist, try to find from nearby entities
+                if (contactUuid == null) {
+                    val nearbyEntities = contextProvider.buildContext().nearbyEntities()
+                    val entity = nearbyEntities.firstOrNull { 
+                        it.name().equals(name, ignoreCase = true) 
+                    }
+                    if (entity != null) {
+                        val world = contextProvider.getNpcEntity().world
+                        val entityById = world.getEntityById(entity.id())
+                        if (entityById != null) {
+                            contactUuid = entityById.uuid
+                        }
+                    }
+                }
+                
+                if (contactUuid == null) {
+                    LogUtil.debugInChat("Could not find contact: $name. Make sure they are visible in nearbyEntities.")
+                    return
+                }
+                
+                // Get existing contact to preserve values if not provided
+                val existingContact = memoryManager.getContact(contactUuid)
+                val relationship = args["relationship"]?.toString() ?: existingContact?.relationship ?: "neutral"
+                val notes = args["notes"]?.toString() ?: existingContact?.notes ?: ""
+                
+                // Handle enmityLevel - if provided, set absolute value; otherwise preserve existing
+                val enmityLevel = when (val enmity = args["enmityLevel"]) {
+                    is Number -> enmity.toDouble().coerceIn(0.0, 1.0)
+                    is String -> enmity.toDoubleOrNull()?.coerceIn(0.0, 1.0)
+                    else -> null
+                } ?: existingContact?.enmityLevel ?: 0.0
+                
+                // Handle friendshipLevel - if provided, set absolute value; otherwise preserve existing
+                val friendshipLevel = when (val friendship = args["friendshipLevel"]) {
+                    is Number -> friendship.toDouble().coerceIn(0.0, 1.0)
+                    is String -> friendship.toDoubleOrNull()?.coerceIn(0.0, 1.0)
+                    else -> null
+                } ?: existingContact?.friendshipLevel ?: 0.0
+                
+                val contactType = existingContact?.contactType ?: run {
+                    // Determine type from entity
+                    val nearbyEntities = contextProvider.buildContext().nearbyEntities()
+                    val entity = nearbyEntities.firstOrNull { 
+                        it.name().equals(name, ignoreCase = true) 
+                    }
+                    if (entity != null) {
+                        val world = contextProvider.getNpcEntity().world
+                        val entityById = world.getEntityById(entity.id())
+                        if (entityById != null) {
+                            if (entityById.isPlayer) "player" else "npc"
+                        } else "npc"
+                    } else "npc"
+                }
+                
+                memoryManager.addOrUpdateContact(
+                    contactUuid,
+                    name,
+                    contactType,
+                    relationship,
+                    notes,
+                    enmityLevel,
+                    friendshipLevel
+                )
+                LogUtil.info("Added/updated contact: $name (relationship: $relationship, enmity: $enmityLevel, friendship: $friendshipLevel)")
+            }
+            "location" -> {
+                val description = args["description"]?.toString() ?: ""
+                val position = contextProvider.getNpcEntity().blockPos
+                memoryManager.saveLocation(name, position, description)
+                LogUtil.info("Saved/updated location: $name at ${position.x}, ${position.y}, ${position.z}")
+            }
+            else -> {
+                LogUtil.debugInChat("Unknown infoType: $infoType. Use 'contact' or 'location'.")
+            }
         }
     }
 
-    private fun handleUpdateContactEnmity(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
+    private fun handleRemoveInfo(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
         val memoryManager = contextProvider.memoryManager ?: return
         val args = toolCall.arguments
         
-        val contactName = args["contactName"]?.toString() ?: return
-        val enmityChange = when (val change = args["enmityChange"]) {
-            is Number -> change.toDouble()
-            is String -> change.toDoubleOrNull() ?: return
-            else -> return
-        }
+        val infoType = args["infoType"]?.toString() ?: return
+        val name = args["name"]?.toString() ?: return
         
-        val contactUuid = findContactUuidByName(contactName)
-        if (contactUuid != null) {
-            memoryManager.updateContactEnmity(contactUuid, enmityChange)
-            LogUtil.info("Updated enmity with $contactName by $enmityChange")
-        } else {
-            // If contact doesn't exist, create it first
-            val nearbyEntities = contextProvider.buildContext().nearbyEntities()
-            val entity = nearbyEntities.firstOrNull { 
-                it.name().equals(contactName, ignoreCase = true) 
-            }
-            if (entity != null) {
-                val world = contextProvider.getNpcEntity().world
-                val entityById = world.getEntityById(entity.id())
-                if (entityById != null) {
-                    val contactType = if (entityById.isPlayer) "player" else "npc"
-                    val initialEnmity = enmityChange.coerceIn(0.0, 1.0)
-                    memoryManager.addOrUpdateContact(
-                        entityById.uuid,
-                        contactName,
-                        contactType,
-                        "neutral",
-                        "",
-                        initialEnmity,
-                        0.0
-                    )
-                    LogUtil.info("Created contact $contactName with enmity $initialEnmity")
+        when (infoType) {
+            "contact" -> {
+                val contact = memoryManager.getContacts().firstOrNull { 
+                    it.contactName.equals(name, ignoreCase = true) 
+                }
+                if (contact != null) {
+                    memoryManager.removeContact(contact.contactUuid)
+                    LogUtil.info("Removed contact: $name")
+                } else {
+                    LogUtil.debugInChat("Could not find contact to remove: $name")
                 }
             }
-        }
-    }
-
-    private fun handleUpdateContactFriendship(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
-        val memoryManager = contextProvider.memoryManager ?: return
-        val args = toolCall.arguments
-        
-        val contactName = args["contactName"]?.toString() ?: return
-        val friendshipChange = when (val change = args["friendshipChange"]) {
-            is Number -> change.toDouble()
-            is String -> change.toDoubleOrNull() ?: return
-            else -> return
-        }
-        
-        val contactUuid = findContactUuidByName(contactName)
-        if (contactUuid != null) {
-            memoryManager.updateContactFriendship(contactUuid, friendshipChange)
-            LogUtil.info("Updated friendship with $contactName by $friendshipChange")
-        } else {
-            // If contact doesn't exist, create it first
-            val nearbyEntities = contextProvider.buildContext().nearbyEntities()
-            val entity = nearbyEntities.firstOrNull { 
-                it.name().equals(contactName, ignoreCase = true) 
-            }
-            if (entity != null) {
-                val world = contextProvider.getNpcEntity().world
-                val entityById = world.getEntityById(entity.id())
-                if (entityById != null) {
-                    val contactType = if (entityById.isPlayer) "player" else "npc"
-                    val initialFriendship = friendshipChange.coerceIn(0.0, 1.0)
-                    memoryManager.addOrUpdateContact(
-                        entityById.uuid,
-                        contactName,
-                        contactType,
-                        "neutral",
-                        "",
-                        0.0,
-                        initialFriendship
-                    )
-                    LogUtil.info("Created contact $contactName with friendship $initialFriendship")
+            "location" -> {
+                val location = memoryManager.getLocation(name)
+                if (location != null) {
+                    memoryManager.deleteLocation(name)
+                    LogUtil.info("Removed location: $name")
+                } else {
+                    LogUtil.debugInChat("Could not find location to remove: $name")
                 }
             }
+            else -> {
+                LogUtil.debugInChat("Unknown infoType: $infoType. Use 'contact' or 'location'.")
+            }
         }
     }
 
-    private fun handleSaveLocation(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
-        val memoryManager = contextProvider.memoryManager ?: return
+    private fun handleSendMessage(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
         val args = toolCall.arguments
         
-        val locationName = args["locationName"]?.toString() ?: return
-        val description = args["description"]?.toString() ?: ""
+        val recipientName = args["recipientName"]?.toString() ?: return
+        val subject = args["subject"]?.toString() ?: return
+        val content = args["content"]?.toString() ?: return
         
-        val position = contextProvider.getNpcEntity().blockPos
-        memoryManager.saveLocation(locationName, position, description)
-        LogUtil.info("Saved location: $locationName at ${position.x}, ${position.y}, ${position.z}")
-    }
-
-    private fun handleRemoveContact(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
-        val memoryManager = contextProvider.memoryManager ?: return
-        val args = toolCall.arguments
-        
-        val contactName = args["contactName"]?.toString() ?: return
-        
-        val contact = memoryManager.getContacts().firstOrNull { 
-            it.contactName.equals(contactName, ignoreCase = true) 
+        // Find recipient UUID
+        val recipientUuid = findContactUuidByName(recipientName)
+        if (recipientUuid == null) {
+            LogUtil.debugInChat("Could not find recipient: $recipientName. Make sure they are in your contacts or nearbyEntities.")
+            return
         }
-        if (contact != null) {
-            memoryManager.removeContact(contact.contactUuid)
-            LogUtil.info("Removed contact: $contactName")
+        
+        // Get sender info
+        val senderUuid = config.uuid
+        val senderName = config.npcName
+        val senderType = "npc"
+        
+        val message = DatabaseMessage(
+            recipientUuid = recipientUuid,
+            senderUuid = senderUuid,
+            senderName = senderName,
+            senderType = senderType,
+            subject = subject,
+            content = content
+        )
+        
+        val maxMessages = contextProvider.getBaseConfig().getMaxMessages()
+        messageRepository.insert(message, maxMessages)
+        
+        // Display message in chat like it used to be before
+        val chatMessage = if (subject.isNotEmpty() && subject != content) {
+            "$senderName says to $recipientName [$subject]: $content"
         } else {
-            LogUtil.debugInChat("Could not find contact to remove: $contactName")
+            "$senderName says to $recipientName: $content"
         }
+        controller.controllerExtras.chat(chatMessage)
+        
+        LogUtil.info("Sent message to $recipientName: $subject")
     }
 
-    private fun handleRemoveLocation(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
-        val memoryManager = contextProvider.memoryManager ?: return
+    private fun handleReadMessage(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
         val args = toolCall.arguments
         
-        val locationName = args["locationName"]?.toString() ?: return
-        
-        val location = memoryManager.getLocation(locationName)
-        if (location != null) {
-            memoryManager.deleteLocation(locationName)
-            LogUtil.info("Removed location: $locationName")
-        } else {
-            LogUtil.debugInChat("Could not find location to remove: $locationName")
+        val unreadOnly = when (val unread = args["unreadOnly"]) {
+            is Boolean -> unread
+            is String -> unread.toBoolean()
+            else -> false
         }
+        val limit = when (val lim = args["limit"]) {
+            is Number -> lim.toInt().coerceIn(1, 50)
+            is String -> lim.toIntOrNull()?.coerceIn(1, 50) ?: 10
+            else -> 10
+        }
+        
+        val messages = messageRepository.selectByRecipient(config.uuid, limit, unreadOnly)
+        
+        // Mark messages as read
+        messages.forEach { message ->
+            if (!message.read) {
+                messageRepository.markAsRead(message.id)
+            }
+        }
+        
+        LogUtil.info("Read ${messages.size} message(s) (unreadOnly: $unreadOnly)")
+        // Messages are included in context, so LLM can see them
+    }
+
+    private fun handleAddOrUpdatePageToBook(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
+        val args = toolCall.arguments
+        
+        val pageTitle = args["pageTitle"]?.toString() ?: return
+        val content = args["content"]?.toString() ?: return
+        
+        val page = me.prskid1000.craftagent.model.database.SharebookPage(
+            pageTitle = pageTitle,
+            content = content,
+            authorUuid = config.uuid.toString(),
+            authorName = config.npcName
+        )
+        
+        val maxSharebookPages = contextProvider.getBaseConfig().getMaxSharebookPages()
+        sharebookRepository.insertOrUpdate(page, maxSharebookPages)
+        LogUtil.info("Added/updated sharebook page: $pageTitle")
+    }
+
+    private fun handleRemovePageFromBook(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {
+        val args = toolCall.arguments
+        
+        val pageTitle = args["pageTitle"]?.toString() ?: return
+        
+        sharebookRepository.delete(pageTitle)
+        LogUtil.info("Removed sharebook page: $pageTitle")
     }
 
 }

@@ -33,6 +33,34 @@ class NPCService(
     private val entityUuidToConfigUuid = ConcurrentHashMap<UUID, UUID>()
     private var deathEventRegistered = false
 
+    /**
+     * Sends a message from a player to an NPC via mail system.
+     * Messages are stored in mail and can be read by the NPC later.
+     */
+    fun sendPlayerMessageToNpc(playerUuid: UUID, playerName: String, npcUuid: UUID, messageContent: String) {
+        val messageRepository = resourceProvider.messageRepository ?: return
+        
+        val message = me.prskid1000.craftagent.model.database.Message(
+            recipientUuid = npcUuid,
+            senderUuid = playerUuid,
+            senderName = playerName,
+            senderType = "player",
+            subject = "Message from $playerName",
+            content = messageContent
+        )
+        
+        val maxMessages = configProvider.baseConfig.getMaxMessages()
+        messageRepository.insert(message, maxMessages)
+        LogUtil.info("Player $playerName sent message to NPC $npcUuid: $messageContent")
+        
+        // Trigger NPC to check mail (optional - they can also check it naturally via context)
+        val npc = uuidToNpc[npcUuid]
+        if (npc != null) {
+            // Optionally trigger a mail check event
+            npc.eventHandler.onEvent("You have received a new message. Check your mail using readMessage tool.")
+        }
+    }
+
     fun init(server: MinecraftServer) {
         executorService = Executors.newSingleThreadExecutor()
         registerDeathEvent()

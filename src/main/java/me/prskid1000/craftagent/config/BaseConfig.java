@@ -16,6 +16,8 @@ public class BaseConfig implements Configurable {
     private int conversationHistoryLength = 5;
     private int maxLocations = 10;
     private int maxContacts = 20;
+    private int maxMessages = 50;
+    private int maxSharebookPages = 20;
     private int maxNearbyBlocks = 30;
     private int maxNearbyEntities = 15;
     private boolean verbose = false;
@@ -84,6 +86,22 @@ public class BaseConfig implements Configurable {
         this.maxContacts = maxContacts;
     }
 
+    public int getMaxMessages() {
+        return maxMessages;
+    }
+
+    public void setMaxMessages(int maxMessages) {
+        this.maxMessages = maxMessages;
+    }
+
+    public int getMaxSharebookPages() {
+        return maxSharebookPages;
+    }
+
+    public void setMaxSharebookPages(int maxSharebookPages) {
+        this.maxSharebookPages = maxSharebookPages;
+    }
+
     public int getMaxNearbyBlocks() {
         return maxNearbyBlocks;
     }
@@ -113,6 +131,8 @@ public class BaseConfig implements Configurable {
             Endec.INT.fieldOf("conversationHistoryLength", BaseConfig::getConversationHistoryLength),
             Endec.INT.fieldOf("maxLocations", BaseConfig::getMaxLocations),
             Endec.INT.fieldOf("maxContacts", BaseConfig::getMaxContacts),
+            Endec.INT.fieldOf("maxMessages", BaseConfig::getMaxMessages),
+            Endec.INT.fieldOf("maxSharebookPages", BaseConfig::getMaxSharebookPages),
             Endec.INT.fieldOf("maxNearbyBlocks", BaseConfig::getMaxNearbyBlocks),
             Endec.INT.fieldOf("maxNearbyEntities", BaseConfig::getMaxNearbyEntities),
             Endec.BOOLEAN.fieldOf("verbose", BaseConfig::isVerbose),
@@ -129,6 +149,8 @@ public class BaseConfig implements Configurable {
                 ",conversationHistoryLength=" + conversationHistoryLength +
                 ",maxLocations=" + maxLocations +
                 ",maxContacts=" + maxContacts +
+                ",maxMessages=" + maxMessages +
+                ",maxSharebookPages=" + maxSharebookPages +
                 ",maxNearbyBlocks=" + maxNearbyBlocks +
                 ",maxNearbyEntities=" + maxNearbyEntities +
                 ",verbose=" + verbose +"}";
@@ -141,6 +163,8 @@ public class BaseConfig implements Configurable {
     public static final String CONVERSATION_HISTORY_LENGTH_KEY = "Conversation History Length";
     public static final String MAX_LOCATIONS_KEY = "Max Locations";
     public static final String MAX_CONTACTS_KEY = "Max Contacts";
+    public static final String MAX_MESSAGES_KEY = "Max Messages";
+    public static final String MAX_SHAREBOOK_PAGES_KEY = "Max Sharebook Pages";
     public static final String MAX_NEARBY_BLOCKS_KEY = "Max Nearby Blocks";
     public static final String MAX_NEARBY_ENTITIES_KEY = "Max Nearby Entities";
     public static final String VERBOSE_KEY = "Debug Mode";

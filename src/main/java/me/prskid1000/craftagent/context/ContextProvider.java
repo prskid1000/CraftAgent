@@ -3,6 +3,8 @@ package me.prskid1000.craftagent.context;
 import java.util.*;
 
 import me.prskid1000.craftagent.config.BaseConfig;
+import me.prskid1000.craftagent.database.repositories.MessageRepository;
+import me.prskid1000.craftagent.database.repositories.SharebookRepository;
 import me.prskid1000.craftagent.model.context.*;
 import me.prskid1000.craftagent.memory.MemoryManager;
 import me.prskid1000.craftagent.util.MCDataUtil;
@@ -10,6 +12,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
+import java.util.UUID;
 
 /**
  * Generates the context for the LLM requests based on the NPCs world environment.
@@ -19,14 +22,29 @@ public class ContextProvider {
 	private final ServerPlayerEntity npcEntity;
 	private final ChunkManager chunkManager;
 	private final int maxNearbyEntities;
+	private final BaseConfig baseConfig;
 	private WorldContext cachedContext;
 	public MemoryManager memoryManager;
+	private MessageRepository messageRepository;
+	private SharebookRepository sharebookRepository;
+	private UUID npcUuid;
 
 	public ContextProvider(ServerPlayerEntity npcEntity, BaseConfig config) {
 		this.npcEntity = npcEntity;
 		this.maxNearbyEntities = config.getMaxNearbyEntities();
+		this.baseConfig = config;
 		this.chunkManager = new ChunkManager(npcEntity, config);
 		buildContext();
+	}
+	
+	public BaseConfig getBaseConfig() {
+		return baseConfig;
+	}
+
+	public void setRepositories(MessageRepository messageRepository, SharebookRepository sharebookRepository, UUID npcUuid) {
+		this.messageRepository = messageRepository;
+		this.sharebookRepository = sharebookRepository;
+		this.npcUuid = npcUuid;
 	}
 
 	/**
@@ -83,6 +101,37 @@ public class ContextProvider {
 			contacts.add(contactMap);
 		});
 		memory.put("contacts", contacts);
+		
+		// Add mail (messages) - only unread messages to avoid overwhelming context
+		if (messageRepository != null && npcUuid != null) {
+			java.util.List<java.util.Map<String, Object>> messages = new java.util.ArrayList<>();
+			messageRepository.selectByRecipient(npcUuid, 10, true).forEach(msg -> {
+				java.util.Map<String, Object> msgMap = new java.util.HashMap<>();
+				msgMap.put("id", msg.getId());
+				msgMap.put("senderName", msg.getSenderName());
+				msgMap.put("senderType", msg.getSenderType());
+				msgMap.put("subject", msg.getSubject());
+				msgMap.put("content", msg.getContent());
+				msgMap.put("timestamp", msg.getTimestamp());
+				msgMap.put("read", msg.isRead());
+				messages.add(msgMap);
+			});
+			memory.put("mail", messages);
+		}
+		
+		// Add sharebook (shared information accessible to all NPCs)
+		if (sharebookRepository != null) {
+			java.util.List<java.util.Map<String, Object>> sharebookPages = new java.util.ArrayList<>();
+			sharebookRepository.selectAll().forEach(page -> {
+				java.util.Map<String, Object> pageMap = new java.util.HashMap<>();
+				pageMap.put("pageTitle", page.getPageTitle());
+				pageMap.put("content", page.getContent());
+				pageMap.put("authorName", page.getAuthorName());
+				pageMap.put("timestamp", page.getTimestamp());
+				sharebookPages.add(pageMap);
+			});
+			memory.put("sharebook", sharebookPages);
+		}
 		
 		return memory;
 	}

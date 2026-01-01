@@ -46,6 +46,12 @@ public class BaseConfigScreen extends ConfigScreen<BaseConfig> {
         bindSlider(content, "maxContacts-label", "maxContacts",
                 BaseConfig.MAX_CONTACTS_KEY, config.getMaxContacts(), config::setMaxContacts);
 
+        bindSlider(content, "maxMessages-label", "maxMessages",
+                BaseConfig.MAX_MESSAGES_KEY, config.getMaxMessages(), config::setMaxMessages);
+
+        bindSlider(content, "maxSharebookPages-label", "maxSharebookPages",
+                BaseConfig.MAX_SHAREBOOK_PAGES_KEY, config.getMaxSharebookPages(), config::setMaxSharebookPages);
+
         bindSlider(content, "maxNearbyBlocks-label", "maxNearbyBlocks",
                 BaseConfig.MAX_NEARBY_BLOCKS_KEY, config.getMaxNearbyBlocks(), config::setMaxNearbyBlocks);
 

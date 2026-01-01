@@ -10,17 +10,20 @@ class ChatMessageListener(
     override fun register() {
         ServerMessageEvents.CHAT_MESSAGE.register { message, sender, _ ->
             val npcs = npcService.uuidToNpc
+            val playerName = sender.name.string ?: "Server Console"
+            val messageContent = message.content.string
+            
             npcs.forEach { npcEntry ->
                 if (npcEntry.value.entity.uuid == sender.uuid) {
                     return@forEach
                 }
-                val chatMessage =
-                    String.format(
-                        "Player '%s' has written the message: %s",
-                        sender.name.string ?: "Server Console",
-                        message.content.string,
-                    )
-                npcEntry.value.eventHandler.onEvent(chatMessage)
+                // Send message to NPC via mail system instead of directly to prompt
+                npcService.sendPlayerMessageToNpc(
+                    sender.uuid,
+                    playerName,
+                    npcEntry.value.config.uuid,
+                    messageContent
+                )
             }
         }
     }
