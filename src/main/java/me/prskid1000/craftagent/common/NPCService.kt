@@ -72,6 +72,21 @@ class NPCService(
             checkNpcName(name)
 
             val config = updateConfig(newConfig)
+            
+            // Check LLM service reachability BEFORE spawning entity (on background thread, not server thread)
+            try {
+                LogUtil.info("Checking LLM service reachability for NPC: $name")
+                factory.checkLLMServiceReachable(config)
+                LogUtil.info("LLM service is reachable for NPC: $name")
+            } catch (e: Exception) {
+                LogUtil.error("LLM service is not reachable for NPC: $name", e)
+                LogUtil.errorInChat("Failed to create NPC '$name': LLM service is not reachable. ${e.message}")
+                val npcConfig = configProvider.getNpcConfig(config.uuid)
+                if (npcConfig.isPresent) {
+                    npcConfig.get().isActive = false
+                }
+                return@runAsync
+            }
 
             NPCSpawner.spawn(config, server, spawnPos) { npcEntity ->
                 server.execute {
@@ -140,6 +155,7 @@ class NPCService(
             val server = playerManager.server
             val entityUuid = npcToDelete.entity.uuid
             
+            // Stop services and remove from maps on server thread (thread-safe operations only)
             server.execute {
                 try {
                     npcToDelete.controller.stop()
@@ -148,22 +164,37 @@ class NPCService(
                     npcToDelete.contextProvider.chunkManager.stopService()
                     
                     resourceProvider.loadedConversations.remove(uuid)
-                    resourceProvider.conversationRepository.deleteByUuid(uuid)
                     uuidToNpc.remove(uuid)
                     entityUuidToConfigUuid.remove(entityUuid)
                     
                     NPCSpawner.remove(entityUuid, playerManager)
-                    configProvider.deleteNpcConfig(uuid)
                     
                     LogUtil.infoInChat("Deleted NPC with uuid $uuid")
                 } catch (e: Exception) {
                     LogUtil.error("Error deleting NPC: $uuid", e)
                 }
             }
+            
+            // Database operations on background thread (blocking I/O)
+            CompletableFuture.runAsync({
+                try {
+                    resourceProvider.conversationRepository.deleteByUuid(uuid)
+                    configProvider.deleteNpcConfig(uuid)
+                } catch (e: Exception) {
+                    LogUtil.error("Error deleting NPC data from database: $uuid", e)
+                }
+            }, executorService)
         } else {
-            resourceProvider.loadedConversations.remove(uuid)
-            resourceProvider.conversationRepository.deleteByUuid(uuid)
-            configProvider.deleteNpcConfig(uuid)
+            // NPC not in map, clean up data on background thread
+            CompletableFuture.runAsync({
+                try {
+                    resourceProvider.loadedConversations.remove(uuid)
+                    resourceProvider.conversationRepository.deleteByUuid(uuid)
+                    configProvider.deleteNpcConfig(uuid)
+                } catch (e: Exception) {
+                    LogUtil.error("Error cleaning up NPC data: $uuid", e)
+                }
+            }, executorService)
         }
     }
 

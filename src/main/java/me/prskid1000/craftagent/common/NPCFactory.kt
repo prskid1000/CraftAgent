@@ -53,8 +53,22 @@ class NPCFactory(
             LLMType.LM_STUDIO -> LMStudioClient(config.llmModel, config.lmStudioUrl, baseConfig.llmTimeout)
             else -> throw NPCCreationException("Invalid LLM type: ${config.llmType}")
         }
-        llmClient.checkServiceIsReachable()
+        // Note: Health check is done in NPCService.createNpc() before spawning to avoid blocking server thread
         return llmClient
+    }
+    
+    /**
+     * Check if the LLM service is reachable. This should be called on a background thread,
+     * not on the Minecraft server thread.
+     */
+    fun checkLLMServiceReachable(config: NPCConfig) {
+        val baseConfig = configProvider.baseConfig
+        val llmClient = when (config.llmType) {
+            LLMType.OLLAMA -> OllamaClient(config.llmModel, config.ollamaUrl, baseConfig.llmTimeout, baseConfig.isVerbose)
+            LLMType.LM_STUDIO -> LMStudioClient(config.llmModel, config.lmStudioUrl, baseConfig.llmTimeout)
+            else -> throw NPCCreationException("Invalid LLM type: ${config.llmType}")
+        }
+        llmClient.checkServiceIsReachable()
     }
 
 }

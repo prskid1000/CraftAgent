@@ -55,12 +55,15 @@ public class NPCSpawner {
         GameProfile profile = new GameProfile(config.getUuid(), config.getNpcName());
         String skinUrl = config.getSkinUrl();
         if (!skinUrl.isEmpty()) {
-            Property property = fetchSkin(config.getSkinUrl());
-            if (property != null) {
-                profile.getProperties().put(TEXTURES, property);
-                spawnEntity(server, profile, spawnPos, npcConsumer);
-                return;
-            }
+            // Fetch skin asynchronously to avoid blocking
+            CompletableFuture.supplyAsync(() -> fetchSkin(skinUrl))
+                .thenAcceptAsync(property -> {
+                    if (property != null) {
+                        profile.getProperties().put(TEXTURES, property);
+                    }
+                    spawnEntity(server, profile, spawnPos, npcConsumer);
+                }, server);
+            return;
         }
 
         fetchGameProfile(profile).thenAcceptAsync(p -> {
