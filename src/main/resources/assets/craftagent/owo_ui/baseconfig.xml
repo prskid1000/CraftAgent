@@ -3,11 +3,15 @@
     <components>
         <flow-layout direction="vertical">
             <children>
-                <flow-layout direction="vertical" id="panel">
-                    <children>
+                <scroll direction="vertical">
+                    <flow-layout direction="vertical" id="panel">
+                        <sizing>
+                            <horizontal method="fill">100</horizontal>
+                        </sizing>
+                        <children>
 
-                        <flow-layout direction="vertical">
-                            <children>
+                            <flow-layout direction="vertical">
+                                <children>
 
                                 <flow-layout direction="vertical">
                                     <children>
@@ -169,15 +173,20 @@
 
                         </flow-layout>
 
-                    </children>
+                        </children>
 
-                    <horizontal-alignment>center</horizontal-alignment>
-                    <vertical-alignment>center</vertical-alignment>
+                        <horizontal-alignment>center</horizontal-alignment>
+                        <vertical-alignment>center</vertical-alignment>
 
-                    <surface>
-                        <panel dark="true"/>
-                    </surface>
-                </flow-layout>
+                        <surface>
+                            <panel dark="true"/>
+                        </surface>
+                    </flow-layout>
+                    <sizing>
+                        <horizontal method="fill">80</horizontal>
+                        <vertical method="fill">80</vertical>
+                    </sizing>
+                </scroll>
             </children>
 
             <horizontal-alignment>center</horizontal-alignment>

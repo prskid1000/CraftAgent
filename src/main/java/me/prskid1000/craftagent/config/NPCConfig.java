@@ -239,7 +239,7 @@ public class NPCConfig implements Configurable {
 	//name for fields for npc config screen
 	public static final String NPC_NAME = "Name of the NPC";
 	public static final String EDIT_NPC = "Edit '%s'";
-	public static final String CUSTOM_SYSTEM_PROMPT = "Additional System Prompt (Optional - appended to default prompt)";
+	public static final String CUSTOM_SYSTEM_PROMPT = "System Instruction";
 	public static final String GENDER = "Gender";
 	public static final String AGE = "Age (years)";
 	public static final String LLM_TYPE = "Type";
