@@ -100,8 +100,8 @@ public class ConfigProvider {
 
     public synchronized void updateNpcConfig(NPCConfig updatedConfig) {
         npcConfigs.forEach(config -> {
-            if (config.getNpcName().equals(updatedConfig.getNpcName())) {
-                if (config.getLmStudioUrl().isEmpty()) updatedConfig.setLmStudioUrl(config.getLmStudioUrl()); //prevent overwriting URL with default string
+            if (config.getUuid().equals(updatedConfig.getUuid())) {
+                // Update the config by replacing it with the updated version
                 npcConfigs.set(npcConfigs.indexOf(config), updatedConfig);
             }
         });

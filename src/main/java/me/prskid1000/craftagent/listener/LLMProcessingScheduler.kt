@@ -62,7 +62,7 @@ class LLMProcessingScheduler(
                 if (npc != null && npc.eventHandler.queueIsEmpty()) {
                     // Processing completed, clear flag
                     currentlyProcessing.remove(uuid)
-                    LogUtil.debugInChat("Cleared processing flag for NPC: ${npc.config.npcName}")
+                    LogUtil.info("Cleared processing flag for NPC: ${npc.config.npcName}")
                 }
             }
         }
@@ -121,7 +121,7 @@ class LLMProcessingScheduler(
                     lastSuccessfulTrigger[npcUuid] = currentTime
                     LogUtil.info("Successfully triggered LLM processing for NPC: ${npc.config.npcName}")
                 } else {
-                    LogUtil.debugInChat("LLM processing returned false for NPC: ${npc.config.npcName}")
+                    LogUtil.info("LLM processing returned false for NPC: ${npc.config.npcName}")
                     // If failed, clear processing flag immediately
                     currentlyProcessing.remove(npcUuid)
                 }
@@ -139,7 +139,9 @@ class LLMProcessingScheduler(
         }
 
         if (!processed && attempts >= maxAttempts) {
-            LogUtil.debugInChat("Could not process any NPC in this cycle (all skipped)")
+            // All NPCs were skipped (expected if all are processing or haven't met min interval)
+            // Only log to file, not chat, as this is normal behavior
+            LogUtil.info("Could not process any NPC in this cycle (all skipped - normal if all processing)")
         }
     }
 }

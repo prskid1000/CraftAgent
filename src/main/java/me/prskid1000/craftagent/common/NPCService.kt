@@ -262,12 +262,29 @@ class NPCService(
     }
 
     private fun updateConfig(newConfig: NPCConfig): NPCConfig {
-        val config = configProvider.getNpcConfigByName(newConfig.npcName)
-        if (config.isEmpty) {
+        val existingConfig = configProvider.getNpcConfigByName(newConfig.npcName)
+        if (existingConfig.isEmpty) {
             return configProvider.addNpcConfig(newConfig)
         } else {
-            config.get().isActive = true
-            return config.get()
+            // Update existing config with new values (preserve UUID)
+            val configToUpdate = existingConfig.get()
+            val originalUuid = configToUpdate.uuid
+            // Copy all fields from newConfig to existing config
+            configToUpdate.npcName = newConfig.npcName
+            configToUpdate.isActive = true
+            configToUpdate.customSystemPrompt = newConfig.customSystemPrompt
+            configToUpdate.gender = newConfig.gender
+            configToUpdate.age = newConfig.age
+            configToUpdate.lastAgeUpdateTick = newConfig.lastAgeUpdateTick
+            configToUpdate.llmType = newConfig.llmType
+            configToUpdate.llmModel = newConfig.llmModel
+            configToUpdate.ollamaUrl = newConfig.ollamaUrl
+            configToUpdate.lmStudioUrl = newConfig.lmStudioUrl
+            configToUpdate.skinUrl = newConfig.skinUrl
+            // Preserve original UUID
+            configToUpdate.uuid = originalUuid
+            configProvider.updateNpcConfig(configToUpdate)
+            return configToUpdate
         }
     }
 

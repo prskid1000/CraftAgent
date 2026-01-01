@@ -69,9 +69,16 @@ class NPCFactory(
 
     private fun initLLMClient(config: NPCConfig): LLMClient {
         val baseConfig = configProvider.baseConfig
+        me.prskid1000.craftagent.util.LogUtil.info("initLLMClient: NPC=${config.npcName}, llmType=${config.llmType}, ollamaUrl=${config.ollamaUrl}, lmStudioUrl=${config.lmStudioUrl}")
         val llmClient = when (config.llmType) {
-            LLMType.OLLAMA -> OllamaClient(config.llmModel, config.ollamaUrl, baseConfig.llmTimeout, baseConfig.isVerbose)
-            LLMType.LM_STUDIO -> LMStudioClient(config.llmModel, config.lmStudioUrl, baseConfig.llmTimeout)
+            LLMType.OLLAMA -> {
+                me.prskid1000.craftagent.util.LogUtil.info("Creating OllamaClient for NPC: ${config.npcName}")
+                OllamaClient(config.llmModel, config.ollamaUrl, baseConfig.llmTimeout, baseConfig.isVerbose)
+            }
+            LLMType.LM_STUDIO -> {
+                me.prskid1000.craftagent.util.LogUtil.info("Creating LMStudioClient for NPC: ${config.npcName}")
+                LMStudioClient(config.llmModel, config.lmStudioUrl, baseConfig.llmTimeout)
+            }
             else -> throw NPCCreationException("Invalid LLM type: ${config.llmType}")
         }
         // Note: Health check is done in NPCService.createNpc() before spawning to avoid blocking server thread
@@ -84,9 +91,16 @@ class NPCFactory(
      */
     fun checkLLMServiceReachable(config: NPCConfig) {
         val baseConfig = configProvider.baseConfig
+        me.prskid1000.craftagent.util.LogUtil.info("checkLLMServiceReachable: NPC=${config.npcName}, llmType=${config.llmType}, ollamaUrl=${config.ollamaUrl}, lmStudioUrl=${config.lmStudioUrl}")
         val llmClient = when (config.llmType) {
-            LLMType.OLLAMA -> OllamaClient(config.llmModel, config.ollamaUrl, baseConfig.llmTimeout, baseConfig.isVerbose)
-            LLMType.LM_STUDIO -> LMStudioClient(config.llmModel, config.lmStudioUrl, baseConfig.llmTimeout)
+            LLMType.OLLAMA -> {
+                me.prskid1000.craftagent.util.LogUtil.info("Creating OllamaClient for NPC: ${config.npcName}")
+                OllamaClient(config.llmModel, config.ollamaUrl, baseConfig.llmTimeout, baseConfig.isVerbose)
+            }
+            LLMType.LM_STUDIO -> {
+                me.prskid1000.craftagent.util.LogUtil.info("Creating LMStudioClient for NPC: ${config.npcName}")
+                LMStudioClient(config.llmModel, config.lmStudioUrl, baseConfig.llmTimeout)
+            }
             else -> throw NPCCreationException("Invalid LLM type: ${config.llmType}")
         }
         llmClient.checkServiceIsReachable()

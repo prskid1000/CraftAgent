@@ -314,7 +314,7 @@ public class Instructions {
 		  jobRoles: {
 		    "Steve": "Miner",
 		    "Alex": "Builder",
-		    "%s": "Farmer"
+		    "YourName": "Farmer"
 		  },
 		  tradeAgreements: ["1 diamond = 8 iron ingots"],
 		  territoryMap: {"North Mine": "Steve's area", "West Farm": "Community"},
@@ -437,7 +437,7 @@ public class Instructions {
         String enhancedPrompt = String.format(
             Instructions.DEFAULT_SYSTEM_PROMPT, 
             npcName, age, gender, formattedCommands
-        ).replace("%s", npcName); // Fill in NPC name in sharedKnowledge example
+        );
         
         // Append custom instructions if provided
         if (customSystemPrompt != null && !customSystemPrompt.trim().isEmpty()) {
