@@ -1,15 +1,15 @@
 package me.prskid1000.craftagent.listener
 
-import me.prskid1000.craftagent.model.NPC
+import me.prskid1000.craftagent.common.NPCService
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents
-import java.util.UUID
 
 class ChatMessageListener(
-    npcs: Map<UUID, NPC>
-) : AEventListener(npcs) {
+    private val npcService: NPCService
+) : AEventListener() {
 
     override fun register() {
         ServerMessageEvents.CHAT_MESSAGE.register { message, sender, _ ->
+            val npcs = npcService.uuidToNpc
             npcs.forEach { npcEntry ->
                 if (npcEntry.value.entity.uuid == sender.uuid) {
                     return@forEach

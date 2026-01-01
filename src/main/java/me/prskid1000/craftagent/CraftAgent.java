@@ -43,7 +43,7 @@ public class CraftAgent implements ModInitializer {
         NetworkHandler networkManager = new NetworkHandler(configProvider, npcService, authorizer);
         networkManager.registerPacketReceiver();
 
-        EventListenerRegisterer eventListenerRegisterer = new EventListenerRegisterer(npcService.getUuidToNpc());
+        EventListenerRegisterer eventListenerRegisterer = new EventListenerRegisterer(npcService);
         eventListenerRegisterer.register();
 
         CommandManager commandManager = new CommandManager(npcService, configProvider, networkManager);
@@ -53,7 +53,7 @@ public class CraftAgent implements ModInitializer {
             LogUtil.initialize(server, configProvider);
             repositoryFactory.initRepositories();
             resourceProvider.loadResources(configProvider.getUuidsOfNpcs());
-            npcService.init();
+            npcService.init(server);
         });
 
         onStop(npcService, configProvider, sqlite, resourceProvider);

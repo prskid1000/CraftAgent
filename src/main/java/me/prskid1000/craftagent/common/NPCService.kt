@@ -31,9 +31,38 @@ class NPCService(
 
     private lateinit var executorService: ExecutorService
     val uuidToNpc = ConcurrentHashMap<UUID, NPC>()
+    private val entityUuidToConfigUuid = ConcurrentHashMap<UUID, UUID>()
+    private var deathEventRegistered = false
 
-    fun init() {
+    fun init(server: MinecraftServer) {
         executorService = Executors.newSingleThreadExecutor()
+        registerDeathEvent()
+        respawnActiveNPCs(server)
+    }
+
+    private fun registerDeathEvent() {
+        if (!deathEventRegistered) {
+            NPCEvents.ON_DEATH.register { entity ->
+                val configUuid = entityUuidToConfigUuid[entity.uuid]
+                if (configUuid != null) {
+                    removeNpc(configUuid, EntityVer.getWorld(entity).server!!.playerManager)
+                } else {
+                    val npc = uuidToNpc.values.firstOrNull { it.entity.uuid == entity.uuid }
+                    if (npc != null) {
+                        removeNpc(npc.config.uuid, EntityVer.getWorld(entity).server!!.playerManager)
+                    }
+                }
+            }
+            deathEventRegistered = true
+        }
+    }
+
+    private fun respawnActiveNPCs(server: MinecraftServer) {
+        configProvider.getNpcConfigs().forEach { config ->
+            if (config.isActive && !uuidToNpc.containsKey(config.uuid)) {
+                createNpc(config, server, null, null)
+            }
+        }
     }
 
     fun createNpc(newConfig: NPCConfig, server: MinecraftServer, spawnPos: BlockPos?, owner: PlayerEntity?) {
@@ -45,17 +74,26 @@ class NPCService(
             val config = updateConfig(newConfig)
 
             NPCSpawner.spawn(config, server, spawnPos) { npcEntity ->
-                config.uuid = npcEntity.uuid
-                val npc = factory.createNpc(npcEntity, config, resourceProvider.loadedConversations[config.uuid])
-                npc.controller.owner = owner
-                uuidToNpc[config.uuid] = npc
+                server.execute {
+                    try {
+                        config.uuid = npcEntity.uuid
+                        val npc = factory.createNpc(npcEntity, config, resourceProvider.loadedConversations[config.uuid])
+                        npc.controller.owner = owner
+                        uuidToNpc[config.uuid] = npc
+                        entityUuidToConfigUuid[npcEntity.uuid] = config.uuid
 
-                LogUtil.infoInChat(("Added NPC with name: $name"))
-                npc.eventHandler.onEvent(Instructions.INITIAL_PROMPT)
-            }
-
-            NPCEvents.ON_DEATH.register {
-                removeNpc(it.uuid, EntityVer.getWorld(it).server!!.playerManager)
+                        LogUtil.infoInChat("Added NPC with name: $name")
+                        npc.eventHandler.onEvent(Instructions.INITIAL_PROMPT)
+                    } catch (e: Exception) {
+                        LogUtil.error("Error creating NPC: $name", e)
+                        LogUtil.errorInChat("Failed to initialize NPC: ${e.message}")
+                        NPCSpawner.remove(npcEntity.uuid, server.playerManager)
+                        val npcConfig = configProvider.getNpcConfig(config.uuid)
+                        if (npcConfig.isPresent) {
+                            npcConfig.get().isActive = false
+                        }
+                    }
+                }
             }
         }, executorService).exceptionally {
             LogUtil.errorInChat(it.message)
@@ -67,30 +105,66 @@ class NPCService(
     fun removeNpc(uuid: UUID, playerManager: PlayerManager) {
         val npcToRemove = uuidToNpc[uuid]
         if (npcToRemove != null) {
-            npcToRemove.controller.stop()
-            npcToRemove.llmClient.stopService()
-            npcToRemove.eventHandler.stopService()
-            npcToRemove.contextProvider.chunkManager.stopService()
-            resourceProvider.addConversations(uuid,npcToRemove.history.latestConversations)
-            uuidToNpc.remove(uuid)
+            val server = playerManager.server
+            val entityUuid = npcToRemove.entity.uuid
+            
+            server.execute {
+                try {
+                    npcToRemove.controller.stop()
+                    npcToRemove.llmClient.stopService()
+                    npcToRemove.eventHandler.stopService()
+                    npcToRemove.contextProvider.chunkManager.stopService()
+                    resourceProvider.addConversations(uuid, npcToRemove.history.latestConversations)
+                    uuidToNpc.remove(uuid)
+                    entityUuidToConfigUuid.remove(entityUuid)
 
-            NPCSpawner.remove(npcToRemove.entity.uuid, playerManager)
+                    NPCSpawner.remove(entityUuid, playerManager)
 
-            val config = configProvider.getNpcConfig(uuid)
-            if (config.isPresent) {
-                config.get().isActive = false
-                LogUtil.infoInChat("Removed NPC with name ${config.get().npcName}")
-            } else {
-                LogUtil.infoInChat("Removed NPC with uuid $uuid")
+                    val config = configProvider.getNpcConfig(uuid)
+                    if (config.isPresent) {
+                        config.get().isActive = false
+                        LogUtil.infoInChat("Removed NPC with name ${config.get().npcName}")
+                    } else {
+                        LogUtil.infoInChat("Removed NPC with uuid $uuid")
+                    }
+                } catch (e: Exception) {
+                    LogUtil.error("Error removing NPC: $uuid", e)
+                }
             }
         }
     }
 
     fun deleteNpc(uuid: UUID, playerManager: PlayerManager) {
-        resourceProvider.loadedConversations.remove(uuid)
-        resourceProvider.conversationRepository.deleteByUuid(uuid)
-        removeNpc(uuid, playerManager)
-        configProvider.deleteNpcConfig(uuid)
+        val npcToDelete = uuidToNpc[uuid]
+        if (npcToDelete != null) {
+            val server = playerManager.server
+            val entityUuid = npcToDelete.entity.uuid
+            
+            server.execute {
+                try {
+                    npcToDelete.controller.stop()
+                    npcToDelete.llmClient.stopService()
+                    npcToDelete.eventHandler.stopService()
+                    npcToDelete.contextProvider.chunkManager.stopService()
+                    
+                    resourceProvider.loadedConversations.remove(uuid)
+                    resourceProvider.conversationRepository.deleteByUuid(uuid)
+                    uuidToNpc.remove(uuid)
+                    entityUuidToConfigUuid.remove(entityUuid)
+                    
+                    NPCSpawner.remove(entityUuid, playerManager)
+                    configProvider.deleteNpcConfig(uuid)
+                    
+                    LogUtil.infoInChat("Deleted NPC with uuid $uuid")
+                } catch (e: Exception) {
+                    LogUtil.error("Error deleting NPC: $uuid", e)
+                }
+            }
+        } else {
+            resourceProvider.loadedConversations.remove(uuid)
+            resourceProvider.conversationRepository.deleteByUuid(uuid)
+            configProvider.deleteNpcConfig(uuid)
+        }
     }
 
     fun shutdownNPCs(server: MinecraftServer) {
