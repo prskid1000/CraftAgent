@@ -60,14 +60,6 @@ public class LogUtil {
 		if (configProvider.getBaseConfig().isVerbose()) LOGGER.info(formatInfo(message).getString());
 	}
 
-	/**
-	 * Always logs to console/log file, regardless of verbose mode.
-	 * Used for important logs like LLM requests/responses.
-	 */
-	public static void infoAlways(String message) {
-		LOGGER.info(formatInfo(message).getString());
-	}
-
 	public static void error(String message) {
 		LOGGER.error(formatError(message).getString());
 	}

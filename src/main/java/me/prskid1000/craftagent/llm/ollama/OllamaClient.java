@@ -145,8 +145,8 @@ public class OllamaClient implements LLMClient {
 			
 			String requestBodyJson = objectMapper.writeValueAsString(requestBody);
 			
-			// Log request (always visible)
-			LogUtil.infoAlways("LLM Request (Ollama): " + requestBodyJson);
+			// Log request
+			LogUtil.info("LLM Request (Ollama): " + requestBodyJson);
 			LogUtil.debugInChat("LLM Request sent to Ollama");
 			
 			// Create HTTP request
@@ -160,8 +160,8 @@ public class OllamaClient implements LLMClient {
 			// Send request and get response
 			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 			
-			// Log response (always visible)
-			LogUtil.infoAlways("LLM Response (Ollama): " + response.body());
+			// Log response
+			LogUtil.info("LLM Response (Ollama): " + response.body());
 			LogUtil.debugInChat("LLM Response received from Ollama");
 			
 			if (response.statusCode() != 200) {
@@ -204,19 +204,19 @@ public class OllamaClient implements LLMClient {
 								String argumentsStr = (String) argumentsObj;
 								try {
 									@SuppressWarnings("unchecked")
-									Map<String, Object> parsedArgs = objectMapper.readValue(argumentsStr, Map.class);
-									arguments = parsedArgs;
-								} catch (Exception e) {
-									// If parsing fails, try to extract command directly
-									if (argumentsStr.contains("\"command\"")) {
-										// Simple extraction
-										int start = argumentsStr.indexOf("\"command\"");
-										if (start >= 0) {
-											start = argumentsStr.indexOf("\"", start + 9) + 1;
-											int end = argumentsStr.indexOf("\"", start);
-											if (end > start) {
-												String cmd = argumentsStr.substring(start, end);
-												arguments.put("command", cmd);
+								Map<String, Object> parsedArgs = objectMapper.readValue(argumentsStr, Map.class);
+								arguments = parsedArgs;
+							} catch (Exception e) {
+								// If parsing fails, try to extract command directly
+								if (argumentsStr.contains("\"command\"")) {
+									// Simple extraction
+									int start = argumentsStr.indexOf("\"command\"");
+									if (start >= 0) {
+										start = argumentsStr.indexOf("\"", start + 9) + 1;
+										int end = argumentsStr.indexOf("\"", start);
+										if (end > start) {
+											String cmd = argumentsStr.substring(start, end);
+											arguments.put("command", cmd);
 											}
 										}
 									}

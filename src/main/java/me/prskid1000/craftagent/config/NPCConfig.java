@@ -16,7 +16,7 @@ public class NPCConfig implements Configurable {
 	private String llmCharacter = Instructions.DEFAULT_CHARACTER_TRAITS;
 	private LLMType llmType = LLMType.OLLAMA;
 	private String ollamaUrl = "http://localhost:11434";
-    private String llmModel = "llama3.2";
+    private String llmModel = "nvidia_nemotron-3-nano-30b-a3b";
 	private String lmStudioUrl = "http://localhost:1234/v1";
 	private String skinUrl = "";
 
