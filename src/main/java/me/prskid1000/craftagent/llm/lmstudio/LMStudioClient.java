@@ -44,6 +44,7 @@ public class LMStudioClient implements LLMClient {
 		this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
 		this.timeout = timeout;
 		this.httpClient = HttpClient.newBuilder()
+				.version(HttpClient.Version.HTTP_1_1)
 				.connectTimeout(Duration.ofSeconds(timeout))
 				.build();
 		this.objectMapper = new ObjectMapper();

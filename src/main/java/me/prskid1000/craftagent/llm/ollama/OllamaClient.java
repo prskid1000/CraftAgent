@@ -43,6 +43,7 @@ public class OllamaClient implements LLMClient {
 		this.objectMapper = new ObjectMapper()
 				.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 		this.httpClient = HttpClient.newBuilder()
+				.version(HttpClient.Version.HTTP_1_1)
 				.connectTimeout(Duration.ofSeconds(timeout))
 				.build();
 	}
