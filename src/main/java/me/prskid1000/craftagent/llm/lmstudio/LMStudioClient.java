@@ -55,18 +55,13 @@ public class LMStudioClient implements LLMClient {
 			if (baseUrl == null || baseUrl.isEmpty()) {
 				throw new LLMServiceException("LM Studio base URL is not set");
 			}
-			// Use /v1/models endpoint for health check (OpenAI-compatible endpoint)
-			URI checkUri = URI.create(baseUrl + "/models");
-			LogUtil.info("Checking LM Studio reachability at: " + checkUri + " (timeout: " + timeout + "s)");
 			
 			HttpRequest request = HttpRequest.newBuilder()
-					.uri(checkUri)
+					.uri(URI.create(baseUrl + "/models"))
 					.GET()
 					.timeout(Duration.ofSeconds(timeout))
 					.build();
 			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-			
-			LogUtil.info("LM Studio health check response: status=" + response.statusCode() + ", body=" + response.body().substring(0, Math.min(200, response.body().length())));
 			
 			// Accept any 2xx or 3xx status codes, or 401 (unauthorized but server is reachable)
 			int statusCode = response.statusCode();
