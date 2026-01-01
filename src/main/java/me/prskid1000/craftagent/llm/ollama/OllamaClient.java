@@ -58,7 +58,7 @@ public class OllamaClient implements LLMClient {
 			HttpRequest request = HttpRequest.newBuilder()
 					.uri(URI.create(url + "/api/tags"))
 					.GET()
-					.timeout(Duration.ofSeconds(5))
+					.timeout(Duration.ofSeconds(timeout))
 					.build();
 			
 			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());

@@ -55,16 +55,39 @@ public class LMStudioClient implements LLMClient {
 			if (baseUrl == null || baseUrl.isEmpty()) {
 				throw new LLMServiceException("LM Studio base URL is not set");
 			}
-			// Try to make a simple health check request
+			// Use /v1/models endpoint for health check (OpenAI-compatible endpoint)
+			URI checkUri = URI.create(baseUrl + "/models");
+			LogUtil.info("Checking LM Studio reachability at: " + checkUri + " (timeout: " + timeout + "s)");
+			
 			HttpRequest request = HttpRequest.newBuilder()
-					.uri(URI.create(baseUrl.replace("/v1", "") + "/health"))
+					.uri(checkUri)
 					.GET()
-					.timeout(Duration.ofSeconds(5))
+					.timeout(Duration.ofSeconds(timeout))
 					.build();
 			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-			// If we get any response (even 404), the server is reachable
+			
+			LogUtil.info("LM Studio health check response: status=" + response.statusCode() + ", body=" + response.body().substring(0, Math.min(200, response.body().length())));
+			
+			// Accept any 2xx or 3xx status codes, or 401 (unauthorized but server is reachable)
+			int statusCode = response.statusCode();
+			if (statusCode >= 200 && statusCode < 400) {
+				// Success - server is reachable
+				LogUtil.info("LM Studio server is reachable");
+				return;
+			} else if (statusCode == 401) {
+				// Unauthorized but server is reachable
+				LogUtil.info("LM Studio server is reachable (401 unauthorized)");
+				return;
+			} else {
+				// Unexpected status code
+				throw new LLMServiceException("LM Studio server returned status code: " + statusCode + ", response: " + response.body());
+			}
+		} catch (LLMServiceException e) {
+			// Re-throw our own exceptions
+			throw e;
 		} catch (Exception e) {
-			throw new LLMServiceException("LM Studio server is not reachable at: " + baseUrl, e);
+			LogUtil.error("LM Studio connection error", e);
+			throw new LLMServiceException("LM Studio server is not reachable at: " + baseUrl + ". Error: " + e.getMessage(), e);
 		}
 	}
 
