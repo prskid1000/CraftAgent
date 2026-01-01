@@ -4,6 +4,7 @@ import java.util.*;
 
 import me.prskid1000.craftagent.config.BaseConfig;
 import me.prskid1000.craftagent.model.context.*;
+import me.prskid1000.craftagent.memory.MemoryManager;
 import me.prskid1000.craftagent.util.MCDataUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerInventory;
@@ -17,10 +18,13 @@ public class ContextProvider {
 
 	private final ServerPlayerEntity npcEntity;
 	private final ChunkManager chunkManager;
+	private final int maxNearbyEntities;
 	private WorldContext cachedContext;
+	public MemoryManager memoryManager;
 
 	public ContextProvider(ServerPlayerEntity npcEntity, BaseConfig config) {
 		this.npcEntity = npcEntity;
+		this.maxNearbyEntities = config.getMaxNearbyEntities();
 		this.chunkManager = new ChunkManager(npcEntity, config);
 		buildContext();
 	}
@@ -30,16 +34,55 @@ public class ContextProvider {
 	 */
 	public WorldContext buildContext() {
 		synchronized (this) {
+			java.util.Map<String, Object> memoryData = null;
+			if (memoryManager != null) {
+				memoryData = buildMemoryData();
+			}
+			
 			WorldContext context = new WorldContext(
 					getNpcState(),
 					getInventoryState(),
 					chunkManager.getNearbyBlocks(),
-					getNearbyEntities()
+					getNearbyEntities(),
+					memoryData
 			);
 //			chunkManager.getNearbyBlocks().forEach(blockData -> LogUtil.debugInChat(blockData.toString()));
 			this.cachedContext = context;
 			return context;
 		}
+	}
+	
+	private java.util.Map<String, Object> buildMemoryData() {
+		java.util.Map<String, Object> memory = new java.util.HashMap<>();
+		
+		// Add locations
+		java.util.List<java.util.Map<String, Object>> locations = new java.util.ArrayList<>();
+		memoryManager.getLocations().forEach(loc -> {
+			java.util.Map<String, Object> locMap = new java.util.HashMap<>();
+			locMap.put("name", loc.getName());
+			locMap.put("x", loc.getX());
+			locMap.put("y", loc.getY());
+			locMap.put("z", loc.getZ());
+			locMap.put("description", loc.getDescription());
+			locMap.put("lastVisited", loc.getTimestamp());
+			locations.add(locMap);
+		});
+		memory.put("locations", locations);
+		
+		// Add contacts
+		java.util.List<java.util.Map<String, Object>> contacts = new java.util.ArrayList<>();
+		memoryManager.getContacts().forEach(contact -> {
+			java.util.Map<String, Object> contactMap = new java.util.HashMap<>();
+			contactMap.put("name", contact.getContactName());
+			contactMap.put("type", contact.getContactType());
+			contactMap.put("relationship", contact.getRelationship());
+			contactMap.put("notes", contact.getNotes());
+			contactMap.put("lastSeen", contact.getLastSeen());
+			contacts.add(contactMap);
+		});
+		memory.put("contacts", contacts);
+		
+		return memory;
 	}
 
 	private StateData getNpcState() {
@@ -87,10 +130,25 @@ public class ContextProvider {
 	private List<EntityData> getNearbyEntities() {
 		List<EntityData> nearbyEntities = new ArrayList<>();
 		List<Entity> entities = MCDataUtil.getNearbyEntities(npcEntity);
-		entities.forEach(entity ->
-			nearbyEntities.add(new EntityData(entity.getId(), entity.getName().getString(), entity.isPlayer()))
-		);
-		return nearbyEntities.stream().toList();
+		
+		// Limit to maxNearbyEntities (prioritize players, then by distance)
+		List<Entity> sortedEntities = new ArrayList<>(entities);
+		sortedEntities.sort((a, b) -> {
+			// Prioritize players
+			if (a.isPlayer() && !b.isPlayer()) return -1;
+			if (!a.isPlayer() && b.isPlayer()) return 1;
+			// Then by distance
+			double distA = npcEntity.getBlockPos().getSquaredDistance(a.getBlockPos());
+			double distB = npcEntity.getBlockPos().getSquaredDistance(b.getBlockPos());
+			return Double.compare(distA, distB);
+		});
+		
+		sortedEntities.stream()
+			.limit(maxNearbyEntities)
+			.forEach(entity ->
+				nearbyEntities.add(new EntityData(entity.getId(), entity.getName().getString(), entity.isPlayer()))
+			);
+		return nearbyEntities;
 	}
 
 	public ChunkManager getChunkManager() {

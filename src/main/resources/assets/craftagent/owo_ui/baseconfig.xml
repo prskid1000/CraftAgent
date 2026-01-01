@@ -84,6 +84,62 @@
 
                                 <flow-layout direction="vertical">
                                     <children>
+                                        <label id="maxLocations-label">
+                                            <shadow>true</shadow>
+                                        </label>
+                                        <discrete-slider id="maxLocations" min="5" max="50">
+                                            <sizing>
+                                                <horizontal method="fill">25</horizontal>
+                                                <vertical method="fill">7</vertical>
+                                            </sizing>
+                                        </discrete-slider>
+                                    </children>
+                                </flow-layout>
+
+                                <flow-layout direction="vertical">
+                                    <children>
+                                        <label id="maxContacts-label">
+                                            <shadow>true</shadow>
+                                        </label>
+                                        <discrete-slider id="maxContacts" min="5" max="100">
+                                            <sizing>
+                                                <horizontal method="fill">25</horizontal>
+                                                <vertical method="fill">7</vertical>
+                                            </sizing>
+                                        </discrete-slider>
+                                    </children>
+                                </flow-layout>
+
+                                <flow-layout direction="vertical">
+                                    <children>
+                                        <label id="maxNearbyBlocks-label">
+                                            <shadow>true</shadow>
+                                        </label>
+                                        <discrete-slider id="maxNearbyBlocks" min="10" max="100">
+                                            <sizing>
+                                                <horizontal method="fill">25</horizontal>
+                                                <vertical method="fill">7</vertical>
+                                            </sizing>
+                                        </discrete-slider>
+                                    </children>
+                                </flow-layout>
+
+                                <flow-layout direction="vertical">
+                                    <children>
+                                        <label id="maxNearbyEntities-label">
+                                            <shadow>true</shadow>
+                                        </label>
+                                        <discrete-slider id="maxNearbyEntities" min="5" max="50">
+                                            <sizing>
+                                                <horizontal method="fill">25</horizontal>
+                                                <vertical method="fill">7</vertical>
+                                            </sizing>
+                                        </discrete-slider>
+                                    </children>
+                                </flow-layout>
+
+                                <flow-layout direction="vertical">
+                                    <children>
                                         <label id="verbose-label">
                                             <shadow>true</shadow>
                                         </label>

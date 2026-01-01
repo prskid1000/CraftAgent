@@ -33,9 +33,17 @@ public class CraftAgent implements ModInitializer {
         SqliteClient sqlite = new SqliteClient();
         RepositoryFactory repositoryFactory = new RepositoryFactory(sqlite);
 
-        ResourceProvider resourceProvider = new ResourceProvider(repositoryFactory.getConversationRepository());
+        ResourceProvider resourceProvider = new ResourceProvider(
+            repositoryFactory.getConversationRepository(),
+            repositoryFactory.getLocationMemoryRepository(),
+            repositoryFactory.getContactRepository()
+        );
 
-        NPCFactory npcFactory = new NPCFactory(configProvider);
+        NPCFactory npcFactory = new NPCFactory(
+            configProvider,
+            repositoryFactory.getLocationMemoryRepository(),
+            repositoryFactory.getContactRepository()
+        );
         NPCService npcService = new NPCService(npcFactory, configProvider, resourceProvider);
 
         PlayerAuthorizer authorizer = new PlayerAuthorizer();

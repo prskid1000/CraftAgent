@@ -30,6 +30,7 @@ public class StructuredInputFormatter {
             Map<String, Object> context = new HashMap<>();
             context.put("state", createStateMap(worldContext.state()));
             context.put("inventory", createInventoryMap(worldContext.inventory()));
+            // Data is already limited by ChunkManager and ContextProvider based on config
             context.put("nearbyBlocks", worldContext.nearbyBlocks().stream()
                     .map(block -> Map.of(
                             "type", block.type(),
@@ -49,6 +50,11 @@ public class StructuredInputFormatter {
                             "isPlayer", entity.isPlayer()
                     ))
                     .toList());
+            
+            // Add memory data if available
+            if (worldContext.memoryData() != null) {
+                context.put("memory", worldContext.memoryData());
+            }
 
             // Convert context to JSON string
             String contextJson = objectMapper.writeValueAsString(context);
@@ -63,8 +69,8 @@ public class StructuredInputFormatter {
                 === END CONTEXT ===
                 """, prompt, contextJson);
         } catch (Exception e) {
-            // Fallback to old format if JSON serialization fails
-            return PromptFormatter.format(prompt, worldContext);
+            // If JSON serialization fails, throw exception - no fallback
+            throw new RuntimeException("Failed to format structured input: " + e.getMessage(), e);
         }
     }
 

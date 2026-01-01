@@ -14,6 +14,10 @@ public class BaseConfig implements Configurable {
     private int contextVerticalScanRange = 8;
     private int chunkExpiryTime = 60;
     private int conversationHistoryLength = 5;
+    private int maxLocations = 10;
+    private int maxContacts = 20;
+    private int maxNearbyBlocks = 30;
+    private int maxNearbyEntities = 15;
     private boolean verbose = false;
 
     public int getLlmTimeout() {
@@ -64,6 +68,38 @@ public class BaseConfig implements Configurable {
         this.conversationHistoryLength = conversationHistoryLength;
     }
 
+    public int getMaxLocations() {
+        return maxLocations;
+    }
+
+    public void setMaxLocations(int maxLocations) {
+        this.maxLocations = maxLocations;
+    }
+
+    public int getMaxContacts() {
+        return maxContacts;
+    }
+
+    public void setMaxContacts(int maxContacts) {
+        this.maxContacts = maxContacts;
+    }
+
+    public int getMaxNearbyBlocks() {
+        return maxNearbyBlocks;
+    }
+
+    public void setMaxNearbyBlocks(int maxNearbyBlocks) {
+        this.maxNearbyBlocks = maxNearbyBlocks;
+    }
+
+    public int getMaxNearbyEntities() {
+        return maxNearbyEntities;
+    }
+
+    public void setMaxNearbyEntities(int maxNearbyEntities) {
+        this.maxNearbyEntities = maxNearbyEntities;
+    }
+
     @Override
     public String getConfigName() {
         return "base";
@@ -75,6 +111,10 @@ public class BaseConfig implements Configurable {
             Endec.INT.fieldOf("contextVerticalScanRange", BaseConfig::getContextVerticalScanRange),
             Endec.INT.fieldOf("chunkExpiryTime", BaseConfig::getChunkExpiryTime),
             Endec.INT.fieldOf("conversationHistoryLength", BaseConfig::getConversationHistoryLength),
+            Endec.INT.fieldOf("maxLocations", BaseConfig::getMaxLocations),
+            Endec.INT.fieldOf("maxContacts", BaseConfig::getMaxContacts),
+            Endec.INT.fieldOf("maxNearbyBlocks", BaseConfig::getMaxNearbyBlocks),
+            Endec.INT.fieldOf("maxNearbyEntities", BaseConfig::getMaxNearbyEntities),
             Endec.BOOLEAN.fieldOf("verbose", BaseConfig::isVerbose),
             BaseConfig::new
     );
@@ -87,6 +127,10 @@ public class BaseConfig implements Configurable {
                 ",contextVerticalScanRange=" + contextVerticalScanRange +
                 ",chunkExpiryTime=" + chunkExpiryTime +
                 ",conversationHistoryLength=" + conversationHistoryLength +
+                ",maxLocations=" + maxLocations +
+                ",maxContacts=" + maxContacts +
+                ",maxNearbyBlocks=" + maxNearbyBlocks +
+                ",maxNearbyEntities=" + maxNearbyEntities +
                 ",verbose=" + verbose +"}";
     }
 
@@ -95,5 +139,9 @@ public class BaseConfig implements Configurable {
     public static final String CONTEXT_VERTICAL_RANGE_KEY = "Vertical Scan Range";
     public static final String CHUNK_EXPIRY_TIME_KEY = "Chunk Expiry Time";
     public static final String CONVERSATION_HISTORY_LENGTH_KEY = "Conversation History Length";
+    public static final String MAX_LOCATIONS_KEY = "Max Locations";
+    public static final String MAX_CONTACTS_KEY = "Max Contacts";
+    public static final String MAX_NEARBY_BLOCKS_KEY = "Max Nearby Blocks";
+    public static final String MAX_NEARBY_ENTITIES_KEY = "Max Nearby Entities";
     public static final String VERBOSE_KEY = "Debug Mode";
 }

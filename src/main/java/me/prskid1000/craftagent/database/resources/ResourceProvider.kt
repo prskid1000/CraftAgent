@@ -1,6 +1,8 @@
 package me.prskid1000.craftagent.database.resources
 
+import me.prskid1000.craftagent.database.repositories.ContactRepository
 import me.prskid1000.craftagent.database.repositories.ConversationRepository
+import me.prskid1000.craftagent.database.repositories.LocationMemoryRepository
 import me.prskid1000.craftagent.history.Message
 import me.prskid1000.craftagent.model.database.Conversation
 import me.prskid1000.craftagent.util.LogUtil
@@ -13,7 +15,9 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class ResourceProvider(
-    val conversationRepository: ConversationRepository
+    val conversationRepository: ConversationRepository,
+    val locationRepository: LocationMemoryRepository? = null,
+    val contactRepository: ContactRepository? = null
 ) {
     private lateinit var executorService: ExecutorService
     val loadedConversations = hashMapOf<UUID, List<Conversation>>()

@@ -52,6 +52,18 @@ class ConversationHistory(
         }
     }
 
+    @Synchronized
+    fun updateSystemPrompt(newSystemPrompt: String) {
+        // Find and update the system message (should be at index 0)
+        val systemIndex = latestConversations.indexOfFirst { it.role == "system" }
+        if (systemIndex >= 0) {
+            latestConversations[systemIndex] = Message(newSystemPrompt, "system")
+        } else {
+            // If no system message exists, add it at the beginning
+            latestConversations.add(0, Message(newSystemPrompt, "system"))
+        }
+    }
+
     fun getLastMessage(): String {
         return latestConversations.last().message
     }

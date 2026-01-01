@@ -7,9 +7,13 @@ class RepositoryFactory(
     val sqliteClient: SqliteClient
 ) {
     val conversationRepository = ConversationRepository(sqliteClient)
+    val locationMemoryRepository = LocationMemoryRepository(sqliteClient)
+    val contactRepository = ContactRepository(sqliteClient)
 
     fun initRepositories() {
         sqliteClient.initDatabase(CraftAgent.MOD_ID)
         conversationRepository.init()
+        locationMemoryRepository.init()
+        contactRepository.init()
     }
 }

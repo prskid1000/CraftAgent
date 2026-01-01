@@ -11,7 +11,6 @@ import me.prskid1000.craftagent.history.ConversationHistory
 import me.prskid1000.craftagent.history.Message
 import me.prskid1000.craftagent.llm.LLMClient
 import me.prskid1000.craftagent.util.LogUtil
-import me.prskid1000.craftagent.util.PromptFormatter
 import me.prskid1000.craftagent.util.StructuredInputFormatter
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.CompletableFuture

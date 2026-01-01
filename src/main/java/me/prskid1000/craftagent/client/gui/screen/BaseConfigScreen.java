@@ -58,6 +58,30 @@ public class BaseConfigScreen extends ConfigScreen<BaseConfig> {
                 .onChanged()
                 .subscribe(value -> config.setConversationHistoryLength((int) Math.round(value)));
 
+        panel.childById(LabelComponent.class, "maxLocations-label").text(Text.of(BaseConfig.MAX_LOCATIONS_KEY));
+        panel.childById(DiscreteSliderComponent.class, "maxLocations")
+                .setFromDiscreteValue(config.getMaxLocations())
+                .onChanged()
+                .subscribe(value -> config.setMaxLocations((int) Math.round(value)));
+
+        panel.childById(LabelComponent.class, "maxContacts-label").text(Text.of(BaseConfig.MAX_CONTACTS_KEY));
+        panel.childById(DiscreteSliderComponent.class, "maxContacts")
+                .setFromDiscreteValue(config.getMaxContacts())
+                .onChanged()
+                .subscribe(value -> config.setMaxContacts((int) Math.round(value)));
+
+        panel.childById(LabelComponent.class, "maxNearbyBlocks-label").text(Text.of(BaseConfig.MAX_NEARBY_BLOCKS_KEY));
+        panel.childById(DiscreteSliderComponent.class, "maxNearbyBlocks")
+                .setFromDiscreteValue(config.getMaxNearbyBlocks())
+                .onChanged()
+                .subscribe(value -> config.setMaxNearbyBlocks((int) Math.round(value)));
+
+        panel.childById(LabelComponent.class, "maxNearbyEntities-label").text(Text.of(BaseConfig.MAX_NEARBY_ENTITIES_KEY));
+        panel.childById(DiscreteSliderComponent.class, "maxNearbyEntities")
+                .setFromDiscreteValue(config.getMaxNearbyEntities())
+                .onChanged()
+                .subscribe(value -> config.setMaxNearbyEntities((int) Math.round(value)));
+
         panel.childById(LabelComponent.class, "verbose-label").text(Text.of(BaseConfig.VERBOSE_KEY));
         panel.childById(CheckboxComponent.class, "verbose")
                 .checked(config.isVerbose())

@@ -1,6 +1,7 @@
 package me.prskid1000.craftagent.client.gui.screen;
 
 import io.wispforest.owo.ui.component.*;
+import io.wispforest.owo.ui.container.Containers;
 import io.wispforest.owo.ui.container.FlowLayout;
 
 import io.wispforest.owo.ui.core.Insets;
@@ -45,6 +46,7 @@ public class NPCConfigScreen extends ConfigScreen<NPCConfig> {
 
         drawLLMTypeDropDown(panel);
         drawLLMModelInput(panel);
+        drawGenderAndAge(panel);
 
         //draw without any dropdown click the fields of active llmType
         drawLlmInfo(panel);
@@ -84,12 +86,12 @@ public class NPCConfigScreen extends ConfigScreen<NPCConfig> {
             }
         }
         //system prompt
-        llmInfo.child(Components.label(Text.of(NPCConfig.LLM_CHARACTER)).shadow(true).margins(Insets.top(7)));
-        TextAreaComponent llmCharacter = Components.textArea(Sizing.fill(35), Sizing.fill(25));
-        llmCharacter.text(config.getLlmCharacter())
+        llmInfo.child(Components.label(Text.of(NPCConfig.CUSTOM_SYSTEM_PROMPT)).shadow(true).margins(Insets.top(7)));
+        TextAreaComponent customSystemPrompt = Components.textArea(Sizing.fill(35), Sizing.fill(40));
+        customSystemPrompt.text(config.getCustomSystemPrompt())
                 .onChanged()
-                .subscribe(config::setLlmCharacter);
-        llmInfo.child(llmCharacter);
+                .subscribe(config::setCustomSystemPrompt);
+        llmInfo.child(customSystemPrompt);
     }
 
     private void drawLLMTypeDropDown(FlowLayout panel) {
@@ -112,6 +114,66 @@ public class NPCConfigScreen extends ConfigScreen<NPCConfig> {
                         drawLlmInfo(panel);
                     });
         }
+    }
+
+    private void drawGenderAndAge(FlowLayout panel) {
+        // Gender and Age in horizontal layout
+        FlowLayout genderAgeContainer = Containers.horizontalFlow(Sizing.fill(35), Sizing.content());
+        
+        // Gender dropdown
+        FlowLayout genderLayout = Containers.verticalFlow(Sizing.fill(17), Sizing.content());
+        genderLayout.child(Components.label(Text.of(NPCConfig.GENDER)).shadow(true));
+        DropdownComponent genderDropdown = Components.dropdown(Sizing.fill(17));
+        
+        String currentGender = config.getGender();
+        if (currentGender == null || currentGender.isEmpty()) {
+            currentGender = "neutral";
+        }
+        
+        // Set current value as first button (default display)
+        genderDropdown.button(
+            Text.of(capitalize(currentGender)),
+            button -> {}
+        );
+        
+        // Add all options
+        genderDropdown.button(Text.of("Male"), button -> {
+            config.setGender("male");
+        });
+        genderDropdown.button(Text.of("Female"), button -> {
+            config.setGender("female");
+        });
+        genderDropdown.button(Text.of("Neutral"), button -> {
+            config.setGender("neutral");
+        });
+        
+        genderLayout.child(genderDropdown);
+        genderAgeContainer.child(genderLayout);
+
+        // Age input
+        FlowLayout ageLayout = Containers.verticalFlow(Sizing.fill(17), Sizing.content());
+        ageLayout.child(Components.label(Text.of(NPCConfig.AGE)).shadow(true));
+        TextAreaComponent ageInput = Components.textArea(Sizing.fill(17), Sizing.fill(7))
+                .text(String.valueOf(config.getAge()));
+        ageInput.onChanged().subscribe(value -> {
+            try {
+                int age = Integer.parseInt(value);
+                config.setAge(age);
+            } catch (NumberFormatException e) {
+                // Ignore invalid input
+            }
+        });
+        ageLayout.child(ageInput);
+        genderAgeContainer.child(ageLayout);
+        
+        panel.child(genderAgeContainer);
+    }
+    
+    private String capitalize(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        return str.substring(0, 1).toUpperCase() + str.substring(1);
     }
 
     private void drawLLMModelInput(FlowLayout panel) {

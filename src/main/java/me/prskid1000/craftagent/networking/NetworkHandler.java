@@ -73,7 +73,10 @@ public class NetworkHandler {
     private void registerUpdateNpcConfig() {
         CHANNEL.registerServerbound(UpdateNpcConfigPacket.class, (configPacket, serverAccess) -> {
             if (authorizer.isAuthorized(serverAccess)) {
-                configProvider.updateNpcConfig(configPacket.npcConfig());
+                NPCConfig updatedConfig = configPacket.npcConfig();
+                configProvider.updateNpcConfig(updatedConfig);
+                // Update system prompt for active NPC if it exists
+                npcService.updateNpcSystemPrompt(updatedConfig.getUuid());
                 LogUtil.info("Updated npc config to: " + configPacket);
             }
         });

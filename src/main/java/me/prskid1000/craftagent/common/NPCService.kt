@@ -6,6 +6,7 @@ import me.prskid1000.craftagent.callback.NPCEvents
 import me.prskid1000.craftagent.config.ConfigProvider
 import me.prskid1000.craftagent.config.NPCConfig
 import me.prskid1000.craftagent.constant.Instructions
+import me.prskid1000.craftagent.coordination.CoordinationService
 import me.prskid1000.craftagent.database.resources.ResourceProvider
 import me.prskid1000.craftagent.exception.NPCCreationException
 import me.prskid1000.craftagent.model.NPC
@@ -25,9 +26,7 @@ class NPCService(
     private val configProvider: ConfigProvider,
     private val resourceProvider: ResourceProvider
 ) {
-    companion object {
-        private const val MAX_NUMBER_OF_NPC = 10
-    }
+    val coordinationService = CoordinationService(this)
 
     private lateinit var executorService: ExecutorService
     val uuidToNpc = ConcurrentHashMap<UUID, NPC>()
@@ -44,13 +43,19 @@ class NPCService(
         if (!deathEventRegistered) {
             NPCEvents.ON_DEATH.register { entity ->
                 val configUuid = entityUuidToConfigUuid[entity.uuid]
+                val deadNpc = uuidToNpc.values.firstOrNull { it.entity.uuid == entity.uuid }
+                val deadNpcName = deadNpc?.config?.npcName ?: "Unknown"
+                val deadUuid = configUuid ?: deadNpc?.config?.uuid
+                
+                // Notify all NPCs about the death
+                if (deadUuid != null) {
+                    coordinationService.notifyNpcDeath(deadNpcName, deadUuid)
+                }
+                
                 if (configUuid != null) {
                     removeNpc(configUuid, EntityVer.getWorld(entity).server!!.playerManager)
-                } else {
-                    val npc = uuidToNpc.values.firstOrNull { it.entity.uuid == entity.uuid }
-                    if (npc != null) {
-                        removeNpc(npc.config.uuid, EntityVer.getWorld(entity).server!!.playerManager)
-                    }
+                } else if (deadNpc != null) {
+                    removeNpc(deadNpc.config.uuid, EntityVer.getWorld(entity).server!!.playerManager)
                 }
             }
             deathEventRegistered = true
@@ -68,7 +73,6 @@ class NPCService(
     fun createNpc(newConfig: NPCConfig, server: MinecraftServer, spawnPos: BlockPos?, owner: PlayerEntity?) {
         CompletableFuture.runAsync({
             val name = newConfig.npcName
-            checkLimit()
             checkNpcName(name)
 
             val config = updateConfig(newConfig)
@@ -92,13 +96,21 @@ class NPCService(
                 server.execute {
                     try {
                         config.uuid = npcEntity.uuid
+                        // Initialize age update tick if not set
+                        if (config.lastAgeUpdateTick == 0L) {
+                            config.setLastAgeUpdateTick(server.overworld.time)
+                        }
                         val npc = factory.createNpc(npcEntity, config, resourceProvider.loadedConversations[config.uuid])
                         npc.controller.owner = owner
                         uuidToNpc[config.uuid] = npc
                         entityUuidToConfigUuid[npcEntity.uuid] = config.uuid
 
                         LogUtil.infoInChat("Added NPC with name: $name")
-                        npc.eventHandler.onEvent(Instructions.INITIAL_PROMPT)
+                        
+                        // Notify all other NPCs about the new NPC
+                        coordinationService.notifyNpcAdded(npc)
+                        
+                        npc.eventHandler.onEvent(Instructions.getInitialPromptWithContext(config.npcName, config.age, config.gender))
                     } catch (e: Exception) {
                         LogUtil.error("Error creating NPC: $name", e)
                         LogUtil.errorInChat("Failed to initialize NPC: ${e.message}")
@@ -136,9 +148,14 @@ class NPCService(
                     NPCSpawner.remove(entityUuid, playerManager)
 
                     val config = configProvider.getNpcConfig(uuid)
+                    val npcName = if (config.isPresent) config.get().npcName else "Unknown"
+                    
+                    // Notify all other NPCs about the removal
+                    coordinationService.notifyNpcRemoved(npcName, uuid)
+                    
                     if (config.isPresent) {
                         config.get().isActive = false
-                        LogUtil.infoInChat("Removed NPC with name ${config.get().npcName}")
+                        LogUtil.infoInChat("Removed NPC with name $npcName")
                     } else {
                         LogUtil.infoInChat("Removed NPC with uuid $uuid")
                     }
@@ -162,6 +179,7 @@ class NPCService(
                     npcToDelete.llmClient.stopService()
                     npcToDelete.eventHandler.stopService()
                     npcToDelete.contextProvider.chunkManager.stopService()
+                    npcToDelete.contextProvider.memoryManager?.cleanup()
                     
                     resourceProvider.loadedConversations.remove(uuid)
                     uuidToNpc.remove(uuid)
@@ -179,6 +197,9 @@ class NPCService(
             CompletableFuture.runAsync({
                 try {
                     resourceProvider.conversationRepository.deleteByUuid(uuid)
+                    // Delete memory data
+                    resourceProvider.locationRepository?.deleteByUuid(uuid)
+                    resourceProvider.contactRepository?.deleteByNpcUuid(uuid)
                     configProvider.deleteNpcConfig(uuid)
                 } catch (e: Exception) {
                     LogUtil.error("Error deleting NPC data from database: $uuid", e)
@@ -190,6 +211,9 @@ class NPCService(
                 try {
                     resourceProvider.loadedConversations.remove(uuid)
                     resourceProvider.conversationRepository.deleteByUuid(uuid)
+                    // Delete memory data
+                    resourceProvider.locationRepository?.deleteByUuid(uuid)
+                    resourceProvider.contactRepository?.deleteByNpcUuid(uuid)
                     configProvider.deleteNpcConfig(uuid)
                 } catch (e: Exception) {
                     LogUtil.error("Error cleaning up NPC data: $uuid", e)
@@ -223,10 +247,38 @@ class NPCService(
         }
     }
 
-    private fun checkLimit() {
-        if (uuidToNpc.size == MAX_NUMBER_OF_NPC) {
-            throw NPCCreationException("Currently there are no more than" + MAX_NUMBER_OF_NPC +" parallel running " +
-                    "NPCs supported!")
+    /**
+     * Updates the system prompt for an active NPC dynamically at runtime.
+     * Uses custom system prompt if provided, otherwise rebuilds from config.
+     */
+    fun updateNpcSystemPrompt(npcUuid: UUID) {
+        val npc = uuidToNpc[npcUuid]
+        if (npc != null) {
+            val config = npc.config
+            // Always use default prompt, append custom prompt if provided
+            val newSystemPrompt = Instructions.getLlmSystemPrompt(
+                config.npcName,
+                config.age,
+                config.gender,
+                npc.controller.commandExecutor.allCommands(),
+                config.customSystemPrompt,
+                config.llmType
+            )
+            // Update system prompt in conversation history
+            npc.history.updateSystemPrompt(newSystemPrompt)
+            LogUtil.info("Updated system prompt for NPC: ${config.npcName}")
+        }
+    }
+
+    /**
+     * Updates the system prompt for an NPC with a custom prompt string.
+     * This allows runtime modification of the system prompt.
+     */
+    fun updateNpcSystemPrompt(npcUuid: UUID, customSystemPrompt: String) {
+        val npc = uuidToNpc[npcUuid]
+        if (npc != null) {
+            npc.history.updateSystemPrompt(customSystemPrompt)
+            LogUtil.info("Updated system prompt for NPC: ${npc.config.npcName} with custom prompt")
         }
     }
 

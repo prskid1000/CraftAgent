@@ -6,6 +6,8 @@ import me.prskid1000.craftagent.config.ConfigProvider
 import me.prskid1000.craftagent.config.NPCConfig
 import me.prskid1000.craftagent.constant.Instructions
 import me.prskid1000.craftagent.context.ContextProvider
+import me.prskid1000.craftagent.database.repositories.ContactRepository
+import me.prskid1000.craftagent.database.repositories.LocationMemoryRepository
 import me.prskid1000.craftagent.event.NPCEventHandler
 import me.prskid1000.craftagent.exception.NPCCreationException
 import me.prskid1000.craftagent.history.ConversationHistory
@@ -14,24 +16,36 @@ import me.prskid1000.craftagent.llm.LLMClient
 import me.prskid1000.craftagent.llm.LLMType
 import me.prskid1000.craftagent.llm.ollama.OllamaClient
 import me.prskid1000.craftagent.llm.lmstudio.LMStudioClient
+import me.prskid1000.craftagent.memory.MemoryManager
 import me.prskid1000.craftagent.model.NPC
 import me.prskid1000.craftagent.model.database.Conversation
 import net.minecraft.server.network.ServerPlayerEntity
 
 class NPCFactory(
     private val configProvider: ConfigProvider,
+    private val locationRepository: LocationMemoryRepository,
+    private val contactRepository: ContactRepository
 ) {
      fun createNpc(npcEntity: ServerPlayerEntity, config: NPCConfig, loadedConversation: List<Conversation>?): NPC {
         val baseConfig = configProvider.baseConfig
         val contextProvider = ContextProvider(npcEntity, baseConfig)
+        
+        // Create memory manager
+        val memoryManager = MemoryManager(locationRepository, contactRepository, config.uuid, baseConfig)
+        contextProvider.memoryManager = memoryManager
 
         val llmClient = initLLMClient(config)
 
         val controller = initController(npcEntity)
-        val defaultPrompt = Instructions.getLlmSystemPrompt(config.npcName,
-            config.llmCharacter,
+        // Always use default prompt, append custom prompt if provided
+        val defaultPrompt = Instructions.getLlmSystemPrompt(
+            config.npcName,
+            config.age,
+            config.gender,
             controller.commandExecutor.allCommands(),
-            config.llmType)
+            config.customSystemPrompt,
+            config.llmType
+        )
 
         val messages = loadedConversation
             ?.map { Message(it.message, it.role) }

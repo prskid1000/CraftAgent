@@ -13,7 +13,8 @@ class EventListenerRegisterer(
      */
     fun register() {
         listOf<IEventListener>(
-            ChatMessageListener(npcService)
+            ChatMessageListener(npcService),
+            AgeUpdateListener(npcService)
         ).forEach { listener -> listener.register() }
     }
 }

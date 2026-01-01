@@ -20,7 +20,7 @@ import static me.prskid1000.craftagent.util.MCDataUtil.getMiningLevel;
 import static me.prskid1000.craftagent.util.MCDataUtil.getToolNeeded;
 
 public class ChunkManager {
-
+    private final int maxNearbyBlocks;
     private final int verticalScanRange;
     private final int chunkRadius;
 
@@ -31,12 +31,16 @@ public class ChunkManager {
     private final List<BlockData> nearbyBlocks = new ArrayList<>();
     
     public List<BlockData> getNearbyBlocks() {
-        return nearbyBlocks;
+        // Return limited list (keep most recent/nearest)
+        return nearbyBlocks.size() > maxNearbyBlocks 
+            ? nearbyBlocks.subList(0, maxNearbyBlocks)
+            : nearbyBlocks;
     }
 
 
     public ChunkManager(ServerPlayerEntity npcEntity, BaseConfig config) {
         this.npcEntity = npcEntity;
+        this.maxNearbyBlocks = config.getMaxNearbyBlocks();
         this.verticalScanRange = config.getContextVerticalScanRange();
         this.chunkRadius = config.getContextChunkRadius();
         this.currentLoadedBlocks = new ArrayList<>();
@@ -83,7 +87,21 @@ public class ChunkManager {
                 nearestBlocks.put(blockType, block);
             }
         }
-        this.nearbyBlocks.addAll(nearestBlocks.values());
+        
+        // Clear and add limited blocks (keep only nearest of each type, limit total)
+        this.nearbyBlocks.clear();
+        List<BlockData> sortedBlocks = new ArrayList<>(nearestBlocks.values());
+        sortedBlocks.sort((a, b) -> {
+            double distA = npcEntity.getBlockPos().getSquaredDistance(a.position());
+            double distB = npcEntity.getBlockPos().getSquaredDistance(b.position());
+            return Double.compare(distA, distB);
+        });
+        
+        // Take only the maxNearbyBlocks nearest blocks
+        int limit = Math.min(sortedBlocks.size(), maxNearbyBlocks);
+        for (int i = 0; i < limit; i++) {
+            this.nearbyBlocks.add(sortedBlocks.get(i));
+        }
     }
 
     /**

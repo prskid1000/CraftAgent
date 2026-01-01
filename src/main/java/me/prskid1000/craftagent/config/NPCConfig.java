@@ -13,7 +13,10 @@ public class NPCConfig implements Configurable {
 	private String npcName = "Steve";
 	private UUID uuid = UUID.randomUUID();
 	private boolean isActive = true;
-	private String llmCharacter = Instructions.DEFAULT_CHARACTER_TRAITS;
+	private String customSystemPrompt = ""; // If empty, uses default system prompt
+	private String gender = "neutral"; // "male", "female", "neutral"
+	private int age = 20; // Age in years
+	private long lastAgeUpdateTick = 0; // Last server tick when age was updated
 	private LLMType llmType = LLMType.OLLAMA;
 	private String ollamaUrl = "http://localhost:11434";
     private String llmModel = "nvidia_nemotron-3-nano-30b-a3b";
@@ -30,7 +33,10 @@ public class NPCConfig implements Configurable {
 		String npcName,
 		String uuid,
 		boolean isActive,
-		String llmCharacter,
+		String customSystemPrompt,
+		String gender,
+		int age,
+		long lastAgeUpdateTick,
 		LLMType llmType,
         String llmModel,
 		String ollamaUrl,
@@ -40,7 +46,10 @@ public class NPCConfig implements Configurable {
 		this.npcName = npcName;
 		this.uuid = UUID.fromString(uuid);
 		this.isActive = isActive;
-		this.llmCharacter = llmCharacter;
+		this.customSystemPrompt = customSystemPrompt != null ? customSystemPrompt : "";
+		this.gender = gender != null ? gender : "neutral";
+		this.age = age;
+		this.lastAgeUpdateTick = lastAgeUpdateTick;
 		this.llmType = llmType;
         this.llmModel = llmModel;
 		this.ollamaUrl = ollamaUrl;
@@ -61,10 +70,6 @@ public class NPCConfig implements Configurable {
 			return this;
 		}
 
-		public Builder llmDefaultPrompt(String llmDefaultPrompt) {
-			npcConfig.setLlmCharacter(llmDefaultPrompt);
-			return this;
-		}
 
 		public Builder llmType(LLMType llmType) {
 			npcConfig.setLlmType(llmType);
@@ -94,8 +99,36 @@ public class NPCConfig implements Configurable {
 		return isActive;
 	}
 
-	public String getLlmCharacter() {
-		return llmCharacter;
+	public String getCustomSystemPrompt() {
+		return customSystemPrompt;
+	}
+
+	public void setCustomSystemPrompt(String customSystemPrompt) {
+		this.customSystemPrompt = customSystemPrompt != null ? customSystemPrompt : "";
+	}
+
+	public String getGender() {
+		return gender;
+	}
+
+	public void setGender(String gender) {
+		this.gender = gender != null ? gender : "neutral";
+	}
+
+	public int getAge() {
+		return age;
+	}
+
+	public void setAge(int age) {
+		this.age = Math.max(0, age); // Ensure age is non-negative
+	}
+
+	public long getLastAgeUpdateTick() {
+		return lastAgeUpdateTick;
+	}
+
+	public void setLastAgeUpdateTick(long lastAgeUpdateTick) {
+		this.lastAgeUpdateTick = lastAgeUpdateTick;
 	}
 
 	public LLMType getLlmType() {
@@ -121,10 +154,6 @@ public class NPCConfig implements Configurable {
 
 	public void setLmStudioUrl(String lmStudioUrl) {
 		this.lmStudioUrl = lmStudioUrl;
-	}
-
-	public void setLlmCharacter(String llmCharacter) {
-		this.llmCharacter = llmCharacter;
 	}
 
 	public void setLlmType(LLMType llmType) {
@@ -169,7 +198,10 @@ public class NPCConfig implements Configurable {
 			Endec.STRING.fieldOf("npcName", NPCConfig::getNpcName),
 			Endec.STRING.fieldOf("uuid", config -> config.getUuid().toString()),
 			Endec.BOOLEAN.fieldOf("isActive", NPCConfig::isActive),
-			Endec.STRING.fieldOf("llmDefaultPrompt", NPCConfig::getLlmCharacter),
+			Endec.STRING.fieldOf("customSystemPrompt", NPCConfig::getCustomSystemPrompt),
+			Endec.STRING.fieldOf("gender", NPCConfig::getGender),
+			Endec.INT.fieldOf("age", NPCConfig::getAge),
+			Endec.LONG.fieldOf("lastAgeUpdateTick", NPCConfig::getLastAgeUpdateTick),
 			Endec.forEnum(LLMType.class).fieldOf("llmType", NPCConfig::getLlmType),
 			Endec.STRING.fieldOf("llmModel", NPCConfig::getLlmModel),
 			Endec.STRING.fieldOf("ollamaUrl", NPCConfig::getOllamaUrl),
@@ -183,7 +215,10 @@ public class NPCConfig implements Configurable {
                 config.npcName,
                 config.uuid.toString(),
                 config.isActive,
-                config.llmCharacter,
+                config.customSystemPrompt,
+                config.gender,
+                config.age,
+                config.lastAgeUpdateTick,
                 config.llmType,
                 config.llmModel,
                 config.ollamaUrl,
@@ -198,14 +233,15 @@ public class NPCConfig implements Configurable {
 				",uuid=" + uuid +
 				",isActive=" + isActive +
 				",llmType=" + llmType +
-				",ollamaUrl=" + ollamaUrl +
-				",llmCharacter=" + llmCharacter + "}";
+				",ollamaUrl=" + ollamaUrl + "}";
 	}
 
 	//name for fields for npc config screen
 	public static final String NPC_NAME = "Name of the NPC";
 	public static final String EDIT_NPC = "Edit '%s'";
-	public static final String LLM_CHARACTER = "Characteristics";
+	public static final String CUSTOM_SYSTEM_PROMPT = "Additional System Prompt (Optional - appended to default prompt)";
+	public static final String GENDER = "Gender";
+	public static final String AGE = "Age (years)";
 	public static final String LLM_TYPE = "Type";
     public static final String LLM_MODEL = "LLM Model";
 	public static final String OLLAMA_URL = "Ollama URL";
