@@ -75,7 +75,7 @@ class NPCEventHandler(
     override fun processLLM(): Boolean {
         // Double-check queue is empty (scheduler also checks, but be safe)
         if (!executorService.queue.isEmpty()) {
-            LogUtil.debug("processLLM: Queue not empty, skipping for NPC ${config.npcName}")
+            LogUtil.debugInChat("processLLM: Queue not empty, skipping for NPC ${config.npcName}")
             return false
         }
         
@@ -93,7 +93,7 @@ class NPCEventHandler(
                 
                 // If there's a last user message, replace it with formatted version that includes context
                 if (messagesForLLM.isNotEmpty() && messagesForLLM.last().role == "user") {
-                    val lastUserMessage = messagesForLLM.last().content
+                    val lastUserMessage = messagesForLLM.last().message
                     val formattedPrompt: String = StructuredInputFormatter.formatStructured(lastUserMessage, contextProvider.buildContext())
                     messagesForLLM[messagesForLLM.size - 1] = Message(formattedPrompt, "user")
                 } else {
@@ -173,7 +173,7 @@ class NPCEventHandler(
                 if (command != null && command.isNotEmpty() && command != "idle") {
                     val succeeded = execute(command)
                     if (!succeeded) {
-                        return@supplyAsync false
+                        return@runAsync
                     }
                 }
                 

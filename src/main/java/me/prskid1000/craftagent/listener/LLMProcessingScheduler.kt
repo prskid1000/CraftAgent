@@ -62,7 +62,7 @@ class LLMProcessingScheduler(
                 if (npc != null && npc.eventHandler.queueIsEmpty()) {
                     // Processing completed, clear flag
                     currentlyProcessing.remove(uuid)
-                    LogUtil.debug("Cleared processing flag for NPC: ${npc.config.npcName}")
+                    LogUtil.debugInChat("Cleared processing flag for NPC: ${npc.config.npcName}")
                 }
             }
         }
@@ -75,12 +75,13 @@ class LLMProcessingScheduler(
         var attempts = 0
         val maxAttempts = circularQueue.size // Prevent infinite loop
 
-        while (!processed && attempts < maxAttempts) {
+        processLoop@ while (!processed && attempts < maxAttempts) {
             val npcUuid = circularQueue.removeFirst()
-            val npc = npcService.uuidToNpc[npcUuid] ?: run {
+            val npc = npcService.uuidToNpc[npcUuid]
+            if (npc == null) {
                 // NPC was removed, skip
                 attempts++
-                continue
+                continue@processLoop
             }
 
             // Check minimum interval Y
@@ -91,7 +92,7 @@ class LLMProcessingScheduler(
                 // Min interval not met, move to end
                 circularQueue.addLast(npcUuid)
                 attempts++
-                continue
+                continue@processLoop
             }
 
             // Check if NPC is already processing
@@ -99,7 +100,7 @@ class LLMProcessingScheduler(
                 // Already processing, move to end
                 circularQueue.addLast(npcUuid)
                 attempts++
-                continue
+                continue@processLoop
             }
 
             // Check if NPC queue is empty (not already processing)
@@ -107,7 +108,7 @@ class LLMProcessingScheduler(
                 // Already processing, move to end
                 circularQueue.addLast(npcUuid)
                 attempts++
-                continue
+                continue@processLoop
             }
 
             // Conditions met, process NPC
@@ -120,7 +121,7 @@ class LLMProcessingScheduler(
                     lastSuccessfulTrigger[npcUuid] = currentTime
                     LogUtil.info("Successfully triggered LLM processing for NPC: ${npc.config.npcName}")
                 } else {
-                    LogUtil.debug("LLM processing returned false for NPC: ${npc.config.npcName}")
+                    LogUtil.debugInChat("LLM processing returned false for NPC: ${npc.config.npcName}")
                     // If failed, clear processing flag immediately
                     currentlyProcessing.remove(npcUuid)
                 }
@@ -138,7 +139,7 @@ class LLMProcessingScheduler(
         }
 
         if (!processed && attempts >= maxAttempts) {
-            LogUtil.debug("Could not process any NPC in this cycle (all skipped)")
+            LogUtil.debugInChat("Could not process any NPC in this cycle (all skipped)")
         }
     }
 }
