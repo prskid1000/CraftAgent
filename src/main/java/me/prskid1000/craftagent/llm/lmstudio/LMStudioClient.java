@@ -1,14 +1,10 @@
 package me.prskid1000.craftagent.llm.lmstudio;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.sashirestela.openai.domain.chat.ChatMessage;
-import io.github.sashirestela.openai.domain.chat.ChatRequest;
 import me.prskid1000.craftagent.exception.LLMServiceException;
 import me.prskid1000.craftagent.util.LogUtil;
 import me.prskid1000.craftagent.history.Message;
-import me.prskid1000.craftagent.history.MessageConverter;
 import me.prskid1000.craftagent.llm.LLMClient;
-import me.prskid1000.craftagent.llm.StructuredOutputSchema;
 import me.prskid1000.craftagent.llm.ToolCallResponse;
 import me.prskid1000.craftagent.llm.ToolDefinitions;
 
@@ -90,37 +86,44 @@ public class LMStudioClient implements LLMClient {
 	@Override
 	public ToolCallResponse chatWithTools(List<Message> messages) {
 		try {
-			ChatRequest chatRequest = ChatRequest.builder()
-					.model(model)
-					.messages(messages.stream()
-							.map(MessageConverter::toChatMessage)
-							.toList())
-					.build();
-
-			// Serialize the request to JSON
-			String requestBodyJson = objectMapper.writeValueAsString(chatRequest);
+			// Convert messages to OpenAI-compatible format (same as Ollama format)
+			List<Map<String, String>> openaiMessages = new ArrayList<>();
+			for (Message msg : messages) {
+				Map<String, String> openaiMsg = new HashMap<>();
+				openaiMsg.put("role", msg.getRole());
+				openaiMsg.put("content", msg.getMessage());
+				openaiMessages.add(openaiMsg);
+			}
 			
-			// Parse to Map to add tools and response_format for hybrid approach
-			Map<String, Object> requestMap = objectMapper.readValue(requestBodyJson, Map.class);
+			// Build request body manually (like OllamaClient)
+			Map<String, Object> requestBody = new HashMap<>();
+			requestBody.put("model", model);
+			requestBody.put("messages", openaiMessages);
+			requestBody.put("stream", false);
 			// Add tools for command execution (actions)
-			requestMap.put("tools", ToolDefinitions.getTools());
+			requestBody.put("tools", ToolDefinitions.getTools());
 			// Add response_format for message output (structured output for simple data)
-			requestMap.put("response_format", Map.of("type", "json_object"));
-			// Set temperature to 0 for deterministic outputs
-			requestMap.put("temperature", 0);
+			// Use json_schema type (not json_object) - LM Studio only accepts "json_schema" or "text"
+			Map<String, Object> responseFormat = new HashMap<>();
+			responseFormat.put("type", "json_schema");
+			Map<String, Object> jsonSchema = new HashMap<>();
+			jsonSchema.put("name", "message_schema");
+			jsonSchema.put("schema", ToolDefinitions.getMessageSchema());
+			jsonSchema.put("strict", true);
+			responseFormat.put("json_schema", jsonSchema);
+			requestBody.put("response_format", responseFormat);
 			
-			// Re-serialize with tools and response_format
-			String requestBody = objectMapper.writeValueAsString(requestMap);
+			String requestBodyJson = objectMapper.writeValueAsString(requestBody);
 
 			// Log request
-			LogUtil.info("LLM Request (LM Studio): " + requestBody);
+			LogUtil.info("LLM Request (LM Studio): " + requestBodyJson);
 			LogUtil.debugInChat("LLM Request sent to LM Studio");
 
 			// Create HTTP request
 			HttpRequest request = HttpRequest.newBuilder()
 					.uri(URI.create(baseUrl + "/chat/completions"))
 					.header("Content-Type", "application/json")
-					.POST(HttpRequest.BodyPublishers.ofString(requestBody))
+					.POST(HttpRequest.BodyPublishers.ofString(requestBodyJson))
 					.timeout(Duration.ofSeconds(timeout))
 					.build();
 
