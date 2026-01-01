@@ -13,6 +13,7 @@ import me.prskid1000.craftagent.history.ConversationHistory
 import me.prskid1000.craftagent.history.Message
 import me.prskid1000.craftagent.llm.LLMClient
 import me.prskid1000.craftagent.model.database.Message as DatabaseMessage
+import me.prskid1000.craftagent.model.database.SharebookPage
 import me.prskid1000.craftagent.util.LogUtil
 import me.prskid1000.craftagent.util.StructuredInputFormatter
 import java.util.UUID
@@ -458,7 +459,7 @@ class NPCEventHandler(
         val pageTitle = args["pageTitle"]?.toString() ?: return
         val content = args["content"]?.toString() ?: return
         
-        val page = me.prskid1000.craftagent.model.database.SharebookPage(
+        val page = SharebookPage(
             pageTitle = pageTitle,
             content = content,
             authorUuid = config.uuid.toString(),

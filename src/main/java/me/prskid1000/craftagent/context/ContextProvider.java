@@ -113,7 +113,7 @@ public class ContextProvider {
 				msgMap.put("subject", msg.getSubject());
 				msgMap.put("content", msg.getContent());
 				msgMap.put("timestamp", msg.getTimestamp());
-				msgMap.put("read", msg.isRead());
+				msgMap.put("read", msg.getRead());
 				messages.add(msgMap);
 			});
 			memory.put("mail", messages);

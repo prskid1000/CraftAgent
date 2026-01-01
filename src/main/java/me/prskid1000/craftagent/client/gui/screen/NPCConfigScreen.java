@@ -193,7 +193,7 @@ public class NPCConfigScreen extends ConfigScreen<NPCConfig> {
             catch (NumberFormatException ignored) {}
         });
 
-        if (isEdit) ageInput.active(false);
+        // Note: TextAreaComponent doesn't have active() method, but changes are already blocked by early return in onChanged
         ageRow.child(ageInput);
     }
 }
