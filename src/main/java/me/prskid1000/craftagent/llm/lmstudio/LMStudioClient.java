@@ -23,8 +23,8 @@ public class LMStudioClient implements LLMClient {
 
 	private final String model;
 	private final String baseUrl;
-	private final int timeout;
-	private final HttpClient httpClient;
+	private volatile int timeout;
+	private volatile HttpClient httpClient;
 	private final ObjectMapper objectMapper;
 
 	/**
@@ -39,11 +39,24 @@ public class LMStudioClient implements LLMClient {
 		this.model = model;
 		this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
 		this.timeout = timeout;
-		this.httpClient = HttpClient.newBuilder()
-				.version(HttpClient.Version.HTTP_1_1)
-				.connectTimeout(Duration.ofSeconds(timeout))
-				.build();
+		this.httpClient = createHttpClient(timeout);
 		this.objectMapper = new ObjectMapper();
+	}
+	
+	/**
+	 * Updates the timeout value and recreates the HTTP client in real-time.
+	 * This allows configuration changes to take effect without restarting.
+	 */
+	public void updateTimeout(int newTimeout) {
+		this.timeout = newTimeout;
+		this.httpClient = createHttpClient(newTimeout);
+	}
+	
+	private HttpClient createHttpClient(int timeoutSeconds) {
+		return HttpClient.newBuilder()
+				.version(HttpClient.Version.HTTP_1_1)
+				.connectTimeout(Duration.ofSeconds(timeoutSeconds))
+				.build();
 	}
 
 	@Override

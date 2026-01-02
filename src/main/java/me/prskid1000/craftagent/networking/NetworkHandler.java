@@ -64,6 +64,8 @@ public class NetworkHandler {
         CHANNEL.registerServerbound(UpdateBaseConfigPacket.class, (configPacket, serverAccess) -> {
             if (authorizer.isAuthorized(serverAccess)) {
                 configProvider.setBaseConfig(configPacket.baseConfig());
+                // Update all active NPCs with new base config values in real-time
+                npcService.updateAllNpcsWithBaseConfig(configPacket.baseConfig());
                 LogUtil.info("Updated base config to: " + configPacket);
             }
         });

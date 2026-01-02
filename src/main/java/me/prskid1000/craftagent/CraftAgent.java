@@ -12,6 +12,7 @@ import me.prskid1000.craftagent.database.resources.ResourceProvider;
 import me.prskid1000.craftagent.listener.EventListenerRegisterer;
 import me.prskid1000.craftagent.networking.NetworkHandler;
 import me.prskid1000.craftagent.util.LogUtil;
+import me.prskid1000.craftagent.web.WebServer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -26,6 +27,7 @@ public class CraftAgent implements ModInitializer {
 	public static final String MOD_ID = "craftagent";
 	private boolean isFirstPlayerJoins = true;
 	private EventListenerRegisterer eventListenerRegisterer;
+	private WebServer webServer;
 
 	@Override
 	public void onInitialize() {
@@ -67,6 +69,10 @@ public class CraftAgent implements ModInitializer {
             repositoryFactory.initRepositories();
             resourceProvider.loadResources(configProvider.getUuidsOfNpcs());
             npcService.init(server);
+            
+            // Start web server for NPC dashboard
+            webServer = new WebServer(npcService, configProvider);
+            webServer.start();
         });
 
         onStop(npcService, configProvider, sqlite, resourceProvider);
@@ -79,6 +85,9 @@ public class CraftAgent implements ModInitializer {
         ResourceProvider resourceProvider
 	) {
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            if (webServer != null) {
+                webServer.stop();
+            }
             npcService.shutdownNPCs(server);
             if (eventListenerRegisterer != null) {
                 eventListenerRegisterer.shutdown();

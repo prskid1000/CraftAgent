@@ -19,13 +19,14 @@ import static me.prskid1000.craftagent.util.MCDataUtil.getMiningLevel;
 import static me.prskid1000.craftagent.util.MCDataUtil.getToolNeeded;
 
 public class ChunkManager {
-    private final int maxNearbyBlocks;
-    private final int verticalScanRange;
-    private final int chunkRadius;
+    private volatile int maxNearbyBlocks;
+    private volatile int verticalScanRange;
+    private volatile int chunkRadius;
 
     private final ServerPlayerEntity npcEntity;
     private final ScheduledExecutorService threadPool;
     private final List<BlockData> currentLoadedBlocks;
+    private java.util.concurrent.ScheduledFuture<?> refreshTask;
 
     private final List<BlockData> nearbyBlocks = new ArrayList<>();
     
@@ -46,9 +47,27 @@ public class ChunkManager {
         this.threadPool = Executors.newSingleThreadScheduledExecutor();
         scheduleRefreshBlocks(config.getChunkExpiryTime());
     }
+    
+    /**
+     * Updates configuration values in real-time.
+     * This allows configuration changes to take effect without restarting.
+     */
+    public synchronized void updateConfig(int newChunkRadius, int newVerticalScanRange, 
+                                         int newMaxNearbyBlocks, int newChunkExpiryTime) {
+        this.chunkRadius = newChunkRadius;
+        this.verticalScanRange = newVerticalScanRange;
+        this.maxNearbyBlocks = newMaxNearbyBlocks;
+        // Reschedule with new expiry time
+        scheduleRefreshBlocks(newChunkExpiryTime);
+    }
 
     private void scheduleRefreshBlocks(int chunkExpiryTime) {
-        threadPool.scheduleAtFixedRate(() -> {
+        // Cancel existing task if any
+        if (refreshTask != null && !refreshTask.isCancelled()) {
+            refreshTask.cancel(false);
+        }
+        // Schedule new task with updated interval
+        refreshTask = threadPool.scheduleAtFixedRate(() -> {
             synchronized (this) {
                 updateAllBlocks();
                 updateNearbyBlocks();

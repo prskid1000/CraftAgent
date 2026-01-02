@@ -56,21 +56,25 @@ public class ContextProvider {
 	 */
 	public WorldContext buildContext() {
 		synchronized (this) {
-			java.util.Map<String, Object> memoryData = null;
-			if (memoryManager != null) {
-				memoryData = buildMemoryData();
+			try {
+				Map<String, Object> memoryData = null;
+				if (memoryManager != null) {
+					memoryData = buildMemoryData();
+				}
+				
+				WorldContext context = new WorldContext(
+						getNpcState(),
+						getInventoryState(),
+						chunkManager.getNearbyBlocks(),
+						getNearbyEntities(),
+						memoryData
+				);
+				this.cachedContext = context;
+				return context;
+			} catch (Exception e) {
+				LogUtil.error("Error building NPC context", e);
+				throw new RuntimeException(e);
 			}
-			
-			WorldContext context = new WorldContext(
-					getNpcState(),
-					getInventoryState(),
-					chunkManager.getNearbyBlocks(),
-					getNearbyEntities(),
-					memoryData
-			);
-//			chunkManager.getNearbyBlocks().forEach(blockData -> LogUtil.debugInChat(blockData.toString()));
-			this.cachedContext = context;
-			return context;
 		}
 	}
 	

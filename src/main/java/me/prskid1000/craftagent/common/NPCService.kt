@@ -2,6 +2,7 @@ package me.prskid1000.craftagent.common
 
 import me.prskid1000.craftagent.auth.UsernameValidator
 import me.prskid1000.craftagent.callback.NPCEvents
+import me.prskid1000.craftagent.config.BaseConfig
 import me.prskid1000.craftagent.config.ConfigProvider
 import me.prskid1000.craftagent.config.NPCConfig
 import me.prskid1000.craftagent.constant.Instructions
@@ -32,6 +33,20 @@ class NPCService(
     val uuidToNpc = ConcurrentHashMap<UUID, NPC>()
     private val entityUuidToConfigUuid = ConcurrentHashMap<UUID, UUID>()
     private var deathEventRegistered = false
+    
+    /**
+     * Get all active NPCs for web server access.
+     */
+    fun getAllNPCs(): Collection<NPC> {
+        return uuidToNpc.values
+    }
+    
+    /**
+     * Get NPC by UUID for web server access.
+     */
+    fun getNPC(uuid: UUID): NPC? {
+        return uuidToNpc[uuid]
+    }
 
     /**
      * Sends a message from a player to an NPC via mail system.
@@ -53,13 +68,10 @@ class NPCService(
         messageRepository.insert(message, maxMessages)
         LogUtil.info("Player $playerName sent message to NPC $npcUuid: $messageContent")
         
-        // Display message in chat and update state
+        // Update state (store in history, no LLM trigger)
+        // Note: Don't display in chat again - the original player message is already visible
         val npc = uuidToNpc[npcUuid]
         if (npc != null) {
-            // Display in chat
-            val chatMessage = "$playerName says to ${npc.config.npcName}: $messageContent"
-            me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(npc.entity, chatMessage)
-            // Update state (store in history, no LLM trigger)
             npc.eventHandler.updateState("Player $playerName sent you a message: $messageContent")
         }
     }
@@ -98,10 +110,11 @@ class NPCService(
     private fun respawnActiveNPCs(server: MinecraftServer) {
         configProvider.getNpcConfigs().forEach { config ->
             if (config.isActive && !uuidToNpc.containsKey(config.uuid)) {
-                createNpc(config, server, null, null)
-            }
-        }
-    }
+				try {
+					createNpc(config, server, null, null)
+				} catch (e: Exception) {
+					LogUtil.error("Failed to respawn NPC: ${config.npcName}", e)
+				}
 
     fun createNpc(newConfig: NPCConfig, server: MinecraftServer, spawnPos: BlockPos?, owner: PlayerEntity?) {
         CompletableFuture.runAsync({
@@ -341,6 +354,49 @@ class NPCService(
         if (npc != null) {
             npc.history.updateSystemPrompt(customSystemPrompt)
             LogUtil.info("Updated system prompt for NPC: ${npc.config.npcName} with custom prompt")
+        }
+    }
+
+    /**
+     * Updates all active NPCs with new base config values in real-time.
+     * This is called when base config is updated from the GUI.
+     * Reinitializes components that depend on base config (LLM clients, ChunkManager, etc.)
+     */
+    fun updateAllNpcsWithBaseConfig(newBaseConfig: BaseConfig) {
+        uuidToNpc.forEach { (uuid, npc) ->
+            try {
+                // Update LLM client timeout if it supports it
+                updateLLMClientTimeout(npc, newBaseConfig.getLlmTimeout())
+                
+                // Update ChunkManager with new config values
+                npc.contextProvider.chunkManager.updateConfig(
+                    newBaseConfig.getContextChunkRadius(),
+                    newBaseConfig.getContextVerticalScanRange(),
+                    newBaseConfig.getMaxNearbyBlocks(),
+                    newBaseConfig.getChunkExpiryTime()
+                )
+                
+                LogUtil.info("Updated NPC ${npc.config.npcName} with new base config values")
+            } catch (e: Exception) {
+                LogUtil.error("Error updating NPC ${npc.config.npcName} with base config", e)
+            }
+        }
+    }
+    
+    /**
+     * Updates LLM client timeout in real-time.
+     * Reinitializes HTTP client if needed.
+     */
+    private fun updateLLMClientTimeout(npc: NPC, newTimeout: Int) {
+        when (val client = npc.llmClient) {
+            is me.prskid1000.craftagent.llm.ollama.OllamaClient -> {
+                // Reinitialize with new timeout
+                client.updateTimeout(newTimeout)
+            }
+            is me.prskid1000.craftagent.llm.lmstudio.LMStudioClient -> {
+                // Reinitialize with new timeout
+                client.updateTimeout(newTimeout)
+            }
         }
     }
 

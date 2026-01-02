@@ -36,18 +36,47 @@ public class NPCCreateCommand {
 	}
 
 	private int createNpcWithLLM(CommandContext<ServerCommandSource> context) {
-		ServerPlayerEntity source = context.getSource().getPlayer();
-		if (source == null) {
-			context.getSource().sendFeedback(() -> LogUtil.formatError("Command must be executed as a Player!"), false);
+		try {
+			if (context == null || context.getSource() == null) {
+				LogUtil.error("Invalid command context");
+				return 0;
+			}
+			
+			ServerPlayerEntity source = context.getSource().getPlayer();
+			if (source == null) {
+				context.getSource().sendFeedback(() -> LogUtil.formatError("Command must be executed as a Player!"), false);
+				return 0;
+			}
+
+			String name = StringArgumentType.getString(context, "name");
+			
+			// Validate input before proceeding
+			if (!validateInput(name)) {
+				LogUtil.error("Invalid NPC name: $name");
+				context.getSource().sendFeedback(() -> LogUtil.formatError("Invalid NPC name!"), false);
+				return 0;
+			}
+			
+			String llmTypeStr = StringArgumentType.getString(context, LLM_TYPE);
+			LLMType llmType;
+			
+			try {
+				llmType = LLMType.valueOf(llmTypeStr);
+			} catch (IllegalArgumentException e) {
+				LogUtil.error("Invalid LLM type: $llmTypeStr");
+				context.getSource().sendFeedback(() -> LogUtil.formatError("Invalid LLM type!"), false);
+				return 0;
+			}
+
+			NPCConfig config = NPCConfig.builder(name).llmType(llmType).build();
+			npcService.createNpc(config, source.getWorld().getServer(), source.getBlockPos(), source);
+			LogUtil.info("Created new NPC: $name");
+			return 1;
+		} catch (Exception e) {
+			LogUtil.error("Error creating NPC", e);
+			context.getSource().sendFeedback(() -> LogUtil.formatError("Failed to create NPC"), false);
 			return 0;
 		}
-
-		String name = StringArgumentType.getString(context, "name");
-		LLMType llmType = LLMType.valueOf(StringArgumentType.getString(context, LLM_TYPE));
-
-		NPCConfig config = NPCConfig.builder(name).llmType(llmType).build();
-		npcService.createNpc(config, source.getWorld().getServer(), source.getBlockPos(), source);
-		return 1;
 	}
 
 }

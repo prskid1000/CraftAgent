@@ -25,8 +25,8 @@ public class OllamaClient implements LLMClient {
 
 	private final String model;
 	private final String url;
-	private final int timeout;
-	private final HttpClient httpClient;
+	private volatile int timeout;
+	private volatile HttpClient httpClient;
 	private final ObjectMapper objectMapper;
 
 	public OllamaClient(
@@ -42,9 +42,22 @@ public class OllamaClient implements LLMClient {
 		// Configure ObjectMapper to ignore unknown properties (like "thinking" field)
 		this.objectMapper = new ObjectMapper()
 				.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-		this.httpClient = HttpClient.newBuilder()
+		this.httpClient = createHttpClient(timeout);
+	}
+	
+	/**
+	 * Updates the timeout value and recreates the HTTP client in real-time.
+	 * This allows configuration changes to take effect without restarting.
+	 */
+	public void updateTimeout(int newTimeout) {
+		this.timeout = newTimeout;
+		this.httpClient = createHttpClient(newTimeout);
+	}
+	
+	private HttpClient createHttpClient(int timeoutSeconds) {
+		return HttpClient.newBuilder()
 				.version(HttpClient.Version.HTTP_1_1)
-				.connectTimeout(Duration.ofSeconds(timeout))
+				.connectTimeout(Duration.ofSeconds(timeoutSeconds))
 				.build();
 	}
 
