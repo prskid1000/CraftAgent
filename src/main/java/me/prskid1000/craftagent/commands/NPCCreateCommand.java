@@ -7,6 +7,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import lombok.AllArgsConstructor;
+import me.prskid1000.craftagent.auth.UsernameValidator;
 import me.prskid1000.craftagent.common.NPCService;
 import me.prskid1000.craftagent.config.NPCConfig;
 import me.prskid1000.craftagent.llm.LLMType;
@@ -51,9 +52,9 @@ public class NPCCreateCommand {
 			String name = StringArgumentType.getString(context, "name");
 			
 			// Validate input before proceeding
-			if (!validateInput(name)) {
-				LogUtil.error("Invalid NPC name: $name");
-				context.getSource().sendFeedback(() -> LogUtil.formatError("Invalid NPC name!"), false);
+			if (!UsernameValidator.isValid(name)) {
+				LogUtil.error("Invalid NPC name: " + name);
+				context.getSource().sendFeedback(() -> LogUtil.formatError("Invalid NPC name! Use 3–16 characters: letters, numbers, or underscores only."), false);
 				return 0;
 			}
 			

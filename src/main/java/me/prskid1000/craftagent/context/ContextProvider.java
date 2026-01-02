@@ -7,6 +7,7 @@ import me.prskid1000.craftagent.database.repositories.MessageRepository;
 import me.prskid1000.craftagent.database.repositories.SharebookRepository;
 import me.prskid1000.craftagent.model.context.*;
 import me.prskid1000.craftagent.memory.MemoryManager;
+import me.prskid1000.craftagent.util.LogUtil;
 import me.prskid1000.craftagent.util.MCDataUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerInventory;

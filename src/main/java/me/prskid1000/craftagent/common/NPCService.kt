@@ -115,6 +115,9 @@ class NPCService(
 				} catch (e: Exception) {
 					LogUtil.error("Failed to respawn NPC: ${config.npcName}", e)
 				}
+            }
+        }
+    }
 
     fun createNpc(newConfig: NPCConfig, server: MinecraftServer, spawnPos: BlockPos?, owner: PlayerEntity?) {
         CompletableFuture.runAsync({
