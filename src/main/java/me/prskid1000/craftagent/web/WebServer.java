@@ -353,8 +353,34 @@ public class WebServer {
         inventory.put("offHand", context.inventory().offHand().size());
         map.put("inventory", inventory);
         
-        map.put("nearbyBlocks", context.nearbyBlocks().size());
-        map.put("nearbyEntities", context.nearbyEntities().size());
+        // Convert nearbyBlocks to detailed list
+        List<Map<String, Object>> blocksList = new ArrayList<>();
+        for (var block : context.nearbyBlocks()) {
+            Map<String, Object> blockMap = new HashMap<>();
+            blockMap.put("type", block.type());
+            Map<String, Object> blockPos = new HashMap<>();
+            blockPos.put("x", block.position().getX());
+            blockPos.put("y", block.position().getY());
+            blockPos.put("z", block.position().getZ());
+            blockMap.put("position", blockPos);
+            blockMap.put("mineLevel", block.mineLevel());
+            blockMap.put("toolNeeded", block.toolNeeded());
+            blocksList.add(blockMap);
+        }
+        map.put("nearbyBlocks", blocksList);
+        
+        // Convert nearbyEntities to detailed list
+        List<Map<String, Object>> entitiesList = new ArrayList<>();
+        for (var entity : context.nearbyEntities()) {
+            Map<String, Object> entityMap = new HashMap<>();
+            entityMap.put("id", entity.id());
+            entityMap.put("name", entity.name());
+            entityMap.put("isPlayer", entity.isPlayer());
+            entityMap.put("type", entity.isPlayer() ? "Player" : "Entity");
+            entitiesList.add(entityMap);
+        }
+        map.put("nearbyEntities", entitiesList);
+        
         if (context.memoryData() != null) {
             map.put("memory", context.memoryData());
         }
@@ -1079,28 +1105,44 @@ public class WebServer {
                 html += `<tr><td><span class="icon">✋</span> Off Hand</td><td>${context.inventory.offHand}</td></tr>`;
                 html += '</tbody></table></div>';
                 
-                if (context.nearbyBlocks && context.nearbyBlocks.length > 0) {
+                if (context.nearbyBlocks && Array.isArray(context.nearbyBlocks) && context.nearbyBlocks.length > 0) {
                     html += '<div class="data-section"><h3>🧱 Nearby Blocks</h3>';
-                    html += '<table><thead><tr><th>Block</th><th>Count</th><th>Distance</th></tr></thead><tbody>';
-                    context.nearbyBlocks.slice(0, 20).forEach(block => {
-                        html += `<tr><td>${escapeHtml(block.block || 'Unknown')}</td><td>${block.count || 1}</td><td>${block.distance ? block.distance.toFixed(1) : 'N/A'}</td></tr>`;
+                    html += '<table><thead><tr><th>Block Type</th><th>Position</th><th>Mine Level</th><th>Tool Needed</th></tr></thead><tbody>';
+                    context.nearbyBlocks.forEach(block => {
+                        const pos = block.position || {};
+                        const positionStr = pos.x !== undefined ? `${pos.x.toFixed(0)}, ${pos.y.toFixed(0)}, ${pos.z.toFixed(0)}` : 'N/A';
+                        const mineLevel = block.mineLevel || 'N/A';
+                        const toolNeeded = block.toolNeeded || 'None';
+                        html += `<tr>
+                            <td><strong>${escapeHtml(block.type || 'Unknown')}</strong></td>
+                            <td><span class="coords">${positionStr}</span></td>
+                            <td>${escapeHtml(String(mineLevel))}</td>
+                            <td>${escapeHtml(toolNeeded)}</td>
+                        </tr>`;
                     });
                     html += '</tbody></table></div>';
                 } else {
                     html += '<div class="data-section"><h3>🧱 Nearby Blocks</h3>';
-                    html += `<p>Total: ${context.nearbyBlocks || 0} blocks detected</p></div>`;
+                    html += '<p>No blocks detected nearby</p></div>';
                 }
                 
-                if (context.nearbyEntities && context.nearbyEntities.length > 0) {
+                if (context.nearbyEntities && Array.isArray(context.nearbyEntities) && context.nearbyEntities.length > 0) {
                     html += '<div class="data-section"><h3>👥 Nearby Entities</h3>';
-                    html += '<table><thead><tr><th>Type</th><th>Name</th><th>Distance</th></tr></thead><tbody>';
-                    context.nearbyEntities.slice(0, 20).forEach(entity => {
-                        html += `<tr><td>${escapeHtml(entity.type || 'Unknown')}</td><td>${escapeHtml(entity.name || 'N/A')}</td><td>${entity.distance ? entity.distance.toFixed(1) : 'N/A'}</td></tr>`;
+                    html += '<table><thead><tr><th>Name</th><th>Type</th><th>ID</th><th>Is Player</th></tr></thead><tbody>';
+                    context.nearbyEntities.forEach(entity => {
+                        const typeBadge = entity.isPlayer ? 'badge-info' : 'badge-warning';
+                        const typeText = entity.isPlayer ? 'Player' : 'Entity';
+                        html += `<tr>
+                            <td><strong>${escapeHtml(entity.name || 'Unknown')}</strong></td>
+                            <td><span class="badge ${typeBadge}">${typeText}</span></td>
+                            <td><span class="coords">${escapeHtml(String(entity.id || 'N/A'))}</span></td>
+                            <td>${entity.isPlayer ? '✅ Yes' : '❌ No'}</td>
+                        </tr>`;
                     });
                     html += '</tbody></table></div>';
                 } else {
                     html += '<div class="data-section"><h3>👥 Nearby Entities</h3>';
-                    html += `<p>Total: ${context.nearbyEntities || 0} entities detected</p></div>`;
+                    html += '<p>No entities detected nearby</p></div>';
                 }
                 
                 document.getElementById('context').innerHTML = html;
@@ -1280,8 +1322,8 @@ public class WebServer {
         // Load NPCs on page load
         loadNPCs();
         
-        // Auto-refresh every 5 seconds
-        setInterval(loadNPCs, 5000);
+        // Auto-refresh every 5 minutes
+        setInterval(loadNPCs, 300000);
     </script>
 </body>
 </html>

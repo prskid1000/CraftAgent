@@ -11,6 +11,7 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 - 🔧 **Multi-LLM Support**: Ollama and LM Studio (OpenAI-compatible)
 - 🎨 **Client-Server Architecture**: GUI configuration on client, NPC logic on server
 - 🛠️ **Command System**: Uses Brigadier to discover and execute all Minecraft commands
+- 🌐 **Web Dashboard**: Built-in web UI (http://localhost:8080) to monitor NPCs, view context, messages, and memory
 
 ## Requirements
 
@@ -70,6 +71,32 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 - `/craftagent create <name> <llmType>` - Create new NPC
 - `/craftagent remove <name>` - Remove NPC (keeps data)
 - `/craftagent delete <name>` - Permanently delete NPC
+
+### Web Dashboard
+
+CraftAgent includes a built-in web dashboard for monitoring NPCs in real-time. The dashboard automatically starts when the Minecraft server starts.
+
+**Access the Dashboard:**
+1. Start your Minecraft server with CraftAgent installed
+2. Open your web browser and navigate to: **http://localhost:8080**
+3. The dashboard will display all active NPCs with their current status
+
+**Dashboard Features:**
+- **NPC Overview**: View all NPCs with their basic information (name, age, gender, health, food, position)
+- **State Tab**: Real-time statistics with progress bars for health and food, position coordinates, and biome information
+- **Context Tab**: Detailed world context including:
+  - State information (position, health, food, biome)
+  - Inventory details (hotbar, main inventory, armor, off-hand)
+  - Nearby blocks table (type, position, mine level, tool needed)
+  - Nearby entities table (name, type, ID, player status)
+- **Messages Tab**: Conversation history with role badges and timestamps
+- **Mail Tab**: Mail messages from other NPCs and players
+- **Memory Tab**: NPC's persistent memory including:
+  - Remembered locations with coordinates
+  - Contacts with relationship levels
+  - Shared book pages
+
+**Note:** The dashboard auto-refreshes every 5 minutes. Use the refresh button in the NPC detail modal to manually update data.
 
 ### Creating an NPC
 
