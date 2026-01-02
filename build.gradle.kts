@@ -146,7 +146,12 @@ publishing {
 }
 
 publishMods {
-    changelog.set(rootProject.file("CHANGELOG.md").readText())
+    val changelogFile = rootProject.file("CHANGELOG.md")
+    if (changelogFile.exists()) {
+        changelog.set(changelogFile.readText())
+    } else {
+        changelog.set("No changelog available")
+    }
     displayName.set("v$modVersion CraftAgent")
     type.set(ReleaseType.ALPHA)
     version.set(modVersion)

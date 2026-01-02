@@ -28,7 +28,7 @@ public class ChatUtil {
         try {
             // Send message to all players in the same world
             Text messageText = Text.literal(message);
-            player.getServerWorld().getPlayers().forEach(p -> {
+            player.getWorld().getPlayers().forEach(p -> {
                 p.sendMessage(messageText, false);
             });
         } catch (Exception e) {
@@ -52,7 +52,7 @@ public class ChatUtil {
             Text messageText = Text.literal(message);
             double maxDistanceSq = maxDistance * maxDistance;
             
-            player.getServerWorld().getPlayers().forEach(p -> {
+            player.getWorld().getPlayers().forEach(p -> {
                 if (p.squaredDistanceTo(player) <= maxDistanceSq) {
                     p.sendMessage(messageText, false);
                 }

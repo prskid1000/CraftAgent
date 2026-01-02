@@ -92,8 +92,7 @@ public class MinecraftCommandUtil {
         
         // Create a dummy command source for getting command usage
         ServerCommandSource dummySource = server.getCommandSource()
-                .withLevel(4) // OP level 4 to see all commands
-                .withMaxPermissionLevel(4);
+                .withLevel(4); // OP level 4 to see all commands
         
         for (CommandNode<ServerCommandSource> node : dispatcher.getRoot().getChildren()) {
             if (node instanceof LiteralCommandNode) {
@@ -193,8 +192,7 @@ public class MinecraftCommandUtil {
         
         // Create command source with highest permissions to see all commands
         ServerCommandSource source = server.getCommandSource()
-                .withLevel(4)
-                .withMaxPermissionLevel(4);
+                .withLevel(4);
         
         // Get all root commands
         for (CommandNode<ServerCommandSource> node : dispatcher.getRoot().getChildren()) {
@@ -253,8 +251,7 @@ public class MinecraftCommandUtil {
             
             // Create command source with OP level 4 (highest permission)
             ServerCommandSource source = player.getCommandSource()
-                    .withLevel(4)
-                    .withMaxPermissionLevel(4);
+                    .withLevel(4);
             
             // Execute the command on the server thread
             server.getCommandManager().executeWithPrefix(source, commandToExecute);
@@ -301,19 +298,22 @@ public class MinecraftCommandUtil {
             
             // Create command source with OP level 4 (highest permission)
             ServerCommandSource source = player.getCommandSource()
-                    .withLevel(4)
-                    .withMaxPermissionLevel(4);
+                    .withLevel(4);
             
             // Execute the command on the server thread
-            int result = server.getCommandManager().executeWithPrefix(source, commandToExecute);
-            
-            if (result > 0 && onSuccess != null) {
-                onSuccess.run();
-            } else if (result <= 0 && onError != null) {
-                onError.accept(new Exception("Command returned error code: " + result));
+            // executeWithPrefix returns void, so we assume success if no exception is thrown
+            try {
+                server.getCommandManager().executeWithPrefix(source, commandToExecute);
+                if (onSuccess != null) {
+                    onSuccess.run();
+                }
+                return true;
+            } catch (Exception e) {
+                if (onError != null) {
+                    onError.accept(e);
+                }
+                throw e; // Re-throw to be caught by outer catch
             }
-            
-            return result > 0;
         } catch (Exception e) {
             if (onError != null) {
                 onError.accept(e);

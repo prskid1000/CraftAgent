@@ -19,6 +19,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class NPCService(
     private val factory: NPCFactory,
@@ -83,9 +84,11 @@ class NPCService(
                 }
                 
                 if (configUuid != null) {
-                    removeNpc(configUuid, entity.serverWorld.server.playerManager)
+                    val server = entity.getWorld().server
+                    removeNpc(configUuid, server.playerManager)
                 } else if (deadNpc != null) {
-                    removeNpc(deadNpc.config.uuid, entity.serverWorld.server.playerManager)
+                    val server = entity.getWorld().server
+                    removeNpc(deadNpc.config.uuid, server.playerManager)
                 }
             }
             deathEventRegistered = true
