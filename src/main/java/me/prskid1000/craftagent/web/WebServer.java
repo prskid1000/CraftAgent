@@ -119,6 +119,9 @@ public class WebServer {
                 case "context":
                     handleGetNPCContext(npc, exchange);
                     break;
+                case "state":
+                    handleGetNPCState(npc, exchange);
+                    break;
                 case "messages":
                     handleGetNPCMessages(npc, exchange);
                     break;
@@ -144,6 +147,25 @@ public class WebServer {
         } catch (Exception e) {
             LogUtil.error("Error getting NPC context", e);
             sendError(exchange, 500, "Error getting context: " + e.getMessage());
+        }
+    }
+    
+    private void handleGetNPCState(NPC npc, HttpExchange exchange) throws IOException {
+        try {
+            var context = npc.getContextProvider().buildContext();
+            Map<String, Object> state = new HashMap<>();
+            Map<String, Object> position = new HashMap<>();
+            position.put("x", context.state().position().getX());
+            position.put("y", context.state().position().getY());
+            position.put("z", context.state().position().getZ());
+            state.put("position", position);
+            state.put("health", context.state().health());
+            state.put("food", context.state().food());
+            state.put("biome", context.state().biome());
+            sendJsonResponse(exchange, 200, state);
+        } catch (Exception e) {
+            LogUtil.error("Error getting NPC state", e);
+            sendError(exchange, 500, "Error getting state: " + e.getMessage());
         }
     }
     
@@ -375,9 +397,15 @@ public class WebServer {
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             padding: 20px;
             color: #333;
+            animation: gradientShift 15s ease infinite;
+        }
+        @keyframes gradientShift {
+            0%, 100% { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+            50% { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); }
         }
         .container {
             max-width: 1400px;
@@ -385,10 +413,17 @@ public class WebServer {
         }
         header {
             background: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideDown 0.5s ease-out;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         h1 {
             color: #667eea;
@@ -407,15 +442,28 @@ public class WebServer {
         }
         .npc-card {
             background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             cursor: pointer;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeInUp 0.5s ease-out;
+            animation-fill-mode: both;
+        }
+        .npc-card:nth-child(1) { animation-delay: 0.1s; }
+        .npc-card:nth-child(2) { animation-delay: 0.2s; }
+        .npc-card:nth-child(3) { animation-delay: 0.3s; }
+        .npc-card:nth-child(4) { animation-delay: 0.4s; }
+        .npc-card:nth-child(5) { animation-delay: 0.5s; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .npc-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 16px 48px rgba(102, 126, 234, 0.3);
         }
         .npc-header {
             display: flex;
@@ -466,18 +514,41 @@ public class WebServer {
         }
         .view-details-btn {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 1em;
             font-weight: bold;
             cursor: pointer;
-            transition: opacity 0.3s;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        .view-details-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        .view-details-btn:hover::before {
+            width: 300px;
+            height: 300px;
         }
         .view-details-btn:hover {
-            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        .view-details-btn:active {
+            transform: translateY(0);
         }
         .modal {
             display: none;
@@ -498,13 +569,21 @@ public class WebServer {
         }
         .modal-content {
             background: white;
-            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
             padding: 30px;
             max-width: 1200px;
             width: 100%;
             margin: 20px auto;
             max-height: 90vh;
             overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: scale(0.9) translateY(-20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
         }
         .modal-header {
             display: flex;
@@ -568,10 +647,16 @@ public class WebServer {
             gap: 15px;
         }
         .data-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 20px;
+            border-radius: 12px;
             border-left: 4px solid #667eea;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s;
+        }
+        .data-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
         }
         .data-card-label {
             font-size: 0.9em;
@@ -593,6 +678,130 @@ public class WebServer {
             overflow-x: auto;
             max-height: 500px;
             overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            vertical-align: middle;
+            font-size: 1.2em;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 24px;
+            background: #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50 0%, #8bc34a 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .progress-fill.health {
+            background: linear-gradient(90deg, #f44336 0%, #ff9800 50%, #4caf50 100%);
+        }
+        .progress-fill.food {
+            background: linear-gradient(90deg, #ff9800 0%, #ffc107 50%, #4caf50 100%);
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .badge-success {
+            background: #4caf50;
+            color: white;
+        }
+        .badge-info {
+            background: #2196f3;
+            color: white;
+        }
+        .badge-warning {
+            background: #ff9800;
+            color: white;
+        }
+        .badge-danger {
+            background: #f44336;
+            color: white;
+        }
+        .message-bubble {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .message-user {
+            background: #e3f2fd;
+            margin-left: auto;
+            text-align: right;
+        }
+        .message-assistant {
+            background: #f5f5f5;
+        }
+        .message-system {
+            background: #fff3e0;
+            font-style: italic;
+        }
+        .coords {
+            font-family: 'Courier New', monospace;
+            background: #f5f5f5;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
         }
         .loading {
             text-align: center;
@@ -635,6 +844,7 @@ public class WebServer {
             
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('overview')">Overview</button>
+                <button class="tab" onclick="switchTab('state')">State</button>
                 <button class="tab" onclick="switchTab('context')">Context</button>
                 <button class="tab" onclick="switchTab('messages')">Messages</button>
                 <button class="tab" onclick="switchTab('mail')">Mail</button>
@@ -646,6 +856,10 @@ public class WebServer {
                     <h3>Basic Information</h3>
                     <div class="data-grid" id="overviewGrid"></div>
                 </div>
+            </div>
+            
+            <div id="state" class="tab-content">
+                <div class="loading">Loading state...</div>
             </div>
             
             <div id="context" class="tab-content">
@@ -728,6 +942,7 @@ public class WebServer {
             // Load all data
             await Promise.all([
                 loadNPCOverview(uuid),
+                loadNPCState(uuid),
                 loadNPCContext(uuid),
                 loadNPCMessages(uuid),
                 loadNPCMail(uuid),
@@ -781,12 +996,114 @@ public class WebServer {
             }
         }
         
+        async function loadNPCState(uuid) {
+            try {
+                const response = await fetch(`/api/npc/${uuid}/state`);
+                const state = await response.json();
+                const healthPercent = (state.health / 20) * 100;
+                const foodPercent = (state.food / 20) * 100;
+                document.getElementById('state').innerHTML = `
+                    <div class="data-section">
+                        <h3>📊 Current Statistics</h3>
+                        <div class="data-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                            <div class="stat-card">
+                                <div class="stat-label">❤️ Health</div>
+                                <div class="stat-value">${state.health.toFixed(1)}</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill health" style="width: ${healthPercent}%">${healthPercent.toFixed(0)}%</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">🍖 Food</div>
+                                <div class="stat-value">${state.food}</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill food" style="width: ${foodPercent}%">${foodPercent.toFixed(0)}%</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">🌍 Biome</div>
+                                <div class="stat-value" style="font-size: 1.2em;">${escapeHtml(state.biome.replace(/_/g, ' '))}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="data-section">
+                        <h3>📍 Position</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th><span class="icon">📍</span> Coordinate</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>X</strong></td>
+                                    <td><span class="coords">${state.position.x.toFixed(2)}</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Y</strong></td>
+                                    <td><span class="coords">${state.position.y.toFixed(2)}</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Z</strong></td>
+                                    <td><span class="coords">${state.position.z.toFixed(2)}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('state').innerHTML = 
+                    '<div class="loading">Error: ' + error.message + '</div>';
+            }
+        }
+        
         async function loadNPCContext(uuid) {
             try {
                 const response = await fetch(`/api/npc/${uuid}/context`);
                 const context = await response.json();
-                document.getElementById('context').innerHTML = 
-                    '<div class="json-viewer">' + JSON.stringify(context, null, 2) + '</div>';
+                
+                let html = '<div class="data-section"><h3>📊 State Information</h3>';
+                html += '<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>';
+                html += `<tr><td><span class="icon">📍</span> Position</td><td><span class="coords">${context.state.position.x.toFixed(1)}, ${context.state.position.y.toFixed(1)}, ${context.state.position.z.toFixed(1)}</span></td></tr>`;
+                html += `<tr><td><span class="icon">❤️</span> Health</td><td>${context.state.health.toFixed(1)} / 20</td></tr>`;
+                html += `<tr><td><span class="icon">🍖</span> Food</td><td>${context.state.food} / 20</td></tr>`;
+                html += `<tr><td><span class="icon">🌍</span> Biome</td><td>${escapeHtml(context.state.biome.replace(/_/g, ' '))}</td></tr>`;
+                html += '</tbody></table></div>';
+                
+                html += '<div class="data-section"><h3>🎒 Inventory</h3>';
+                html += '<table><thead><tr><th>Slot Type</th><th>Count</th></tr></thead><tbody>';
+                html += `<tr><td><span class="icon">📦</span> Hotbar</td><td>${context.inventory.hotbar}</td></tr>`;
+                html += `<tr><td><span class="icon">📦</span> Main Inventory</td><td>${context.inventory.mainInventory}</td></tr>`;
+                html += `<tr><td><span class="icon">🛡️</span> Armor</td><td>${context.inventory.armor}</td></tr>`;
+                html += `<tr><td><span class="icon">✋</span> Off Hand</td><td>${context.inventory.offHand}</td></tr>`;
+                html += '</tbody></table></div>';
+                
+                if (context.nearbyBlocks && context.nearbyBlocks.length > 0) {
+                    html += '<div class="data-section"><h3>🧱 Nearby Blocks</h3>';
+                    html += '<table><thead><tr><th>Block</th><th>Count</th><th>Distance</th></tr></thead><tbody>';
+                    context.nearbyBlocks.slice(0, 20).forEach(block => {
+                        html += `<tr><td>${escapeHtml(block.block || 'Unknown')}</td><td>${block.count || 1}</td><td>${block.distance ? block.distance.toFixed(1) : 'N/A'}</td></tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                } else {
+                    html += '<div class="data-section"><h3>🧱 Nearby Blocks</h3>';
+                    html += `<p>Total: ${context.nearbyBlocks || 0} blocks detected</p></div>`;
+                }
+                
+                if (context.nearbyEntities && context.nearbyEntities.length > 0) {
+                    html += '<div class="data-section"><h3>👥 Nearby Entities</h3>';
+                    html += '<table><thead><tr><th>Type</th><th>Name</th><th>Distance</th></tr></thead><tbody>';
+                    context.nearbyEntities.slice(0, 20).forEach(entity => {
+                        html += `<tr><td>${escapeHtml(entity.type || 'Unknown')}</td><td>${escapeHtml(entity.name || 'N/A')}</td><td>${entity.distance ? entity.distance.toFixed(1) : 'N/A'}</td></tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                } else {
+                    html += '<div class="data-section"><h3>👥 Nearby Entities</h3>';
+                    html += `<p>Total: ${context.nearbyEntities || 0} entities detected</p></div>`;
+                }
+                
+                document.getElementById('context').innerHTML = html;
             } catch (error) {
                 document.getElementById('context').innerHTML = 
                     '<div class="loading">Error: ' + error.message + '</div>';
@@ -797,8 +1114,32 @@ public class WebServer {
             try {
                 const response = await fetch(`/api/npc/${uuid}/messages`);
                 const messages = await response.json();
-                document.getElementById('messages').innerHTML = 
-                    '<div class="json-viewer">' + JSON.stringify(messages, null, 2) + '</div>';
+                
+                if (messages.length === 0) {
+                    document.getElementById('messages').innerHTML = 
+                        '<div class="loading">No messages in conversation history</div>';
+                    return;
+                }
+                
+                let html = '<div class="data-section"><h3>💬 Conversation History</h3>';
+                html += '<table><thead><tr><th>Role</th><th>Message</th><th>Timestamp</th></tr></thead><tbody>';
+                
+                messages.forEach(msg => {
+                    const role = msg.role || 'unknown';
+                    const content = msg.content || msg.message || '';
+                    const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'N/A';
+                    const roleIcon = role === 'user' ? '👤' : role === 'assistant' ? '🤖' : role === 'system' ? '⚙️' : '❓';
+                    const roleBadge = role === 'user' ? 'badge-info' : role === 'assistant' ? 'badge-success' : 'badge-warning';
+                    
+                    html += `<tr>
+                        <td><span class="badge ${roleBadge}">${roleIcon} ${role.toUpperCase()}</span></td>
+                        <td style="max-width: 500px; word-wrap: break-word;">${escapeHtml(content)}</td>
+                        <td>${timestamp}</td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('messages').innerHTML = html;
             } catch (error) {
                 document.getElementById('messages').innerHTML = 
                     '<div class="loading">Error: ' + error.message + '</div>';
@@ -809,8 +1150,32 @@ public class WebServer {
             try {
                 const response = await fetch(`/api/npc/${uuid}/mail`);
                 const mail = await response.json();
-                document.getElementById('mail').innerHTML = 
-                    '<div class="json-viewer">' + JSON.stringify(mail, null, 2) + '</div>';
+                
+                if (!mail || mail.length === 0) {
+                    document.getElementById('mail').innerHTML = 
+                        '<div class="loading">📭 No mail messages</div>';
+                    return;
+                }
+                
+                let html = '<div class="data-section"><h3>📬 Mail Messages</h3>';
+                html += '<table><thead><tr><th>From</th><th>Subject</th><th>Content</th><th>Date</th></tr></thead><tbody>';
+                
+                mail.forEach(msg => {
+                    const sender = msg.senderName || msg.sender || 'Unknown';
+                    const subject = msg.subject || 'No Subject';
+                    const content = msg.content || msg.message || '';
+                    const date = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : msg.createdAt || 'N/A';
+                    
+                    html += `<tr>
+                        <td><strong>${escapeHtml(sender)}</strong></td>
+                        <td>${escapeHtml(subject)}</td>
+                        <td style="max-width: 400px; word-wrap: break-word;">${escapeHtml(content)}</td>
+                        <td>${date}</td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('mail').innerHTML = html;
             } catch (error) {
                 document.getElementById('mail').innerHTML = 
                     '<div class="loading">Error: ' + error.message + '</div>';
@@ -821,8 +1186,60 @@ public class WebServer {
             try {
                 const response = await fetch(`/api/npc/${uuid}/memory`);
                 const memory = await response.json();
-                document.getElementById('memory').innerHTML = 
-                    '<div class="json-viewer">' + JSON.stringify(memory, null, 2) + '</div>';
+                
+                let html = '';
+                
+                if (memory.locations && memory.locations.length > 0) {
+                    html += '<div class="data-section"><h3>📍 Remembered Locations</h3>';
+                    html += '<table><thead><tr><th>Name</th><th>Position</th><th>Description</th></tr></thead><tbody>';
+                    memory.locations.forEach(loc => {
+                        const pos = loc.position || {};
+                        html += `<tr>
+                            <td><strong>${escapeHtml(loc.name || 'Unnamed')}</strong></td>
+                            <td><span class="coords">${pos.x ? pos.x.toFixed(1) : 'N/A'}, ${pos.y ? pos.y.toFixed(1) : 'N/A'}, ${pos.z ? pos.z.toFixed(1) : 'N/A'}</span></td>
+                            <td>${escapeHtml(loc.description || 'No description')}</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                } else {
+                    html += '<div class="data-section"><h3>📍 Remembered Locations</h3><p>No locations stored in memory</p></div>';
+                }
+                
+                if (memory.contacts && memory.contacts.length > 0) {
+                    html += '<div class="data-section"><h3>👥 Contacts</h3>';
+                    html += '<table><thead><tr><th>Name</th><th>Type</th><th>Relationship</th><th>Friendship</th><th>Enmity</th><th>Notes</th></tr></thead><tbody>';
+                    memory.contacts.forEach(contact => {
+                        const friendship = contact.friendshipLevel !== undefined ? (contact.friendshipLevel * 100).toFixed(0) + '%' : 'N/A';
+                        const enmity = contact.enmityLevel !== undefined ? (contact.enmityLevel * 100).toFixed(0) + '%' : 'N/A';
+                        html += `<tr>
+                            <td><strong>${escapeHtml(contact.name || contact.contactName || 'Unknown')}</strong></td>
+                            <td><span class="badge badge-info">${escapeHtml(contact.type || contact.contactType || 'N/A')}</span></td>
+                            <td>${escapeHtml(contact.relationship || 'N/A')}</td>
+                            <td><span class="badge badge-success">${friendship}</span></td>
+                            <td><span class="badge badge-danger">${enmity}</span></td>
+                            <td style="max-width: 200px; word-wrap: break-word;">${escapeHtml(contact.notes || 'No notes')}</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                } else {
+                    html += '<div class="data-section"><h3>👥 Contacts</h3><p>No contacts stored in memory</p></div>';
+                }
+                
+                if (memory.sharebook && memory.sharebook.length > 0) {
+                    html += '<div class="data-section"><h3>📖 Shared Book Pages</h3>';
+                    html += '<table><thead><tr><th>Page</th><th>Content</th></tr></thead><tbody>';
+                    memory.sharebook.forEach((page, index) => {
+                        html += `<tr>
+                            <td><strong>Page ${index + 1}</strong></td>
+                            <td style="max-width: 500px; word-wrap: break-word;">${escapeHtml(page.content || page || 'Empty page')}</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                } else {
+                    html += '<div class="data-section"><h3>📖 Shared Book Pages</h3><p>No pages in shared book</p></div>';
+                }
+                
+                document.getElementById('memory').innerHTML = html || '<div class="loading">No memory data available</div>';
             } catch (error) {
                 document.getElementById('memory').innerHTML = 
                     '<div class="loading">Error: ' + error.message + '</div>';
