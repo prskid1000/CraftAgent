@@ -94,6 +94,6 @@ class ConversationHistory(
     }
 
     fun getLastMessage(): String {
-        return latestConversations.last().message
+        return latestConversations.lastOrNull()?.message ?: ""
     }
 }

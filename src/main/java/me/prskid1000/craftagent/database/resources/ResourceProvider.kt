@@ -36,7 +36,16 @@ class ResourceProvider(
             uuids.forEach {
                 this.loadedConversations[it] = conversationRepository.selectByUuid(it)
             }
-            executorService.shutdownNow()
+        }.thenRun {
+            executorService.shutdown()
+            try {
+                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow()
+                }
+            } catch (e: InterruptedException) {
+                executorService.shutdownNow()
+                Thread.currentThread().interrupt()
+            }
         }
     }
 
@@ -61,10 +70,14 @@ class ResourceProvider(
     }
 
     private fun shutdownServiceNow() {
-        if (!executorService.isTerminated) {
+        if (::executorService.isInitialized && !executorService.isTerminated) {
             executorService.shutdownNow()
             LogUtil.error("Initial loading of resources interrupted - Wait for termination")
-            executorService.awaitTermination(500, TimeUnit.MILLISECONDS)
+            try {
+                executorService.awaitTermination(500, TimeUnit.MILLISECONDS)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
         }
     }
 

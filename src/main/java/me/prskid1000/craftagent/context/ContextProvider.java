@@ -107,9 +107,15 @@ public class ContextProvider {
 		memory.put("contacts", contacts);
 		
 		// Add mail (messages) - only unread messages to avoid overwhelming context
+		// Auto-mark messages as read when included in context
 		if (messageRepository != null && npcUuid != null) {
 			java.util.List<java.util.Map<String, Object>> messages = new java.util.ArrayList<>();
 			messageRepository.selectByRecipient(npcUuid, 10, true).forEach(msg -> {
+				// Mark message as read when included in context
+				if (!msg.getRead()) {
+					messageRepository.markAsRead(msg.getId());
+				}
+				
 				java.util.Map<String, Object> msgMap = new java.util.HashMap<>();
 				msgMap.put("id", msg.getId());
 				msgMap.put("senderName", msg.getSenderName());
@@ -117,7 +123,7 @@ public class ContextProvider {
 				msgMap.put("subject", msg.getSubject());
 				msgMap.put("content", msg.getContent());
 				msgMap.put("timestamp", msg.getTimestamp());
-				msgMap.put("read", msg.getRead());
+				msgMap.put("read", true); // Always mark as read in context
 				messages.add(msgMap);
 			});
 			memory.put("mail", messages);

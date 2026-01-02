@@ -258,7 +258,17 @@ class NPCService(
         uuidToNpc.keys.forEach {
             removeNpc(it, server.playerManager)
         }
-        executorService.shutdownNow()
+        if (::executorService.isInitialized) {
+            executorService.shutdown()
+            try {
+                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow()
+                }
+            } catch (e: InterruptedException) {
+                executorService.shutdownNow()
+                Thread.currentThread().interrupt()
+            }
+        }
     }
 
     private fun updateConfig(newConfig: NPCConfig): NPCConfig {

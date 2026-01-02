@@ -173,5 +173,13 @@ public class ChunkManager {
 
     public void stopService() {
         this.threadPool.shutdownNow();
+        try {
+            if (!this.threadPool.awaitTermination(5, TimeUnit.SECONDS)) {
+                this.threadPool.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            this.threadPool.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 }

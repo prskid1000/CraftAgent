@@ -28,9 +28,9 @@ class ConversationRepository(
             sqliteClient.buildPreparedStatement(
                 "INSERT INTO conversations (uuid, role, message) VALUES (?, ?, ?)",
             )
-        statement.setString(1, conversation.uuid.toString())
-        statement.setString(2, conversation.role)
-        statement.setString(3, conversation.message)
+        statement?.setString(1, conversation.uuid.toString())
+        statement?.setString(2, conversation.role)
+        statement?.setString(3, conversation.message)
         sqliteClient.update(statement)
     }
 

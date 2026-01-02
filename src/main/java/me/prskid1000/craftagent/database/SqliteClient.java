@@ -43,14 +43,19 @@ public class SqliteClient {
 	/**
 	 * Select entries from db.
 	 * @param sql the SQL query
+	 * @return ResultSet or null if error occurred
 	 */
 	public ResultSet query(String sql) {
 		try {
+			if (connection == null || connection.isClosed()) {
+				LOGGER.error("Database connection is null or closed");
+				return null;
+			}
 			Statement statement = connection.createStatement();
 			statement.closeOnCompletion();
 			return statement.executeQuery(sql);
 		} catch (SQLException e) {
-			LOGGER.error("Error selecting rule: ", e);
+			LOGGER.error("Error executing query: {}", sql, e);
 			return null;
 		}
 	}
@@ -60,18 +65,32 @@ public class SqliteClient {
 	 * @param statement the prepared statement
 	 */
 	public void update(PreparedStatement statement) {
+		if (statement == null) {
+			LOGGER.error("PreparedStatement is null");
+			return;
+		}
 		try {
 			statement.executeUpdate();
 		} catch (SQLException e) {
-			LOGGER.error("Error inserting statement: {} : {}", statement, e.getMessage());
+			LOGGER.error("Error executing prepared statement: {}", e.getMessage(), e);
+		} finally {
+			try {
+				statement.close();
+			} catch (SQLException e) {
+				LOGGER.error("Error closing prepared statement: {}", e.getMessage());
+			}
 		}
 	}
 
 	public PreparedStatement buildPreparedStatement(String sql) {
 		try {
+			if (connection == null || connection.isClosed()) {
+				LOGGER.error("Database connection is null or closed");
+				return null;
+			}
 			return connection.prepareStatement(sql);
 		} catch (SQLException e) {
-			LOGGER.error("Error building prepared statement: {}", e.getMessage());
+			LOGGER.error("Error building prepared statement: {}", e.getMessage(), e);
 			return null;
 		}
 	}

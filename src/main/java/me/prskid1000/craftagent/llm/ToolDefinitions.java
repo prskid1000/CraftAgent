@@ -48,24 +48,32 @@ public class ToolDefinitions {
     }
 
     /**
-     * Creates the addOrUpdateInfo tool definition.
-     * Allows LLM to add or update contacts and locations in memory.
+     * Creates the manageMemory tool definition.
+     * Allows LLM to add, update, or remove contacts and locations in memory.
+     * Merged from addOrUpdateInfo and removeInfo tools.
      */
-    public static Map<String, Object> getAddOrUpdateInfoTool() {
+    public static Map<String, Object> getManageMemoryTool() {
         Map<String, Object> tool = new HashMap<>();
         tool.put("type", "function");
         
         Map<String, Object> function = new HashMap<>();
-        function.put("name", "addOrUpdateInfo");
-        function.put("description", "Add or update information in memory (contacts or locations). " +
-                "For contacts: Use to add new contacts from nearbyEntities or update existing ones (relationship, enmity, friendship). " +
-                "For locations: Use to save important locations at your current position. " +
-                "If the contact/location already exists, it will be updated with the new values.");
+        function.put("name", "manageMemory");
+        function.put("description", "Manage information in memory (contacts or locations). " +
+                "Use 'add' or 'update' to add new contacts from nearbyEntities or update existing ones (relationship, enmity, friendship), " +
+                "or to save important locations at your current position. " +
+                "Use 'remove' to forget about someone or a location (e.g., they're no longer relevant, " +
+                "you want to free up memory space, or you've had a falling out).");
         
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("type", "object");
         
         Map<String, Object> properties = new HashMap<>();
+        
+        Map<String, Object> actionParam = new HashMap<>();
+        actionParam.put("type", "string");
+        actionParam.put("description", "Action to perform: 'add' (or 'update' - same as add), or 'remove'");
+        actionParam.put("enum", List.of("add", "update", "remove"));
+        properties.put("action", actionParam);
         
         Map<String, Object> infoTypeParam = new HashMap<>();
         infoTypeParam.put("type", "string");
@@ -78,74 +86,35 @@ public class ToolDefinitions {
         nameParam.put("description", "Name: For contacts, use the name from nearbyEntities. For locations, use a descriptive name (e.g., 'My Home', 'Diamond Mine')");
         properties.put("name", nameParam);
         
-        // Contact-specific fields
+        // Contact-specific fields (only for add/update)
         Map<String, Object> relationshipParam = new HashMap<>();
         relationshipParam.put("type", "string");
-        relationshipParam.put("description", "For contacts: Relationship type (optional, default: 'neutral'). Values: 'friend', 'enemy', 'neutral', 'teammate', 'stranger', 'acquaintance', 'close_ally', 'rival'");
+        relationshipParam.put("description", "For contacts (add/update only): Relationship type (optional, default: 'neutral'). Values: 'friend', 'enemy', 'neutral', 'teammate', 'stranger', 'acquaintance', 'close_ally', 'rival'");
         properties.put("relationship", relationshipParam);
         
         Map<String, Object> notesParam = new HashMap<>();
         notesParam.put("type", "string");
-        notesParam.put("description", "For contacts: Optional notes about this contact (e.g., 'Met at spawn', 'Helped me mine')");
+        notesParam.put("description", "For contacts (add/update only): Optional notes about this contact (e.g., 'Met at spawn', 'Helped me mine')");
         properties.put("notes", notesParam);
         
         Map<String, Object> enmityLevelParam = new HashMap<>();
         enmityLevelParam.put("type", "number");
-        enmityLevelParam.put("description", "For contacts: Enmity level (optional, default: 0.0). Range: 0.0 to 1.0. Use to set absolute value or update existing");
+        enmityLevelParam.put("description", "For contacts (add/update only): Enmity level (optional, default: 0.0). Range: 0.0 to 1.0. Use to set absolute value or update existing");
         properties.put("enmityLevel", enmityLevelParam);
         
         Map<String, Object> friendshipLevelParam = new HashMap<>();
         friendshipLevelParam.put("type", "number");
-        friendshipLevelParam.put("description", "For contacts: Friendship level (optional, default: 0.0). Range: 0.0 to 1.0. Use to set absolute value or update existing");
+        friendshipLevelParam.put("description", "For contacts (add/update only): Friendship level (optional, default: 0.0). Range: 0.0 to 1.0. Use to set absolute value or update existing");
         properties.put("friendshipLevel", friendshipLevelParam);
         
-        // Location-specific fields
+        // Location-specific fields (only for add/update)
         Map<String, Object> descriptionParam = new HashMap<>();
         descriptionParam.put("type", "string");
-        descriptionParam.put("description", "For locations: Description of what this location is or why it's important (required for locations)");
+        descriptionParam.put("description", "For locations (add/update only): Description of what this location is or why it's important (required for locations)");
         properties.put("description", descriptionParam);
         
         parameters.put("properties", properties);
-        parameters.put("required", List.of("infoType", "name"));
-        
-        function.put("parameters", parameters);
-        tool.put("function", function);
-        
-        return tool;
-    }
-
-    /**
-     * Creates the removeInfo tool definition.
-     * Allows LLM to remove contacts and locations from memory.
-     */
-    public static Map<String, Object> getRemoveInfoTool() {
-        Map<String, Object> tool = new HashMap<>();
-        tool.put("type", "function");
-        
-        Map<String, Object> function = new HashMap<>();
-        function.put("name", "removeInfo");
-        function.put("description", "Remove information from memory (contacts or locations). " +
-                "Use this when you want to forget about someone or a location (e.g., they're no longer relevant, " +
-                "you want to free up memory space, or you've had a falling out).");
-        
-        Map<String, Object> parameters = new HashMap<>();
-        parameters.put("type", "object");
-        
-        Map<String, Object> properties = new HashMap<>();
-        
-        Map<String, Object> infoTypeParam = new HashMap<>();
-        infoTypeParam.put("type", "string");
-        infoTypeParam.put("description", "Type of information to remove: 'contact' or 'location'");
-        infoTypeParam.put("enum", List.of("contact", "location"));
-        properties.put("infoType", infoTypeParam);
-        
-        Map<String, Object> nameParam = new HashMap<>();
-        nameParam.put("type", "string");
-        nameParam.put("description", "Name of the contact or location to remove");
-        properties.put("name", nameParam);
-        
-        parameters.put("properties", properties);
-        parameters.put("required", List.of("infoType", "name"));
+        parameters.put("required", List.of("action", "infoType", "name"));
         
         function.put("parameters", parameters);
         tool.put("function", function);
@@ -198,62 +167,32 @@ public class ToolDefinitions {
     }
 
     /**
-     * Creates the readMessage tool definition.
-     * Allows LLM to read received messages.
+     * Creates the manageBook tool definition.
+     * Allows LLM to add, update, or remove pages in the shared book.
+     * Merged from addOrUpdatePageToBook and removePageFromBook tools.
      */
-    public static Map<String, Object> getReadMessageTool() {
+    public static Map<String, Object> getManageBookTool() {
         Map<String, Object> tool = new HashMap<>();
         tool.put("type", "function");
         
         Map<String, Object> function = new HashMap<>();
-        function.put("name", "readMessage");
-        function.put("description", "Read your received messages. " +
-                "Use this to check your mail and see messages from other NPCs or players. " +
-                "Messages are automatically marked as read when you read them.");
-        
-        Map<String, Object> parameters = new HashMap<>();
-        parameters.put("type", "object");
-        
-        Map<String, Object> properties = new HashMap<>();
-        
-        Map<String, Object> unreadOnlyParam = new HashMap<>();
-        unreadOnlyParam.put("type", "boolean");
-        unreadOnlyParam.put("description", "If true, only return unread messages. If false, return all messages (default: false)");
-        properties.put("unreadOnly", unreadOnlyParam);
-        
-        Map<String, Object> limitParam = new HashMap<>();
-        limitParam.put("type", "integer");
-        limitParam.put("description", "Maximum number of messages to return (default: 10, max: 50)");
-        properties.put("limit", limitParam);
-        
-        parameters.put("properties", properties);
-        parameters.put("required", List.of());
-        
-        function.put("parameters", parameters);
-        tool.put("function", function);
-        
-        return tool;
-    }
-
-    /**
-     * Creates the addOrUpdatePageToBook tool definition.
-     * Allows LLM to add or update pages in the shared book.
-     */
-    public static Map<String, Object> getAddOrUpdatePageToBookTool() {
-        Map<String, Object> tool = new HashMap<>();
-        tool.put("type", "function");
-        
-        Map<String, Object> function = new HashMap<>();
-        function.put("name", "addOrUpdatePageToBook");
-        function.put("description", "Add or update a page in the shared book. " +
+        function.put("name", "manageBook");
+        function.put("description", "Manage pages in the shared book. " +
                 "The shared book is accessible to all NPCs and contains common information " +
                 "(e.g., community rules, shared locations, warnings, announcements). " +
+                "Use 'add' or 'update' to add/update a page, or 'remove' to delete a page when information is outdated. " +
                 "This is NOT for chatting - use sendMessage for that.");
         
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("type", "object");
         
         Map<String, Object> properties = new HashMap<>();
+        
+        Map<String, Object> actionParam = new HashMap<>();
+        actionParam.put("type", "string");
+        actionParam.put("description", "Action to perform: 'add' (or 'update' - same as add), or 'remove'");
+        actionParam.put("enum", List.of("add", "update", "remove"));
+        properties.put("action", actionParam);
         
         Map<String, Object> pageTitleParam = new HashMap<>();
         pageTitleParam.put("type", "string");
@@ -262,43 +201,11 @@ public class ToolDefinitions {
         
         Map<String, Object> contentParam = new HashMap<>();
         contentParam.put("type", "string");
-        contentParam.put("description", "Content of the page. This will replace existing content if the page already exists.");
+        contentParam.put("description", "Content of the page (required for add/update). This will replace existing content if the page already exists.");
         properties.put("content", contentParam);
         
         parameters.put("properties", properties);
-        parameters.put("required", List.of("pageTitle", "content"));
-        
-        function.put("parameters", parameters);
-        tool.put("function", function);
-        
-        return tool;
-    }
-
-    /**
-     * Creates the removePageFromBook tool definition.
-     * Allows LLM to remove pages from the shared book.
-     */
-    public static Map<String, Object> getRemovePageFromBookTool() {
-        Map<String, Object> tool = new HashMap<>();
-        tool.put("type", "function");
-        
-        Map<String, Object> function = new HashMap<>();
-        function.put("name", "removePageFromBook");
-        function.put("description", "Remove a page from the shared book. " +
-                "Use this when information is outdated or no longer relevant.");
-        
-        Map<String, Object> parameters = new HashMap<>();
-        parameters.put("type", "object");
-        
-        Map<String, Object> properties = new HashMap<>();
-        
-        Map<String, Object> pageTitleParam = new HashMap<>();
-        pageTitleParam.put("type", "string");
-        pageTitleParam.put("description", "Title of the page to remove");
-        properties.put("pageTitle", pageTitleParam);
-        
-        parameters.put("properties", properties);
-        parameters.put("required", List.of("pageTitle"));
+        parameters.put("required", List.of("action", "pageTitle"));
         
         function.put("parameters", parameters);
         tool.put("function", function);
@@ -309,16 +216,14 @@ public class ToolDefinitions {
     /**
      * Returns the list of tools for tool calling.
      * Includes execute_command, memory management, mail, and sharebook tools.
+     * Simplified: merged memory tools and book tools, removed readMessage (messages auto-included in context).
      */
     public static List<Map<String, Object>> getTools() {
         List<Map<String, Object>> tools = new ArrayList<>();
         tools.add(getExecuteCommandTool());
-        tools.add(getAddOrUpdateInfoTool());
-        tools.add(getRemoveInfoTool());
+        tools.add(getManageMemoryTool());
         tools.add(getSendMessageTool());
-        tools.add(getReadMessageTool());
-        tools.add(getAddOrUpdatePageToBookTool());
-        tools.add(getRemovePageFromBookTool());
+        tools.add(getManageBookTool());
         return tools;
     }
 
