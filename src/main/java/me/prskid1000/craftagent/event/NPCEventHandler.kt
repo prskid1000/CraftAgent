@@ -68,140 +68,125 @@ class NPCEventHandler(
     }
 
     /**
-     * Processes LLM call. Called by scheduler periodically.
-     * Only triggers if queue is empty (checked by scheduler).
-     * @return true if LLM call was successfully submitted, false otherwise
+     * Processes LLM call synchronously. Called by scheduler periodically.
+     * Processes serially - blocks until completion.
+     * @return true if LLM call succeeded, false otherwise
      */
     override fun processLLM(): Boolean {
-        // Double-check queue is empty (scheduler also checks, but be safe)
-        if (!executorService.queue.isEmpty()) {
-            LogUtil.debugInChat("processLLM: Queue not empty, skipping for NPC ${config.npcName}")
-            return false
-        }
-        
         return try {
-            CompletableFuture.runAsync({
-                LogUtil.info("processLLM: Processing LLM for NPC ${config.npcName}")
+            LogUtil.info("processLLM: Processing LLM for NPC ${config.npcName}")
 
-                // Perform summarization if needed (this ensures it goes through scheduler)
-                history.performSummarizationIfNeeded()
+            // Perform summarization if needed
+            history.performSummarizationIfNeeded()
 
-                // Build messages for LLM: history + current state with context
-                val messagesForLLM = mutableListOf<Message>()
-                // Add all history messages (without context)
-                messagesForLLM.addAll(history.latestConversations)
-                
-                // If there's a last user message, replace it with formatted version that includes context
-                if (messagesForLLM.isNotEmpty() && messagesForLLM.last().role == "user") {
-                    val lastUserMessage = messagesForLLM.last().message
-                    val formattedPrompt: String = StructuredInputFormatter.formatStructured(lastUserMessage, contextProvider.buildContext())
-                    messagesForLLM[messagesForLLM.size - 1] = Message(formattedPrompt, "user")
-                } else {
-                    // No recent user message, create a context-only prompt
-                    val contextPrompt = "Current state and context. What should I do?"
-                    val formattedPrompt: String = StructuredInputFormatter.formatStructured(contextPrompt, contextProvider.buildContext())
-                    messagesForLLM.add(Message(formattedPrompt, "user"))
-                }
-                
-                // Use tool calling for commands, structured output for messages (hybrid approach)
-                val toolResponse = llmClient.chatWithTools(messagesForLLM)
-                
-                // Process tool calls (commands and memory management)
-                var command: String? = null
-                if (toolResponse.hasToolCalls()) {
-                    // Handle memory management tools first
-                    toolResponse.toolCalls.forEach { toolCall ->
-                        when (toolCall.name) {
-                            "execute_command" -> {
-                                command = toolCall.getCommand()
-                            }
-                            "addOrUpdateInfo" -> {
-                                handleAddOrUpdateInfo(toolCall)
-                            }
-                            "removeInfo" -> {
-                                handleRemoveInfo(toolCall)
-                            }
-                            "sendMessage" -> {
-                                handleSendMessage(toolCall)
-                            }
-                            "readMessage" -> {
-                                handleReadMessage(toolCall)
-                            }
-                            "addOrUpdatePageToBook" -> {
-                                handleAddOrUpdatePageToBook(toolCall)
-                            }
-                            "removePageFromBook" -> {
-                                handleRemovePageFromBook(toolCall)
-                            }
-                        }
-                    }
-                }
-                
-                // Extract message from content (structured output or plain text)
-                var message = toolResponse.content.trim()
-                // If content is JSON (structured output), try to parse it
-                if (message.startsWith("{") && message.contains("\"message\"")) {
-                    try {
-                        val parsedMessage = parse(message)
-                        message = parsedMessage.message
-                        // If no command from tool call, try to get from parsed JSON (fallback for compatibility)
-                        if (command == null && parsedMessage.command.isNotEmpty()) {
-                            command = parsedMessage.command
-                        }
-                    } catch (e: Exception) {
-                        // If parsing fails, try to extract message field directly
-                        try {
-                            val messageStart = message.indexOf("\"message\"")
-                            if (messageStart >= 0) {
-                                val valueStart = message.indexOf("\"", messageStart + 10) + 1
-                                val valueEnd = message.indexOf("\"", valueStart)
-                                if (valueEnd > valueStart) {
-                                    message = message.substring(valueStart, valueEnd)
-                                }
-                            }
-                        } catch (e2: Exception) {
-                            // If all parsing fails, use content as-is (might be plain text)
-                        }
-                    }
-                }
-                // If message is empty or just whitespace, treat as no message
-                if (message.isBlank()) {
-                    message = ""
-                }
-                
-                // Execute command if present
-                if (command != null && command.isNotEmpty() && command != "idle") {
-                    val succeeded = execute(command)
-                    if (!succeeded) {
-                        return@runAsync
-                    }
-                }
-                
-                // Send message if present and different from last
-                if (message.isNotEmpty() && message != history.getLastMessage()) {
-                    controller.controllerExtras.chat(message)
-                }
-                
-                // Add response to history (for tool calls or messages)
-                val responseText = when {
-                    message.isNotEmpty() -> message
-                    command != null -> "Executed command: $command"
-                    else -> toolResponse.content.ifEmpty { "No action" }
-                }
-                history.add(Message(responseText, "assistant"))
-            }, executorService)
-                .exceptionally {
-                    LogUtil.debugInChat("Could not generate a response: " + buildErrorMessage(it))
-                    LogUtil.error("Error occurred processing LLM for NPC ${config.npcName}", it)
-                    null
-                }
+            // Build messages for LLM: history + current state with context
+            val messagesForLLM = mutableListOf<Message>()
+            // Add all history messages (without context)
+            messagesForLLM.addAll(history.latestConversations)
             
-            // Return true to indicate work was submitted successfully
-            // Scheduler tracks processing state and will clear flag when queue is empty
-            LogUtil.info("Submitted LLM processing task for NPC: ${config.npcName}")
+            // If there's a last user message, replace it with formatted version that includes context
+            if (messagesForLLM.isNotEmpty() && messagesForLLM.last().role == "user") {
+                val lastUserMessage = messagesForLLM.last().message
+                val formattedPrompt: String = StructuredInputFormatter.formatStructured(lastUserMessage, contextProvider.buildContext())
+                messagesForLLM[messagesForLLM.size - 1] = Message(formattedPrompt, "user")
+            } else {
+                // No recent user message, create a context-only prompt
+                val contextPrompt = "Current state and context. What should I do?"
+                val formattedPrompt: String = StructuredInputFormatter.formatStructured(contextPrompt, contextProvider.buildContext())
+                messagesForLLM.add(Message(formattedPrompt, "user"))
+            }
+            
+            // Use tool calling for commands, structured output for messages (hybrid approach)
+            val toolResponse = llmClient.chatWithTools(messagesForLLM)
+            
+            // Process tool calls (commands and memory management)
+            var command: String? = null
+            if (toolResponse.hasToolCalls()) {
+                // Handle memory management tools first
+                toolResponse.toolCalls.forEach { toolCall ->
+                    when (toolCall.name) {
+                        "execute_command" -> {
+                            command = toolCall.getCommand()
+                        }
+                        "addOrUpdateInfo" -> {
+                            handleAddOrUpdateInfo(toolCall)
+                        }
+                        "removeInfo" -> {
+                            handleRemoveInfo(toolCall)
+                        }
+                        "sendMessage" -> {
+                            handleSendMessage(toolCall)
+                        }
+                        "readMessage" -> {
+                            handleReadMessage(toolCall)
+                        }
+                        "addOrUpdatePageToBook" -> {
+                            handleAddOrUpdatePageToBook(toolCall)
+                        }
+                        "removePageFromBook" -> {
+                            handleRemovePageFromBook(toolCall)
+                        }
+                    }
+                }
+            }
+            
+            // Extract message from content (structured output or plain text)
+            var message = toolResponse.content.trim()
+            // If content is JSON (structured output), try to parse it
+            if (message.startsWith("{") && message.contains("\"message\"")) {
+                try {
+                    val parsedMessage = parse(message)
+                    message = parsedMessage.message
+                    // If no command from tool call, try to get from parsed JSON (fallback for compatibility)
+                    if (command == null && parsedMessage.command.isNotEmpty()) {
+                        command = parsedMessage.command
+                    }
+                } catch (e: Exception) {
+                    // If parsing fails, try to extract message field directly
+                    try {
+                        val messageStart = message.indexOf("\"message\"")
+                        if (messageStart >= 0) {
+                            val valueStart = message.indexOf("\"", messageStart + 10) + 1
+                            val valueEnd = message.indexOf("\"", valueStart)
+                            if (valueEnd > valueStart) {
+                                message = message.substring(valueStart, valueEnd)
+                            }
+                        }
+                    } catch (e2: Exception) {
+                        // If all parsing fails, use content as-is (might be plain text)
+                    }
+                }
+            }
+            // If message is empty or just whitespace, treat as no message
+            if (message.isBlank()) {
+                message = ""
+            }
+            
+            // Execute command if present
+            if (command != null && command.isNotEmpty() && command != "idle") {
+                val succeeded = execute(command)
+                if (!succeeded) {
+                    return false
+                }
+            }
+            
+            // Send message if present and different from last
+            if (message.isNotEmpty() && message != history.getLastMessage()) {
+                controller.controllerExtras.chat(message)
+            }
+            
+            // Add response to history (for tool calls or messages)
+            val responseText = when {
+                message.isNotEmpty() -> message
+                command != null -> "Executed command: $command"
+                else -> toolResponse.content.ifEmpty { "No action" }
+            }
+            history.add(Message(responseText, "assistant"))
+            
             true
         } catch (e: Exception) {
-            LogUtil.error("Error submitting LLM processing task for NPC ${config.npcName}", e)
+            LogUtil.debugInChat("Could not generate a response: " + buildErrorMessage(e))
+            LogUtil.error("Error occurred processing LLM for NPC ${config.npcName}", e)
             false
         }
     }

@@ -7,20 +7,29 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.minecraft.server.MinecraftServer
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.ArrayBlockingQueue
 
 /**
- * Scheduler that processes NPCs in a circular queue with configurable intervals.
- * Processes one NPC every X seconds, checking minimum interval Y between successful triggers.
+ * Scheduler that processes NPCs serially in a FIFO queue with configurable intervals.
+ * Uses a single-threaded executor to ensure only one NPC processes at a time.
  */
 class LLMProcessingScheduler(
     private val npcService: NPCService,
     private val configProvider: ConfigProvider
 ) : AEventListener() {
 
-    private val circularQueue = LinkedList<UUID>()
+    private val fifoQueue = LinkedList<UUID>()
     private val lastSuccessfulTrigger = ConcurrentHashMap<UUID, Long>()
-    private val currentlyProcessing = ConcurrentHashMap<UUID, Boolean>()
     private var lastProcessingTime = 0L
+    
+    // Single-threaded executor ensures serial processing
+    private val executorService: ThreadPoolExecutor = ThreadPoolExecutor(
+        1, 1, 0L, TimeUnit.MILLISECONDS,
+        ArrayBlockingQueue(100),
+        ThreadPoolExecutor.CallerRunsPolicy()
+    )
 
     override fun register() {
         ServerTickEvents.END_SERVER_TICK.register { server ->
@@ -29,8 +38,8 @@ class LLMProcessingScheduler(
             val interval = baseConfig.llmProcessingInterval * 1000L // X seconds to ms
             val minInterval = baseConfig.llmMinInterval * 1000L // Y seconds to ms
 
-            // Check if interval X has passed
-            if (currentTime - lastProcessingTime >= interval) {
+            // Check if interval X has passed and executor is idle
+            if (executorService.queue.isEmpty() && currentTime - lastProcessingTime >= interval) {
                 syncQueueWithNPCs() // Ensure queue is up to date
                 processNextNPC(server, currentTime, minInterval)
                 lastProcessingTime = currentTime
@@ -42,106 +51,69 @@ class LLMProcessingScheduler(
         val currentNPCs = npcService.uuidToNpc.keys.toSet()
         // Add new NPCs to queue
         currentNPCs.forEach { uuid ->
-            if (!circularQueue.contains(uuid)) {
-                circularQueue.addLast(uuid)
+            if (!fifoQueue.contains(uuid)) {
+                fifoQueue.addLast(uuid)
                 LogUtil.info("Added NPC $uuid to LLM processing queue")
             }
         }
-        // Remove deleted NPCs from queue and processing tracking
-        val removed = circularQueue.removeIf { !currentNPCs.contains(it) }
+        // Remove deleted NPCs from queue
+        val removed = fifoQueue.removeIf { !currentNPCs.contains(it) }
         if (removed) {
             LogUtil.info("Removed deleted NPCs from LLM processing queue")
-        }
-        // Clean up processing flags for removed NPCs
-        currentlyProcessing.keys.removeIf { !currentNPCs.contains(it) }
-        
-        // Check and clear processing flags for NPCs that have finished
-        currentNPCs.forEach { uuid ->
-            if (currentlyProcessing[uuid] == true) {
-                val npc = npcService.uuidToNpc[uuid]
-                if (npc != null && npc.eventHandler.queueIsEmpty()) {
-                    // Processing completed, clear flag
-                    currentlyProcessing.remove(uuid)
-                    LogUtil.info("Cleared processing flag for NPC: ${npc.config.npcName}")
-                }
-            }
         }
     }
 
     private fun processNextNPC(server: MinecraftServer, currentTime: Long, minInterval: Long) {
-        if (circularQueue.isEmpty()) return
+        if (fifoQueue.isEmpty()) return
 
-        var processed = false
-        var attempts = 0
-        val maxAttempts = circularQueue.size // Prevent infinite loop
-
-        processLoop@ while (!processed && attempts < maxAttempts) {
-            val npcUuid = circularQueue.removeFirst()
-            val npc = npcService.uuidToNpc[npcUuid]
-            if (npc == null) {
-                // NPC was removed, skip
-                attempts++
-                continue@processLoop
-            }
-
-            // Check minimum interval Y
-            val lastSuccess = lastSuccessfulTrigger[npcUuid] ?: 0L
-            val timeSinceLastSuccess = currentTime - lastSuccess
-
-            if (timeSinceLastSuccess < minInterval) {
-                // Min interval not met, move to end
-                circularQueue.addLast(npcUuid)
-                attempts++
-                continue@processLoop
-            }
-
-            // Check if NPC is already processing
-            if (currentlyProcessing[npcUuid] == true) {
-                // Already processing, move to end
-                circularQueue.addLast(npcUuid)
-                attempts++
-                continue@processLoop
-            }
-
-            // Check if NPC queue is empty (not already processing)
-            if (!npc.eventHandler.queueIsEmpty()) {
-                // Already processing, move to end
-                circularQueue.addLast(npcUuid)
-                attempts++
-                continue@processLoop
-            }
-
-            // Conditions met, process NPC
-            try {
-                // Mark as processing
-                currentlyProcessing[npcUuid] = true
-                
-                val success = npc.eventHandler.processLLM()
-                if (success) {
-                    lastSuccessfulTrigger[npcUuid] = currentTime
-                    LogUtil.info("Successfully triggered LLM processing for NPC: ${npc.config.npcName}")
-                } else {
-                    LogUtil.info("LLM processing returned false for NPC: ${npc.config.npcName}")
-                    // If failed, clear processing flag immediately
-                    currentlyProcessing.remove(npcUuid)
-                }
-                // Note: processing flag will be cleared when queue becomes empty (checked in next cycle)
-                // Always move to end for circular rotation
-                circularQueue.addLast(npcUuid)
-                processed = true
-            } catch (e: Exception) {
-                // On error, clear processing flag and move to end
-                currentlyProcessing.remove(npcUuid)
-                LogUtil.error("Error processing LLM for NPC: ${npc.config.npcName}", e)
-                circularQueue.addLast(npcUuid)
-                attempts++
-            }
+        // Pick one NPC from the front of the queue
+        val npcUuid = fifoQueue.removeFirst()
+        val npc = npcService.uuidToNpc[npcUuid]
+        
+        if (npc == null) {
+            // NPC was removed, skip and put back at end
+            fifoQueue.addLast(npcUuid)
+            return
         }
 
-        if (!processed && attempts >= maxAttempts) {
-            // All NPCs were skipped (expected if all are processing or haven't met min interval)
-            // Only log to file, not chat, as this is normal behavior
-            LogUtil.info("Could not process any NPC in this cycle (all skipped - normal if all processing)")
+        // Check if Y time has passed since last successful processing
+        val lastSuccess = lastSuccessfulTrigger[npcUuid] ?: 0L
+        val timeSinceLastSuccess = currentTime - lastSuccess
+
+        if (timeSinceLastSuccess >= minInterval) {
+            // Y time has passed, process the NPC
+            val npcUuidFinal = npcUuid
+            executorService.submit {
+                try {
+                    val success = npc.eventHandler.processLLM()
+                    if (success) {
+                        lastSuccessfulTrigger[npcUuidFinal] = System.currentTimeMillis()
+                        LogUtil.info("Successfully processed LLM for NPC: ${npc.config.npcName}")
+                    } else {
+                        LogUtil.info("LLM processing returned false for NPC: ${npc.config.npcName}")
+                    }
+                } catch (e: Exception) {
+                    LogUtil.error("Error processing LLM for NPC: ${npc.config.npcName}", e)
+                } finally {
+                    // Always put back at end of queue after processing
+                    fifoQueue.addLast(npcUuidFinal)
+                }
+            }
+        } else {
+            // Y time has not passed, skip and put back at end
+            fifoQueue.addLast(npcUuid)
+        }
+    }
+    
+    fun shutdown() {
+        executorService.shutdown()
+        try {
+            if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                executorService.shutdownNow()
+            }
+        } catch (e: InterruptedException) {
+            executorService.shutdownNow()
+            Thread.currentThread().interrupt()
         }
     }
 }
