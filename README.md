@@ -64,8 +64,6 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 
 ## Usage
 
-## Usage
-
 ### Commands
 
 - `/craftagent` - Open configuration GUI
@@ -100,7 +98,7 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 
 ## Architecture
 
-- **Command System**: Uses Brigadier to discover and execute all Minecraft commands
+- **Command System**: Uses Brigadier to discover and execute all Minecraft commands (~115+ vanilla commands, plus mod commands)
 - **Tool Calls**: Commands executed via `execute_command` tool
 - **Structured I/O**: JSON format for reliable parsing of context and responses
 

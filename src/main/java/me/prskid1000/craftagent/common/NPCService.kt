@@ -314,14 +314,12 @@ class NPCService(
         if (npc != null) {
             val config = npc.config
             // Always use default prompt, append custom prompt if provided
-            // Get commands from Brigadier instead of AltoClef
-            val server = npc.npcEntity.server
-            val minecraftCommands = me.prskid1000.craftagent.util.MinecraftCommandUtil.getFormattedCommandList(server)
+            // Commands are now included in tool definitions, not in system prompt (avoids duplication)
             val newSystemPrompt = Instructions.getLlmSystemPrompt(
                 config.npcName,
                 config.age,
                 config.gender,
-                minecraftCommands,
+                "", // Commands are in tool definition now, not in prompt
                 config.customSystemPrompt,
                 config.llmType
             )

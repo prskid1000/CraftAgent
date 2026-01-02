@@ -89,7 +89,9 @@ class NPCEventHandler(
             }
             
             // Use tool calling for commands, structured output for messages (hybrid approach)
-            val toolResponse = llmClient.chatWithTools(messagesForLLM)
+            // Pass server to get tools with command information
+            val server = contextProvider.getNpcEntity().server
+            val toolResponse = llmClient.chatWithTools(messagesForLLM, server)
             
             // Process tool calls (commands and memory management)
             var command: String? = null

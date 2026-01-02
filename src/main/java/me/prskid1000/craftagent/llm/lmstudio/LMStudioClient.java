@@ -84,7 +84,7 @@ public class LMStudioClient implements LLMClient {
 	}
 
 	@Override
-	public ToolCallResponse chatWithTools(List<Message> messages) {
+	public ToolCallResponse chatWithTools(List<Message> messages, net.minecraft.server.MinecraftServer server) {
 		try {
 			// Convert messages to OpenAI-compatible format (same as Ollama format)
 			List<Map<String, String>> openaiMessages = new ArrayList<>();
@@ -100,8 +100,8 @@ public class LMStudioClient implements LLMClient {
 			requestBody.put("model", model);
 			requestBody.put("messages", openaiMessages);
 			requestBody.put("stream", false);
-			// Add tools for command execution (actions)
-			requestBody.put("tools", ToolDefinitions.getTools());
+			// Add tools for command execution (actions) - with command information from server
+			requestBody.put("tools", ToolDefinitions.getTools(server));
 			// Add response_format for message output (structured output for simple data)
 			// Use json_schema type (not json_object) - LM Studio only accepts "json_schema" or "text"
 			Map<String, Object> responseFormat = new HashMap<>();

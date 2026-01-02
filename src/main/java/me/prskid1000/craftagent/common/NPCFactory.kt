@@ -42,14 +42,12 @@ class NPCFactory(
         val llmClient = initLLMClient(config)
 
         // Always use default prompt, append custom prompt if provided
-        // Get commands from Brigadier instead of AltoClef
-        val server = npcEntity.server
-        val minecraftCommands = me.prskid1000.craftagent.util.MinecraftCommandUtil.getFormattedCommandList(server)
+        // Commands are now included in tool definitions, not in system prompt (avoids duplication)
         val defaultPrompt = Instructions.getLlmSystemPrompt(
             config.npcName,
             config.age,
             config.gender,
-            minecraftCommands,
+            "", // Commands are in tool definition now, not in prompt
             config.customSystemPrompt,
             config.llmType
         )

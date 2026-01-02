@@ -29,6 +29,11 @@ public class MinecraftCommandUtil {
      * Gets all registered command names from Brigadier's command dispatcher.
      * Uses Brigadier's CommandDispatcher to traverse the command tree.
      * 
+     * Approximate command counts:
+     * - Vanilla Minecraft 1.21.8: ~115+ base commands
+     * - With Fabric API: Additional commands may be added
+     * - With other mods: Count increases based on installed mods
+     * 
      * @param server The Minecraft server instance
      * @return A set of all registered command names (literal commands)
      */
@@ -94,14 +99,24 @@ public class MinecraftCommandUtil {
             if (node instanceof LiteralCommandNode) {
                 String commandName = node.getName();
                 try {
-                    // Get usage string for the command
-                    String usage = dispatcher.getSmartUsage(node, dummySource).values().stream()
-                            .findFirst()
-                            .orElse(commandName);
-                    commands.put(commandName, usage);
+                    // Get usage string for the command (includes parameters)
+                    // getSmartUsage returns a map of possible command paths
+                    Map<CommandNode<ServerCommandSource>, String> usageMap = dispatcher.getSmartUsage(node, dummySource);
+                    if (!usageMap.isEmpty()) {
+                        // Get the first (most common) usage path
+                        String usage = usageMap.values().iterator().next();
+                        // Remove the command name prefix if it's duplicated
+                        if (usage.startsWith(commandName + " ")) {
+                            usage = usage.substring(commandName.length() + 1);
+                        }
+                        commands.put(commandName, usage);
+                    } else {
+                        // No usage found, just use empty string (will show command name only)
+                        commands.put(commandName, "");
+                    }
                 } catch (Exception e) {
-                    // If we can't get usage, just add the command name
-                    commands.put(commandName, commandName);
+                    // If we can't get usage, just add empty string (will show command name only)
+                    commands.put(commandName, "");
                 }
             }
         }
@@ -125,6 +140,39 @@ public class MinecraftCommandUtil {
         return commands.stream()
                 .sorted()
                 .collect(Collectors.joining(", "));
+    }
+
+    /**
+     * Gets a formatted list of commands with their usage/parameters for LLM system prompts.
+     * This provides the LLM with full command syntax including parameters.
+     * 
+     * Format example:
+     * "• give <targets> <item> [<count>]"
+     * "• tp <targets> <pos>"
+     * "• effect give <targets> <effect> [<seconds>] [<amplifier>]"
+     * 
+     * @param server The Minecraft server instance
+     * @return A formatted string with commands and their usage information (parameters)
+     */
+    public static String getFormattedCommandsWithUsage(MinecraftServer server) {
+        Map<String, String> commandsWithUsage = getAllCommandsWithUsage(server);
+        if (commandsWithUsage.isEmpty()) {
+            return "No commands available";
+        }
+        
+        return commandsWithUsage.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> {
+                    String command = entry.getKey();
+                    String usage = entry.getValue();
+                    // Format as: "• command <param1> [param2]"
+                    if (usage == null || usage.trim().isEmpty()) {
+                        return "• " + command;
+                    } else {
+                        return "• " + command + " " + usage;
+                    }
+                })
+                .collect(Collectors.joining("\n"));
     }
 
     /**

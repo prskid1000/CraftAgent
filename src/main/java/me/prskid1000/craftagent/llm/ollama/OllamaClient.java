@@ -121,7 +121,7 @@ public class OllamaClient implements LLMClient {
 //    }
 
 	@Override
-	public ToolCallResponse chatWithTools(List<Message> messages) {
+	public ToolCallResponse chatWithTools(List<Message> messages, net.minecraft.server.MinecraftServer server) {
 		try {
 			// Convert messages to Ollama format
 			List<Map<String, String>> ollamaMessages = new ArrayList<>();
@@ -137,8 +137,8 @@ public class OllamaClient implements LLMClient {
 			requestBody.put("model", model);
 			requestBody.put("messages", ollamaMessages);
 			requestBody.put("stream", false);
-			// Use tools for command execution (actions)
-			requestBody.put("tools", ToolDefinitions.getTools());
+			// Use tools for command execution (actions) - with command information from server
+			requestBody.put("tools", ToolDefinitions.getTools(server));
 			// Use format for message output (structured output for simple data)
 			requestBody.put("format", ToolDefinitions.getMessageSchema());
 			// Set temperature to 0 for deterministic outputs

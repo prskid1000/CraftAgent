@@ -69,7 +69,8 @@ class ConversationHistory(
             "user")
         // Use chatWithTools and extract content (summarization doesn't need tool calls)
         // NOTE: This is called during processLLM(), so it's within the scheduler's control
-        val toolResponse = llmClient.chatWithTools(listOf(summarizeMessage))
+        // Pass null for server since summarization doesn't need command tools
+        val toolResponse = llmClient.chatWithTools(listOf(summarizeMessage), null)
         return Message(toolResponse.content, "assistant")
     }
 

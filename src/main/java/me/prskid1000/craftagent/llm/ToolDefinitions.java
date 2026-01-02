@@ -1,5 +1,8 @@
 package me.prskid1000.craftagent.llm;
 
+import me.prskid1000.craftagent.util.MinecraftCommandUtil;
+import net.minecraft.server.MinecraftServer;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,17 +17,31 @@ public class ToolDefinitions {
     private ToolDefinitions() {}
 
     /**
-     * Creates the execute_command tool definition.
-     * This tool allows the LLM to execute Minecraft commands.
+     * Creates the execute_command tool definition with command information.
+     * This tool allows the LLM to execute Minecraft commands with full parameter knowledge.
+     * 
+     * @param server The Minecraft server instance to get command information from
+     * @return Tool definition with command information included
      */
-    public static Map<String, Object> getExecuteCommandTool() {
+    public static Map<String, Object> getExecuteCommandTool(MinecraftServer server) {
         Map<String, Object> tool = new HashMap<>();
         tool.put("type", "function");
         
         Map<String, Object> function = new HashMap<>();
         function.put("name", "execute_command");
-        function.put("description", "Execute a Minecraft command. Use this when you want to perform an action in the game. " +
-                "You can execute one command at a time. Use 'idle' to do nothing.");
+        
+        // Get command list with parameters for the description
+        String commandsList = "No commands available";
+        if (server != null) {
+            commandsList = MinecraftCommandUtil.getFormattedCommandsWithUsage(server);
+        }
+        
+        String description = "Execute a Minecraft command. Use this when you want to perform an action in the game. " +
+                "You can execute one command at a time. Use 'idle' to do nothing.\n\n" +
+                "Available commands with parameters:\n" + commandsList + "\n\n" +
+                "Format: Use the full command with all required parameters. Example: 'give @s minecraft:diamond 64' or 'tp @s 100 64 100'";
+        
+        function.put("description", description);
         
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("type", "object");
@@ -32,8 +49,11 @@ public class ToolDefinitions {
         Map<String, Object> properties = new HashMap<>();
         Map<String, Object> commandParam = new HashMap<>();
         commandParam.put("type", "string");
-        commandParam.put("description", "The Minecraft command to execute. Must be exactly one command from the available commands list. " +
-                "Do not invent new commands. Use only vanilla Minecraft commands that are provided in the system prompt (e.g., 'give', 'tp', 'effect', 'summon', 'setblock', 'fill', etc.).");
+        commandParam.put("description", "The complete Minecraft command string to execute with all parameters. " +
+                "Must match one of the available commands above. Include all required parameters. " +
+                "Examples: 'give @s minecraft:diamond 64', 'tp @s 100 64 100', 'effect give @s minecraft:speed 30 1', " +
+                "'summon minecraft:cow ~ ~ ~', 'setblock ~ ~-1 ~ minecraft:stone'. " +
+                "Use @s to target yourself. Do not include the leading slash.");
         properties.put("command", commandParam);
         
         parameters.put("properties", properties);
@@ -43,6 +63,14 @@ public class ToolDefinitions {
         tool.put("function", function);
         
         return tool;
+    }
+    
+    /**
+     * Creates the execute_command tool definition without server (fallback).
+     * Uses a generic description without command list.
+     */
+    public static Map<String, Object> getExecuteCommandTool() {
+        return getExecuteCommandTool(null);
     }
 
     /**
@@ -212,17 +240,27 @@ public class ToolDefinitions {
     }
 
     /**
-     * Returns the list of tools for tool calling.
-     * Includes execute_command, memory management, mail, and sharebook tools.
-     * Simplified: merged memory tools and book tools, removed readMessage (messages auto-included in context).
+     * Returns the list of tools for tool calling with command information.
+     * Includes execute_command (with full command list), memory management, mail, and sharebook tools.
+     * 
+     * @param server The Minecraft server instance to get command information from
+     * @return List of tool definitions
      */
-    public static List<Map<String, Object>> getTools() {
+    public static List<Map<String, Object>> getTools(MinecraftServer server) {
         List<Map<String, Object>> tools = new ArrayList<>();
-        tools.add(getExecuteCommandTool());
+        tools.add(getExecuteCommandTool(server));
         tools.add(getManageMemoryTool());
         tools.add(getSendMessageTool());
         tools.add(getManageBookTool());
         return tools;
+    }
+    
+    /**
+     * Returns the list of tools for tool calling (without server - fallback).
+     * Uses generic command description.
+     */
+    public static List<Map<String, Object>> getTools() {
+        return getTools(null);
     }
 
     /**
