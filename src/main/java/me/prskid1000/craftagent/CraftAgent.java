@@ -25,6 +25,7 @@ public class CraftAgent implements ModInitializer {
 
 	public static final String MOD_ID = "craftagent";
 	private boolean isFirstPlayerJoins = true;
+	private EventListenerRegisterer eventListenerRegisterer;
 
 	@Override
 	public void onInitialize() {
@@ -55,7 +56,7 @@ public class CraftAgent implements ModInitializer {
         NetworkHandler networkManager = new NetworkHandler(configProvider, npcService, authorizer);
         networkManager.registerPacketReceiver();
 
-        EventListenerRegisterer eventListenerRegisterer = new EventListenerRegisterer(npcService, configProvider);
+        eventListenerRegisterer = new EventListenerRegisterer(npcService, configProvider);
         eventListenerRegisterer.register();
 
         CommandManager commandManager = new CommandManager(npcService, configProvider, networkManager);
@@ -79,6 +80,9 @@ public class CraftAgent implements ModInitializer {
 	) {
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             npcService.shutdownNPCs(server);
+            if (eventListenerRegisterer != null) {
+                eventListenerRegisterer.shutdown();
+            }
             resourceProvider.saveResources();
             sqlite.closeConnection();
             configProvider.saveAll();

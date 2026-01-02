@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.minecraft.server.MinecraftServer
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.ArrayBlockingQueue
@@ -20,7 +21,8 @@ class LLMProcessingScheduler(
     private val configProvider: ConfigProvider
 ) : AEventListener() {
 
-    private val fifoQueue = LinkedList<UUID>()
+    // Thread-safe queue for multi-threaded access
+    private val fifoQueue = ConcurrentLinkedQueue<UUID>()
     private val lastSuccessfulTrigger = ConcurrentHashMap<UUID, Long>()
     private var lastProcessingTime = 0L
     
@@ -49,30 +51,35 @@ class LLMProcessingScheduler(
 
     private fun syncQueueWithNPCs() {
         val currentNPCs = npcService.uuidToNpc.keys.toSet()
+        val queueSet = fifoQueue.toSet()
+        
         // Add new NPCs to queue
         currentNPCs.forEach { uuid ->
-            if (!fifoQueue.contains(uuid)) {
-                fifoQueue.addLast(uuid)
+            if (!queueSet.contains(uuid)) {
+                fifoQueue.offer(uuid)
                 LogUtil.info("Added NPC $uuid to LLM processing queue")
             }
         }
         // Remove deleted NPCs from queue
-        val removed = fifoQueue.removeIf { !currentNPCs.contains(it) }
-        if (removed) {
-            LogUtil.info("Removed deleted NPCs from LLM processing queue")
+        val iterator = fifoQueue.iterator()
+        while (iterator.hasNext()) {
+            val uuid = iterator.next()
+            if (!currentNPCs.contains(uuid)) {
+                iterator.remove()
+                LogUtil.info("Removed deleted NPC $uuid from LLM processing queue")
+            }
         }
     }
 
     private fun processNextNPC(server: MinecraftServer, currentTime: Long, minInterval: Long) {
-        if (fifoQueue.isEmpty()) return
+        val npcUuid = fifoQueue.poll() ?: return
 
-        // Pick one NPC from the front of the queue
-        val npcUuid = fifoQueue.removeFirst()
+        // Get NPC reference - check again in executor to handle removal
         val npc = npcService.uuidToNpc[npcUuid]
         
         if (npc == null) {
             // NPC was removed, skip and put back at end
-            fifoQueue.addLast(npcUuid)
+            fifoQueue.offer(npcUuid)
             return
         }
 
@@ -82,26 +89,34 @@ class LLMProcessingScheduler(
 
         if (timeSinceLastSuccess >= minInterval) {
             // Y time has passed, process the NPC
-            val npcUuidFinal = npcUuid
+            // Capture NPC name for logging (safer than full reference)
+            val npcName = npc.config.npcName
             executorService.submit {
                 try {
-                    val success = npc.eventHandler.processLLM()
+                    // Re-check NPC exists (could be removed while queued)
+                    val currentNpc = npcService.uuidToNpc[npcUuid]
+                    if (currentNpc == null) {
+                        LogUtil.info("NPC $npcName was removed during processing, skipping")
+                        return@submit
+                    }
+                    
+                    val success = currentNpc.eventHandler.processLLM()
                     if (success) {
-                        lastSuccessfulTrigger[npcUuidFinal] = System.currentTimeMillis()
-                        LogUtil.info("Successfully processed LLM for NPC: ${npc.config.npcName}")
+                        lastSuccessfulTrigger[npcUuid] = currentTime
+                        LogUtil.info("Successfully processed LLM for NPC: $npcName")
                     } else {
-                        LogUtil.info("LLM processing returned false for NPC: ${npc.config.npcName}")
+                        LogUtil.info("LLM processing returned false for NPC: $npcName")
                     }
                 } catch (e: Exception) {
-                    LogUtil.error("Error processing LLM for NPC: ${npc.config.npcName}", e)
+                    LogUtil.error("Error processing LLM for NPC: $npcName", e)
                 } finally {
                     // Always put back at end of queue after processing
-                    fifoQueue.addLast(npcUuidFinal)
+                    fifoQueue.offer(npcUuid)
                 }
             }
         } else {
             // Y time has not passed, skip and put back at end
-            fifoQueue.addLast(npcUuid)
+            fifoQueue.offer(npcUuid)
         }
     }
     
