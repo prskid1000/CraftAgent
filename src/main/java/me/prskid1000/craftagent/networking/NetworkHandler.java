@@ -1,7 +1,6 @@
 package me.prskid1000.craftagent.networking;
 
 import io.wispforest.owo.network.OwoNetChannel;
-import me.sailex.altoclef.multiversion.EntityVer;
 import me.prskid1000.craftagent.auth.PlayerAuthorizer;
 import me.prskid1000.craftagent.callback.STTCallback;
 import me.prskid1000.craftagent.common.NPCService;
@@ -94,7 +93,7 @@ public class NetworkHandler {
     private void registerDeleteNpc() {
         CHANNEL.registerServerbound(DeleteNpcPacket.class, (configPacket, serverAccess) -> {
             if (authorizer.isAuthorized(serverAccess)) {
-                PlayerManager playerManager = EntityVer.getWorld(serverAccess.player()).getServer().getPlayerManager();
+                PlayerManager playerManager = serverAccess.player().getWorld().getServer().getPlayerManager();
                 UUID uuid = UUID.fromString(configPacket.uuid());
 
                 if (configPacket.isDelete()) {

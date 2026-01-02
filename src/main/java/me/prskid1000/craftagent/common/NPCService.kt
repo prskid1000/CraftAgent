@@ -1,6 +1,5 @@
 package me.prskid1000.craftagent.common
 
-import me.sailex.altoclef.multiversion.EntityVer
 import me.prskid1000.craftagent.auth.UsernameValidator
 import me.prskid1000.craftagent.callback.NPCEvents
 import me.prskid1000.craftagent.config.ConfigProvider
@@ -58,7 +57,7 @@ class NPCService(
         if (npc != null) {
             // Display in chat
             val chatMessage = "$playerName says to ${npc.config.npcName}: $messageContent"
-            npc.controller.controllerExtras.chat(chatMessage)
+            me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(npc.entity, chatMessage)
             // Update state (store in history, no LLM trigger)
             npc.eventHandler.updateState("Player $playerName sent you a message: $messageContent")
         }
@@ -84,9 +83,9 @@ class NPCService(
                 }
                 
                 if (configUuid != null) {
-                    removeNpc(configUuid, EntityVer.getWorld(entity).server!!.playerManager)
+                    removeNpc(configUuid, entity.serverWorld.server.playerManager)
                 } else if (deadNpc != null) {
-                    removeNpc(deadNpc.config.uuid, EntityVer.getWorld(entity).server!!.playerManager)
+                    removeNpc(deadNpc.config.uuid, entity.serverWorld.server.playerManager)
                 }
             }
             deathEventRegistered = true
@@ -132,7 +131,7 @@ class NPCService(
                             config.setLastAgeUpdateTick(server.overworld.time)
                         }
                         val npc = factory.createNpc(npcEntity, config, resourceProvider.loadedConversations[config.uuid])
-                        npc.controller.owner = owner
+                        // Owner is now stored in config, no need to set on controller
                         uuidToNpc[config.uuid] = npc
                         entityUuidToConfigUuid[npcEntity.uuid] = config.uuid
 
@@ -169,7 +168,7 @@ class NPCService(
             
             server.execute {
                 try {
-                    npcToRemove.controller.stop()
+                    // Controller removed, no stop needed
                     npcToRemove.llmClient.stopService()
                     npcToRemove.eventHandler.stopService()
                     npcToRemove.contextProvider.chunkManager.stopService()
@@ -207,7 +206,7 @@ class NPCService(
             // Stop services and remove from maps on server thread (thread-safe operations only)
             server.execute {
                 try {
-                    npcToDelete.controller.stop()
+                    // Controller removed, no stop needed
                     npcToDelete.llmClient.stopService()
                     npcToDelete.eventHandler.stopService()
                     npcToDelete.contextProvider.chunkManager.stopService()
@@ -315,11 +314,14 @@ class NPCService(
         if (npc != null) {
             val config = npc.config
             // Always use default prompt, append custom prompt if provided
+            // Get commands from Brigadier instead of AltoClef
+            val server = npc.npcEntity.server
+            val minecraftCommands = me.prskid1000.craftagent.util.MinecraftCommandUtil.getFormattedCommandList(server)
             val newSystemPrompt = Instructions.getLlmSystemPrompt(
                 config.npcName,
                 config.age,
                 config.gender,
-                npc.controller.commandExecutor.allCommands(),
+                minecraftCommands,
                 config.customSystemPrompt,
                 config.llmType
             )

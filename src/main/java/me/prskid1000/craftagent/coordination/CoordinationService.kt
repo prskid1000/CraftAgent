@@ -162,7 +162,7 @@ class CoordinationService(
         
         // Display in chat
         val chatMessage = "${fromNpc.config.npcName} says to ${targetNpc.config.npcName}: $message"
-        targetNpc.controller.controllerExtras.chat(chatMessage)
+        me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(targetNpc.entity, chatMessage)
         
         // Update state (no LLM trigger)
         val formattedMessage = "${fromNpc.config.npcName} says to you: $message"

@@ -7,7 +7,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import lombok.AllArgsConstructor;
-import me.sailex.altoclef.multiversion.EntityVer;
 import me.prskid1000.craftagent.common.NPCService;
 import me.prskid1000.craftagent.config.NPCConfig;
 import me.prskid1000.craftagent.llm.LLMType;
@@ -47,7 +46,7 @@ public class NPCCreateCommand {
 		LLMType llmType = LLMType.valueOf(StringArgumentType.getString(context, LLM_TYPE));
 
 		NPCConfig config = NPCConfig.builder(name).llmType(llmType).build();
-		npcService.createNpc(config, EntityVer.getWorld(source).getServer(), source.getBlockPos(), source);
+		npcService.createNpc(config, source.getWorld().getServer(), source.getBlockPos(), source);
 		return 1;
 	}
 

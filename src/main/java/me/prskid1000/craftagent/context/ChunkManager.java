@@ -1,7 +1,6 @@
 package me.prskid1000.craftagent.context;
 
 import lombok.Getter;
-import me.sailex.altoclef.multiversion.EntityVer;
 import me.prskid1000.craftagent.config.BaseConfig;
 import me.prskid1000.craftagent.model.context.BlockData;
 import me.prskid1000.craftagent.util.LogUtil;
@@ -109,7 +108,7 @@ public class ChunkManager {
      */
     private void updateAllBlocks() {
         currentLoadedBlocks.clear();
-        World world = EntityVer.getWorld(npcEntity);
+        World world = npcEntity.getWorld();
         ChunkPos centerChunk = npcEntity.getChunkPos();
 
         for (int x = -chunkRadius; x <= chunkRadius; x++) {
@@ -126,7 +125,7 @@ public class ChunkManager {
     }
 
     private List<BlockData> scanChunk(ChunkPos chunk) {
-        World world = EntityVer.getWorld(npcEntity);
+        World world = npcEntity.getWorld();
         BlockPos.Mutable pos = new BlockPos.Mutable();
         int baseY = Math.max(0, npcEntity.getBlockPos().getY() - verticalScanRange);
         int maxY = Math.min(world.getHeight(), npcEntity.getBlockPos().getY() + verticalScanRange);

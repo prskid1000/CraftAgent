@@ -57,7 +57,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.34")
 
     include(modImplementation("org.xerial:sqlite-jdbc:3.46.1.3")!!)
-    include(modRuntimeOnly("dev_babbaj:nether-pathfinder:1.4.1")!!)
+    // Removed: nether-pathfinder - not used in codebase
 
     //needed deps for openai communication
     include(modRuntimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2")!!)
@@ -73,7 +73,7 @@ dependencies {
 
     include(modImplementation("org.apache.httpcomponents:httpcore:4.4")!!)
 
-    include(modImplementation("me.sailex:secondbrainengine:${property("deps.engine")}")!!)
+    // Removed: secondbrainengine (AltoClef) - no longer needed, using vanilla Minecraft/Brigadier
     include(modImplementation("com.github.gnembon:fabric-carpet:${project.property("carpet_version")}")!!)
 }
 

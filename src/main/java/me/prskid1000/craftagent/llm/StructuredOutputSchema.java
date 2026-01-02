@@ -20,7 +20,7 @@ public class StructuredOutputSchema {
             "properties", Map.of(
                 "command", Map.of(
                     "type", "string",
-                    "description", "A valid AltoClef command from the available commands list. Must be exactly one command name, not a description or sentence. Use 'idle' to do nothing."
+                    "description", "A valid Minecraft command from the available commands list. Must be exactly one command name, not a description or sentence. Use vanilla Minecraft commands like 'give', 'tp', 'effect', etc."
                 ),
                 "message", Map.of(
                     "type", "string",

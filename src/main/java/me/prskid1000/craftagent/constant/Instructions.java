@@ -1,9 +1,7 @@
 package me.prskid1000.craftagent.constant;
 
-import me.sailex.altoclef.commandsystem.Command;
 import me.prskid1000.craftagent.llm.LLMType;
 
-import java.util.Collection;
 import java.util.stream.Collectors;
 
 /**
@@ -426,12 +424,23 @@ public class Instructions {
 	 * Builds enhanced system prompt with multi-agent coordination capabilities
 	 */
 	public static String getLlmSystemPrompt(String npcName, int age, String gender, 
-	                                        Collection<Command> commands, 
+	                                        String commands, 
 	                                        String customSystemPrompt, 
 	                                        LLMType llmType) {
-        String formattedCommands = commands.stream()
-                .map(c -> "• " + c.getName() + ": " + c.getDescription())
-                .collect(Collectors.joining("\n"));
+        // Commands are now provided as a formatted string from Brigadier
+        // Format: "command1, command2, command3, ..."
+        // Convert to a more readable list format
+        String formattedCommands = commands;
+        if (commands != null && !commands.isEmpty()) {
+            // Split by comma and format as a list
+            String[] commandArray = commands.split(",");
+            formattedCommands = java.util.Arrays.stream(commandArray)
+                    .map(String::trim)
+                    .map(c -> "• " + c)
+                    .collect(Collectors.joining("\n"));
+        } else {
+            formattedCommands = "No commands available";
+        }
 
         // Build enhanced multi-agent prompt
         String enhancedPrompt = String.format(

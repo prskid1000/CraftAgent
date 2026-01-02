@@ -1,7 +1,5 @@
 package me.prskid1000.craftagent.llm;
 
-import me.sailex.altoclef.commandsystem.Command;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,8 +32,8 @@ public class ToolDefinitions {
         Map<String, Object> properties = new HashMap<>();
         Map<String, Object> commandParam = new HashMap<>();
         commandParam.put("type", "string");
-        commandParam.put("description", "The AltoClef command to execute. Must be exactly one command from the available commands list. " +
-                "Do not invent new commands. Use only commands that are provided in the system prompt.");
+        commandParam.put("description", "The Minecraft command to execute. Must be exactly one command from the available commands list. " +
+                "Do not invent new commands. Use only vanilla Minecraft commands that are provided in the system prompt (e.g., 'give', 'tp', 'effect', 'summon', 'setblock', 'fill', etc.).");
         properties.put("command", commandParam);
         
         parameters.put("properties", properties);

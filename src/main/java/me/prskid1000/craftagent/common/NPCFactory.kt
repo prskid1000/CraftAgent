@@ -1,7 +1,5 @@
 package me.prskid1000.craftagent.common
 
-import me.sailex.altoclef.AltoClefController
-import me.sailex.automatone.api.BaritoneAPI
 import me.prskid1000.craftagent.config.ConfigProvider
 import me.prskid1000.craftagent.config.NPCConfig
 import me.prskid1000.craftagent.constant.Instructions
@@ -43,13 +41,15 @@ class NPCFactory(
 
         val llmClient = initLLMClient(config)
 
-        val controller = initController(npcEntity)
         // Always use default prompt, append custom prompt if provided
+        // Get commands from Brigadier instead of AltoClef
+        val server = npcEntity.server
+        val minecraftCommands = me.prskid1000.craftagent.util.MinecraftCommandUtil.getFormattedCommandList(server)
         val defaultPrompt = Instructions.getLlmSystemPrompt(
             config.npcName,
             config.age,
             config.gender,
-            controller.commandExecutor.allCommands(),
+            minecraftCommands,
             config.customSystemPrompt,
             config.llmType
         )
@@ -58,13 +58,8 @@ class NPCFactory(
             ?.map { Message(it.message, it.role) }
             ?.toMutableList() ?: mutableListOf()
         val history = ConversationHistory(llmClient, defaultPrompt, messages, baseConfig.conversationHistoryLength)
-        val eventHandler = NPCEventHandler(llmClient, history, contextProvider, controller, config, messageRepository, sharebookRepository)
-        return NPC(npcEntity, llmClient, history, eventHandler, controller, contextProvider, config)
-    }
-
-    private fun initController(npcEntity: ServerPlayerEntity): AltoClefController {
-        val automatone = BaritoneAPI.getProvider().getBaritone(npcEntity)
-        return AltoClefController(automatone)
+        val eventHandler = NPCEventHandler(llmClient, history, contextProvider, config, messageRepository, sharebookRepository)
+        return NPC(npcEntity, llmClient, history, eventHandler, contextProvider, config)
     }
 
     private fun initLLMClient(config: NPCConfig): LLMClient {

@@ -1,7 +1,5 @@
 package me.prskid1000.craftagent.event
 
-import me.sailex.altoclef.AltoClefController
-import me.sailex.altoclef.tasks.LookAtOwnerTask
 import me.prskid1000.craftagent.config.NPCConfig
 import me.prskid1000.craftagent.constant.Instructions
 import me.prskid1000.craftagent.context.ContextProvider
@@ -25,7 +23,6 @@ class NPCEventHandler(
     private val llmClient: LLMClient,
     private val history: ConversationHistory,
     private val contextProvider: ContextProvider,
-    private val controller: AltoClefController,
     private val config: NPCConfig,
     private val messageRepository: MessageRepository,
     private val sharebookRepository: SharebookRepository
@@ -158,7 +155,8 @@ class NPCEventHandler(
             
             // Send message if present and different from last
             if (message.isNotEmpty() && message != history.getLastMessage()) {
-                controller.controllerExtras.chat(message)
+                val npcEntity = contextProvider.getNpcEntity()
+                me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(npcEntity, message)
             }
             
             // Add response to history (for tool calls or messages)
@@ -194,33 +192,34 @@ class NPCEventHandler(
     }
 
     fun execute(command: String): Boolean {
-        var successful = true
-        val cmdExecutor = controller.commandExecutor
-        val commandWithPrefix = if (cmdExecutor.isClientCommand(command)) {
-            command
-        } else {
-            cmdExecutor.commandPrefix + command
-        }
-        cmdExecutor.execute(commandWithPrefix, {
-            controller.runUserTask(LookAtOwnerTask())
-//            if (queueIsEmpty()) {
-//                //this.onEvent(Instructions.COMMAND_FINISHED_PROMPT.format(commandWithPrefix))
-//            }
-        }, {
-            successful = false
-            val errorMessage = if (it.message?.contains("does not exist") == true || it.message?.contains("Invalid command") == true) {
-                val availableCommands = cmdExecutor.allCommands().joinToString(", ") { cmd -> cmd.name }
-                "Command '%s' does not exist. Error: %s. You MUST use ONLY these available commands: %s. Do not invent new commands like 'build'. Use 'mine', 'craft', and other commands from the list instead.".format(
-                    commandWithPrefix, it.message ?: "Unknown error", availableCommands
-                )
-            } else {
-                Instructions.COMMAND_ERROR_PROMPT.format(commandWithPrefix, it.message ?: "Unknown error")
+        val npcEntity = contextProvider.getNpcEntity()
+        val server = npcEntity.server
+        
+        // Remove leading slash if present
+        val commandToExecute = if (command.startsWith("/")) command.substring(1) else command
+        
+        // Execute using Brigadier via MinecraftCommandUtil
+        return me.prskid1000.craftagent.util.MinecraftCommandUtil.executeCommand(
+            npcEntity,
+            commandToExecute,
+            {
+                // On success - no need for LookAtOwnerTask, can use vanilla commands if needed
+            },
+            { error ->
+                // On error
+                val availableCommands = me.prskid1000.craftagent.util.MinecraftCommandUtil.getFormattedCommandList(server)
+                val errorMessage = if (error.message?.contains("does not exist") == true || error.message?.contains("Invalid command") == true || error.message?.contains("Unknown or incomplete command") == true) {
+                    "Command '%s' does not exist. Error: %s. You MUST use ONLY these available Minecraft commands: %s. Use vanilla Minecraft commands like 'give', 'tp', 'effect', 'summon', 'setblock', 'fill', etc.".format(
+                        commandToExecute, error.message ?: "Unknown error", availableCommands
+                    )
+                } else {
+                    Instructions.COMMAND_ERROR_PROMPT.format(commandToExecute, error.message ?: "Unknown error")
+                }
+                // Store error in state, will be picked up by scheduler
+                this.updateState(errorMessage)
+                LogUtil.error("Error executing command: $commandToExecute", error)
             }
-            // Store error in state, will be picked up by scheduler
-            this.updateState(errorMessage)
-            LogUtil.error("Error executing command: $commandWithPrefix", it)
-        })
-        return successful
+        )
     }
 
     private fun buildErrorMessage(exception: Throwable): String? {
@@ -424,7 +423,8 @@ class NPCEventHandler(
         } else {
             "$senderName says to $recipientName: $content"
         }
-        controller.controllerExtras.chat(chatMessage)
+        val npcEntity = contextProvider.getNpcEntity()
+        me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(npcEntity, chatMessage)
         
         LogUtil.info("Sent message to $recipientName: $subject")
     }
