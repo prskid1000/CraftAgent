@@ -59,6 +59,15 @@ public class ConfigProvider {
         npcConfigs.forEach(config -> save(NPC_CONFIG_DIR, config));
         LogUtil.info("Saved all configs");
     }
+    
+    /**
+     * Saves a single NPC config to disk immediately.
+     * Used when creating or updating an NPC to ensure persistence.
+     */
+    public synchronized void saveNpcConfig(NPCConfig config) {
+        save(NPC_CONFIG_DIR, config);
+        LogUtil.info("Saved NPC config: " + config.getNpcName());
+    }
 
     private synchronized void save(Path dir, Configurable config) {
         Path configPath = dir.resolve(config.getConfigName() + JSON_EXTENSION);
@@ -95,6 +104,8 @@ public class ConfigProvider {
 
     public synchronized NPCConfig addNpcConfig(NPCConfig npcConfig) {
         npcConfigs.add(npcConfig);
+        // Save immediately to ensure persistence
+        saveNpcConfig(npcConfig);
         return npcConfig;
     }
 
@@ -105,6 +116,8 @@ public class ConfigProvider {
                 npcConfigs.set(npcConfigs.indexOf(config), updatedConfig);
             }
         });
+        // Save immediately to ensure persistence
+        saveNpcConfig(updatedConfig);
     }
 
     public Optional<NPCConfig> getNpcConfig(UUID uuid) {

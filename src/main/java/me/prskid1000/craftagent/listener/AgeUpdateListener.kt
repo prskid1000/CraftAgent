@@ -43,6 +43,8 @@ class AgeUpdateListener(
                 val newAge = config.age + yearsToAdd
                 config.setAge(newAge)
                 config.setLastAgeUpdateTick(currentTick - (ticksPassed % TICKS_PER_YEAR))
+                // Save config immediately after age update to ensure persistence
+                npcService.saveNpcConfig(config)
             }
         }
     }

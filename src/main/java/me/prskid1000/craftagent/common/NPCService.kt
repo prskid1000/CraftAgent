@@ -47,6 +47,14 @@ class NPCService(
     fun getNPC(uuid: UUID): NPC? {
         return uuidToNpc[uuid]
     }
+    
+    /**
+     * Saves an NPC config to disk immediately.
+     * Exposed for use by listeners and other components that update configs.
+     */
+    fun saveNpcConfig(config: me.prskid1000.craftagent.config.NPCConfig) {
+        configProvider.saveNpcConfig(config)
+    }
 
     /**
      * Sends a message from a player to an NPC via mail system.
@@ -149,6 +157,13 @@ class NPCService(
                         if (config.lastAgeUpdateTick == 0L) {
                             config.setLastAgeUpdateTick(server.overworld.time)
                         }
+                        
+                        // Update config in provider with the new UUID
+                        configProvider.updateNpcConfig(config)
+                        
+                        // Save config to disk immediately so it persists across restarts
+                        configProvider.saveNpcConfig(config)
+                        
                         val npc = factory.createNpc(npcEntity, config, resourceProvider.loadedConversations[config.uuid])
                         // Owner is now stored in config, no need to set on controller
                         uuidToNpc[config.uuid] = npc
@@ -205,6 +220,8 @@ class NPCService(
                     
                     if (config.isPresent) {
                         config.get().isActive = false
+                        // Save config immediately so the change persists
+                        configProvider.saveNpcConfig(config.get())
                         LogUtil.infoInChat("Removed NPC with name $npcName")
                     } else {
                         LogUtil.infoInChat("Removed NPC with uuid $uuid")
@@ -274,7 +291,7 @@ class NPCService(
 
     fun shutdownNPCs(server: MinecraftServer) {
         uuidToNpc.keys.forEach {
-            removeNpc(it, server.playerManager)
+            shutdownNpc(it, server.playerManager)
         }
         if (::executorService.isInitialized) {
             executorService.shutdown()
@@ -285,6 +302,42 @@ class NPCService(
             } catch (e: InterruptedException) {
                 executorService.shutdownNow()
                 Thread.currentThread().interrupt()
+            }
+        }
+    }
+    
+    /**
+     * Shuts down an NPC without marking it as inactive.
+     * Used during server shutdown to preserve isActive state for respawning on restart.
+     */
+    private fun shutdownNpc(uuid: UUID, playerManager: PlayerManager) {
+        val npcToShutdown = uuidToNpc[uuid]
+        if (npcToShutdown != null) {
+            val server = playerManager.server
+            val entityUuid = npcToShutdown.entity.uuid
+            
+            server.execute {
+                try {
+                    // Stop services
+                    npcToShutdown.llmClient.stopService()
+                    npcToShutdown.eventHandler.stopService()
+                    npcToShutdown.contextProvider.chunkManager.stopService()
+                    
+                    // Save conversations before shutdown
+                    resourceProvider.addConversations(uuid, npcToShutdown.history.latestConversations)
+                    
+                    // Remove from maps
+                    uuidToNpc.remove(uuid)
+                    entityUuidToConfigUuid.remove(entityUuid)
+
+                    // Remove entity from world
+                    NPCSpawner.remove(entityUuid, playerManager)
+                    
+                    // Note: We do NOT set isActive = false here, so NPCs can respawn on restart
+                    LogUtil.info("Shut down NPC: ${npcToShutdown.config.npcName}")
+                } catch (e: Exception) {
+                    LogUtil.error("Error shutting down NPC: $uuid", e)
+                }
             }
         }
     }

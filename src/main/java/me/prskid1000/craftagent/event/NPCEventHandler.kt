@@ -95,21 +95,37 @@ class NPCEventHandler(
             
             // Process tool calls (commands and memory management)
             var command: String? = null
+            val toolCallDescriptions = mutableListOf<String>()
             if (toolResponse.hasToolCalls()) {
                 // Handle memory management tools first
                 toolResponse.toolCalls.forEach { toolCall ->
                     when (toolCall.name) {
                         "execute_command" -> {
                             command = toolCall.getCommand()
+                            if (command != null && command.isNotEmpty() && command != "idle") {
+                                toolCallDescriptions.add("🔧 Executed command: $command")
+                            }
                         }
                         "manageMemory" -> {
+                            val description = formatManageMemoryDescription(toolCall)
                             handleManageMemory(toolCall)
+                            if (description.isNotEmpty()) {
+                                toolCallDescriptions.add(description)
+                            }
                         }
                         "sendMessage" -> {
+                            val description = formatSendMessageDescription(toolCall)
                             handleSendMessage(toolCall)
+                            if (description.isNotEmpty()) {
+                                toolCallDescriptions.add(description)
+                            }
                         }
                         "manageBook" -> {
+                            val description = formatManageBookDescription(toolCall)
                             handleManageBook(toolCall)
+                            if (description.isNotEmpty()) {
+                                toolCallDescriptions.add(description)
+                            }
                         }
                     }
                 }
@@ -162,11 +178,29 @@ class NPCEventHandler(
             }
             
             // Add response to history (for tool calls or messages)
-            val responseText = when {
-                message.isNotEmpty() -> message
-                command != null -> "Executed command: $command"
-                else -> toolResponse.content.ifEmpty { "No action" }
-            }
+            val responseText = buildString {
+                // Add chat message if present
+                if (message.isNotEmpty()) {
+                    append(message)
+                }
+                
+                // Add tool call descriptions if present
+                if (toolCallDescriptions.isNotEmpty()) {
+                    if (message.isNotEmpty()) {
+                        append("\n\n")
+                    }
+                    append("**Actions taken:**\n")
+                    toolCallDescriptions.forEach { desc ->
+                        append("• $desc\n")
+                    }
+                }
+                
+                // Fallback if nothing else
+                if (isEmpty()) {
+                    append(toolResponse.content.ifEmpty { "No action" })
+                }
+            }.trim()
+            
             history.add(Message(responseText, "assistant"))
             
             true
@@ -429,6 +463,61 @@ class NPCEventHandler(
         me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(npcEntity, chatMessage)
         
         LogUtil.info("Sent message to $recipientName: $subject")
+    }
+
+    private fun formatManageMemoryDescription(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall): String {
+        val args = toolCall.arguments
+        val action = args["action"]?.toString() ?: return ""
+        val infoType = args["infoType"]?.toString() ?: return ""
+        val name = args["name"]?.toString() ?: return ""
+        
+        return when (action) {
+            "add", "update" -> {
+                when (infoType) {
+                    "contact" -> {
+                        val relationship = args["relationship"]?.toString() ?: "neutral"
+                        val actionText = action.replaceFirstChar { it.uppercase() }
+                        "📝 ${actionText}d contact: $name (relationship: $relationship)"
+                    }
+                    "location" -> {
+                        val description = args["description"]?.toString() ?: ""
+                        val actionText = action.replaceFirstChar { it.uppercase() }
+                        "📍 ${actionText}d location: $name${if (description.isNotEmpty()) " - $description" else ""}"
+                    }
+                    else -> ""
+                }
+            }
+            "remove" -> {
+                when (infoType) {
+                    "contact" -> "🗑️ Removed contact: $name"
+                    "location" -> "🗑️ Removed location: $name"
+                    else -> ""
+                }
+            }
+            else -> ""
+        }
+    }
+    
+    private fun formatSendMessageDescription(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall): String {
+        val args = toolCall.arguments
+        val recipientName = args["recipientName"]?.toString() ?: return ""
+        val subject = args["subject"]?.toString() ?: return ""
+        return "📬 Sent message to $recipientName: \"$subject\""
+    }
+    
+    private fun formatManageBookDescription(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall): String {
+        val args = toolCall.arguments
+        val action = args["action"]?.toString() ?: return ""
+        val pageTitle = args["pageTitle"]?.toString() ?: return ""
+        
+        return when (action) {
+            "add", "update" -> {
+                val actionText = action.replaceFirstChar { it.uppercase() }
+                "📖 ${actionText}d book page: \"$pageTitle\""
+            }
+            "remove" -> "🗑️ Removed book page: \"$pageTitle\""
+            else -> ""
+        }
     }
 
     private fun handleManageBook(toolCall: me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall) {

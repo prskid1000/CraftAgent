@@ -30,7 +30,6 @@ public class ToolDefinitions {
         Map<String, Object> function = new HashMap<>();
         function.put("name", "execute_command");
         
-        // Get command list with parameters for the description
         String commandsList = "No commands available";
         if (server != null) {
             commandsList = MinecraftCommandUtil.getFormattedCommandsWithUsage(server);

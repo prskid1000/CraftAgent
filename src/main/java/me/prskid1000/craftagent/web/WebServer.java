@@ -131,6 +131,9 @@ public class WebServer {
                 case "memory":
                     handleGetNPCMemory(npc, exchange);
                     break;
+                case "tools":
+                    handleGetNPCTools(npc, exchange);
+                    break;
                 default:
                     sendError(exchange, 404, "Unknown endpoint: " + endpoint);
             }
@@ -256,6 +259,83 @@ public class WebServer {
         } catch (Exception e) {
             LogUtil.error("Error getting NPC memory", e);
             sendError(exchange, 500, "Error getting memory: " + e.getMessage());
+        }
+    }
+    
+    private void handleGetNPCTools(NPC npc, HttpExchange exchange) throws IOException {
+        try {
+            MinecraftServer server = npc.getContextProvider().getNpcEntity().getServer();
+            Map<String, Object> toolsData = new HashMap<>();
+            
+            // Get Minecraft commands
+            List<Map<String, Object>> minecraftCommands = new ArrayList<>();
+            if (server != null) {
+                var commandsWithUsage = me.prskid1000.craftagent.util.MinecraftCommandUtil.getAllCommandsWithUsage(server);
+                for (var entry : commandsWithUsage.entrySet()) {
+                    Map<String, Object> cmd = new HashMap<>();
+                    cmd.put("name", entry.getKey());
+                    cmd.put("usage", entry.getValue());
+                    cmd.put("type", "minecraft");
+                    minecraftCommands.add(cmd);
+                }
+            }
+            toolsData.put("minecraftCommands", minecraftCommands);
+            
+            // Get predefined tools
+            List<Map<String, Object>> predefinedTools = new ArrayList<>();
+            
+            // execute_command tool
+            Map<String, Object> executeCmd = new HashMap<>();
+            executeCmd.put("name", "execute_command");
+            executeCmd.put("description", "Execute a Minecraft command. Use this when you want to perform an action in the game.");
+            executeCmd.put("type", "predefined");
+            executeCmd.put("parameters", List.of("command: string (The complete Minecraft command string to execute)"));
+            predefinedTools.add(executeCmd);
+            
+            // manageMemory tool
+            Map<String, Object> manageMemory = new HashMap<>();
+            manageMemory.put("name", "manageMemory");
+            manageMemory.put("description", "Manage information in memory (contacts or locations). Use 'add' or 'update' to add new contacts or save locations, or 'remove' to forget information.");
+            manageMemory.put("type", "predefined");
+            manageMemory.put("parameters", List.of(
+                "action: string (add/update/remove)",
+                "infoType: string (contact/location)",
+                "name: string",
+                "relationship: string (optional, for contacts)",
+                "notes: string (optional, for contacts)",
+                "description: string (optional, for locations)"
+            ));
+            predefinedTools.add(manageMemory);
+            
+            // sendMessage tool
+            Map<String, Object> sendMessage = new HashMap<>();
+            sendMessage.put("name", "sendMessage");
+            sendMessage.put("description", "Send a message to another NPC or player. Messages are stored in a mail system and can be read by the recipient later.");
+            sendMessage.put("type", "predefined");
+            sendMessage.put("parameters", List.of(
+                "recipientName: string",
+                "subject: string",
+                "content: string"
+            ));
+            predefinedTools.add(sendMessage);
+            
+            // manageBook tool
+            Map<String, Object> manageBook = new HashMap<>();
+            manageBook.put("name", "manageBook");
+            manageBook.put("description", "Manage pages in the shared book. The shared book is accessible to all NPCs and contains common information.");
+            manageBook.put("type", "predefined");
+            manageBook.put("parameters", List.of(
+                "action: string (add/update/remove)",
+                "pageTitle: string",
+                "content: string (required for add/update)"
+            ));
+            predefinedTools.add(manageBook);
+            
+            toolsData.put("predefinedTools", predefinedTools);
+            sendJsonResponse(exchange, 200, toolsData);
+        } catch (Exception e) {
+            LogUtil.error("Error getting NPC tools", e);
+            sendError(exchange, 500, "Error getting tools: " + e.getMessage());
         }
     }
     
@@ -812,6 +892,50 @@ public class WebServer {
             padding: 4px 8px;
             border-radius: 4px;
         }
+        .message-content {
+            max-width: 500px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        .message-collapsible {
+            position: relative;
+        }
+        .message-preview {
+            max-height: 150px;
+            overflow: hidden;
+            position: relative;
+        }
+        .message-preview::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.95));
+            pointer-events: none;
+        }
+        .message-full {
+            max-height: none;
+        }
+        .message-toggle {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            margin-top: 8px;
+            transition: all 0.3s;
+        }
+        .message-toggle:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+        .message-toggle:active {
+            transform: translateY(0);
+        }
         .stat-card {
             background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
             padding: 20px;
@@ -875,6 +999,7 @@ public class WebServer {
                 <button class="tab" onclick="switchTab('messages')">Messages</button>
                 <button class="tab" onclick="switchTab('mail')">Mail</button>
                 <button class="tab" onclick="switchTab('memory')">Memory</button>
+                <button class="tab" onclick="switchTab('tools')">Tools</button>
             </div>
             
             <div id="overview" class="tab-content active">
@@ -902,6 +1027,10 @@ public class WebServer {
             
             <div id="memory" class="tab-content">
                 <div class="loading">Loading memory...</div>
+            </div>
+            
+            <div id="tools" class="tab-content">
+                <div class="loading">Loading tools...</div>
             </div>
         </div>
     </div>
@@ -972,7 +1101,8 @@ public class WebServer {
                 loadNPCContext(uuid),
                 loadNPCMessages(uuid),
                 loadNPCMail(uuid),
-                loadNPCMemory(uuid)
+                loadNPCMemory(uuid),
+                loadNPCTools(uuid)
             ]);
         }
         
@@ -1166,18 +1296,40 @@ public class WebServer {
                 let html = '<div class="data-section"><h3>💬 Conversation History</h3>';
                 html += '<table><thead><tr><th>Role</th><th>Message</th><th>Timestamp</th></tr></thead><tbody>';
                 
-                messages.forEach(msg => {
+                messages.forEach((msg, index) => {
                     const role = msg.role || 'unknown';
                     const content = msg.content || msg.message || '';
                     const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'N/A';
                     const roleIcon = role === 'user' ? '👤' : role === 'assistant' ? '🤖' : role === 'system' ? '⚙️' : '❓';
                     const roleBadge = role === 'user' ? 'badge-info' : role === 'assistant' ? 'badge-success' : 'badge-warning';
                     
-                    html += `<tr>
-                        <td><span class="badge ${roleBadge}">${roleIcon} ${role.toUpperCase()}</span></td>
-                        <td style="max-width: 500px; word-wrap: break-word;">${escapeHtml(content)}</td>
-                        <td>${timestamp}</td>
-                    </tr>`;
+                    // Format system messages with proper HTML rendering
+                    const formattedContent = role === 'system' ? formatSystemMessage(content) : escapeHtml(content);
+                    
+                    // Determine if message is long (more than 500 characters)
+                    // This covers both long text and multi-line system messages
+                    const isLong = content.length > 500;
+                    const messageId = `msg-${index}`;
+                    
+                    if (isLong) {
+                        html += `<tr>
+                            <td><span class="badge ${roleBadge}">${roleIcon} ${role.toUpperCase()}</span></td>
+                            <td>
+                                <div class="message-collapsible">
+                                    <div id="${messageId}-preview" class="message-preview message-content">${formattedContent}</div>
+                                    <div id="${messageId}-full" class="message-full message-content" style="display: none;">${formattedContent}</div>
+                                    <button class="message-toggle" onclick="toggleMessage('${messageId}')" id="${messageId}-btn">Show more</button>
+                                </div>
+                            </td>
+                            <td>${timestamp}</td>
+                        </tr>`;
+                    } else {
+                        html += `<tr>
+                            <td><span class="badge ${roleBadge}">${roleIcon} ${role.toUpperCase()}</span></td>
+                            <td class="message-content">${formattedContent}</td>
+                            <td>${timestamp}</td>
+                        </tr>`;
+                    }
                 });
                 
                 html += '</tbody></table></div>';
@@ -1288,6 +1440,69 @@ public class WebServer {
             }
         }
         
+        async function loadNPCTools(uuid) {
+            try {
+                const response = await fetch(`/api/npc/${uuid}/tools`);
+                const tools = await response.json();
+                
+                let html = '';
+                
+                // Predefined Tools Section
+                if (tools.predefinedTools && tools.predefinedTools.length > 0) {
+                    html += '<div class="data-section"><h3>🔧 Predefined Tools</h3>';
+                    html += '<table><thead><tr><th>Tool Name</th><th>Description</th><th>Parameters</th></tr></thead><tbody>';
+                    
+                    tools.predefinedTools.forEach(tool => {
+                        const params = Array.isArray(tool.parameters) 
+                            ? tool.parameters.map(p => `<code style="background-color: #e8f4f8; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; display: block; margin: 2px 0;">${escapeHtml(p)}</code>`).join('')
+                            : escapeHtml(String(tool.parameters || 'N/A'));
+                        
+                        html += `<tr>
+                            <td><strong style="color: #667eea;">${escapeHtml(tool.name || 'Unknown')}</strong></td>
+                            <td style="max-width: 400px; word-wrap: break-word;">${escapeHtml(tool.description || 'No description')}</td>
+                            <td style="max-width: 300px;">${params}</td>
+                        </tr>`;
+                    });
+                    
+                    html += '</tbody></table></div>';
+                }
+                
+                // Minecraft Commands Section
+                if (tools.minecraftCommands && tools.minecraftCommands.length > 0) {
+                    html += '<div class="data-section"><h3>🎮 Minecraft Commands</h3>';
+                    html += '<p style="margin-bottom: 15px; color: #666;">Available Minecraft commands that the NPC can execute:</p>';
+                    html += '<div style="max-height: 600px; overflow-y: auto;">';
+                    html += '<table><thead><tr><th style="width: 250px;">Command</th><th>Usage / Parameters</th></tr></thead><tbody>';
+                    
+                    // Sort commands alphabetically
+                    const sortedCommands = [...tools.minecraftCommands].sort((a, b) => 
+                        (a.name || '').localeCompare(b.name || '')
+                    );
+                    
+                    sortedCommands.forEach(cmd => {
+                        const usage = cmd.usage && cmd.usage.trim() 
+                            ? `<code style="background-color: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #333;">${escapeHtml(cmd.usage)}</code>`
+                            : '<span style="color: #999; font-style: italic;">No parameters</span>';
+                        
+                        html += `<tr>
+                            <td><strong style="color: #4CAF50; font-family: monospace;">${escapeHtml(cmd.name || 'Unknown')}</strong></td>
+                            <td>${usage}</td>
+                        </tr>`;
+                    });
+                    
+                    html += '</tbody></table></div></div>';
+                } else {
+                    html += '<div class="data-section"><h3>🎮 Minecraft Commands</h3>';
+                    html += '<p style="color: #999;">No Minecraft commands available</p></div>';
+                }
+                
+                document.getElementById('tools').innerHTML = html || '<div class="loading">No tools data available</div>';
+            } catch (error) {
+                document.getElementById('tools').innerHTML = 
+                    '<div class="loading">Error: ' + error.message + '</div>';
+            }
+        }
+        
         function switchTab(tabName) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -1300,6 +1515,14 @@ public class WebServer {
             // Show selected tab
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
+            
+            // Load tools if switching to tools tab and not already loaded
+            if (tabName === 'tools' && currentNPCUuid) {
+                const toolsContent = document.getElementById('tools');
+                if (toolsContent.innerHTML.includes('Loading tools') || toolsContent.innerHTML.trim() === '') {
+                    loadNPCTools(currentNPCUuid);
+                }
+            }
         }
         
         function closeModal() {
@@ -1317,6 +1540,72 @@ public class WebServer {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        function toggleMessage(messageId) {
+            const preview = document.getElementById(messageId + '-preview');
+            const full = document.getElementById(messageId + '-full');
+            const btn = document.getElementById(messageId + '-btn');
+            
+            if (preview && full && btn) {
+                if (preview.style.display === 'none') {
+                    // Collapse
+                    preview.style.display = 'block';
+                    full.style.display = 'none';
+                    btn.textContent = 'Show more';
+                } else {
+                    // Expand
+                    preview.style.display = 'none';
+                    full.style.display = 'block';
+                    btn.textContent = 'Show less';
+                }
+            }
+        }
+        
+        /**
+         * Formats system messages with proper HTML rendering.
+         * Converts markdown-like syntax (===, **, -, etc.) to HTML.
+         */
+        function formatSystemMessage(text) {
+            if (!text) return '';
+            
+            // First escape HTML to prevent XSS
+            let formatted = escapeHtml(text);
+            
+            // Convert section headers (=== HEADER ===)
+            formatted = formatted.replace(/=== (.+?) ===/g, '<h4 style="margin-top: 15px; margin-bottom: 8px; color: #4CAF50; border-bottom: 1px solid #4CAF50; padding-bottom: 3px; font-weight: bold;">$1</h4>');
+            
+            // Convert bold text (**text**)
+            formatted = formatted.replace(/\\*\\*(.+?)\\*\\*/g, '<strong style="color: #FFC107;">$1</strong>');
+            
+            // Convert bullet points (- item) - must be done before line break conversion
+            formatted = formatted.replace(/^[\\s]*- (.+)$/gm, '<li style="margin-left: 20px; margin-top: 3px; margin-bottom: 3px;">$1</li>');
+            
+            // Wrap consecutive list items in <ul>
+            formatted = formatted.replace(/(<li[^>]*>.*?<\\/li>(?:<br>)?)+/g, function(match) {
+                return '<ul style="margin-top: 8px; margin-bottom: 8px; padding-left: 20px;">' + match.replace(/<br>/g, '') + '</ul>';
+            });
+            
+            // Convert arrows (→) to styled arrows
+            formatted = formatted.replace(/→/g, '<span style="color: #2196F3; font-weight: bold;">→</span>');
+            
+            // Add monospace styling for code-like blocks (JSON examples, etc.)
+            formatted = formatted.replace(/(\\{[^}]+\\})/g, '<code style="background-color: #2d2d2d; padding: 2px 6px; border-radius: 3px; font-family: monospace; color: #f8f8f2; font-size: 0.9em;">$1</code>');
+            
+            // Convert double line breaks to paragraph breaks, single line breaks to <br>
+            // Split by double line breaks first
+            let parts = formatted.split(/\\n\\n+/);
+            formatted = parts.map(part => {
+                // Convert single line breaks to <br> within each part
+                part = part.replace(/\\n/g, '<br>');
+                // Wrap in paragraph if it's not already a block element
+                if (!part.trim().startsWith('<h4') && !part.trim().startsWith('<ul') && !part.trim().startsWith('<li')) {
+                    return '<p style="margin-top: 5px; margin-bottom: 5px; line-height: 1.5;">' + part + '</p>';
+                }
+                return part;
+            }).join('');
+            
+            return formatted;
         }
         
         // Load NPCs on page load
