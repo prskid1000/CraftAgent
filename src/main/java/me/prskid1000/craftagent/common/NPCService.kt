@@ -267,6 +267,10 @@ class NPCService(
                     // Delete memory data
                     resourceProvider.locationRepository?.deleteByUuid(uuid)
                     resourceProvider.contactRepository?.deleteByNpcUuid(uuid)
+                    // Delete messages where NPC is sender or recipient
+                    resourceProvider.messageRepository?.deleteByNpcUuid(uuid)
+                    // Delete sharebook pages authored by this NPC
+                    resourceProvider.sharebookRepository?.deleteByAuthorUuid(uuid.toString())
                     configProvider.deleteNpcConfig(uuid)
                 } catch (e: Exception) {
                     LogUtil.error("Error deleting NPC data from database: $uuid", e)
@@ -281,6 +285,10 @@ class NPCService(
                     // Delete memory data
                     resourceProvider.locationRepository?.deleteByUuid(uuid)
                     resourceProvider.contactRepository?.deleteByNpcUuid(uuid)
+                    // Delete messages where NPC is sender or recipient
+                    resourceProvider.messageRepository?.deleteByNpcUuid(uuid)
+                    // Delete sharebook pages authored by this NPC
+                    resourceProvider.sharebookRepository?.deleteByAuthorUuid(uuid.toString())
                     configProvider.deleteNpcConfig(uuid)
                 } catch (e: Exception) {
                     LogUtil.error("Error cleaning up NPC data: $uuid", e)

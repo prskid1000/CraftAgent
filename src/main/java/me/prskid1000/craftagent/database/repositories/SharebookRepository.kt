@@ -74,6 +74,11 @@ class SharebookRepository(
         sqliteClient.update(sql)
     }
 
+    fun deleteByAuthorUuid(authorUuid: String) {
+        val sql = "DELETE FROM sharebook WHERE author_uuid = '%s'".format(authorUuid.replace("'", "''"))
+        sqliteClient.update(sql)
+    }
+
     private fun executeAndProcessPages(sql: String): List<SharebookPage> {
         val result = sqliteClient.query(sql)
         val pages = arrayListOf<SharebookPage>()

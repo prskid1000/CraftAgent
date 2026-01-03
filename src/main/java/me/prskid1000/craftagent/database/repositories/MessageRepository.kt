@@ -85,6 +85,19 @@ class MessageRepository(
         sqliteClient.update(sql)
     }
 
+    fun deleteBySender(senderUuid: UUID) {
+        val sql = "DELETE FROM messages WHERE sender_uuid = '%s'".format(senderUuid.toString())
+        sqliteClient.update(sql)
+    }
+
+    fun deleteByNpcUuid(npcUuid: UUID) {
+        // Delete messages where NPC is either sender or recipient
+        val sql = "DELETE FROM messages WHERE sender_uuid = '%s' OR recipient_uuid = '%s'".format(
+            npcUuid.toString(), npcUuid.toString()
+        )
+        sqliteClient.update(sql)
+    }
+
     private fun executeAndProcessMessages(sql: String): List<Message> {
         val result = sqliteClient.query(sql)
         val messages = arrayListOf<Message>()
