@@ -230,6 +230,16 @@ class NPCService(
                     LogUtil.error("Error removing NPC: $uuid", e)
                 }
             }
+            
+            // Database operations on background thread (blocking I/O)
+            // Delete messages where NPC is sender or recipient
+            CompletableFuture.runAsync({
+                try {
+                    resourceProvider.messageRepository?.deleteByNpcUuid(uuid)
+                } catch (e: Exception) {
+                    LogUtil.error("Error deleting messages for removed NPC: $uuid", e)
+                }
+            }, executorService)
         }
     }
 

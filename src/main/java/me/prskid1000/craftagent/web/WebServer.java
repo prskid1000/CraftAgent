@@ -276,6 +276,12 @@ public class WebServer {
                 var commandsWithUsage = me.prskid1000.craftagent.util.MinecraftCommandUtil.getAllCommandsWithUsage(server);
                 for (var entry : commandsWithUsage.entrySet()) {
                     String cmdName = entry.getKey();
+                    
+                    // Skip craftagent command - don't show it in UI
+                    if (cmdName.toLowerCase().trim().equals("craftagent")) {
+                        continue;
+                    }
+                    
                     Map<String, Object> cmd = new HashMap<>();
                     cmd.put("name", cmdName);
                     cmd.put("usage", entry.getValue());
@@ -356,6 +362,11 @@ public class WebServer {
             
             for (Map.Entry<String, List<String>> category : customCommands.entrySet()) {
                 for (String customCmd : category.getValue()) {
+                    // Skip craftagent command - don't show it in UI
+                    if (customCmd.toLowerCase().trim().equals("craftagent")) {
+                        continue;
+                    }
+                    
                     Map<String, Object> mapping = new HashMap<>();
                     mapping.put("customCommand", customCmd);
                     mapping.put("category", category.getKey());
@@ -1578,26 +1589,6 @@ public class WebServer {
                 
                 let html = '';
                 
-                // Predefined Tools Section
-                if (tools.predefinedTools && tools.predefinedTools.length > 0) {
-                    html += '<div class="data-section"><h3>🔧 Predefined Tools</h3>';
-                    html += '<table><thead><tr><th>Tool Name</th><th>Description</th><th>Parameters</th></tr></thead><tbody>';
-                    
-                    tools.predefinedTools.forEach(tool => {
-                        const params = Array.isArray(tool.parameters) 
-                            ? tool.parameters.map(p => `<code style="background-color: #e8f4f8; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; display: block; margin: 2px 0;">${escapeHtml(p)}</code>`).join('')
-                            : escapeHtml(String(tool.parameters || 'N/A'));
-                        
-                        html += `<tr>
-                            <td><strong style="color: #667eea;">${escapeHtml(tool.name || 'Unknown')}</strong></td>
-                            <td style="max-width: 400px; word-wrap: break-word;">${escapeHtml(tool.description || 'No description')}</td>
-                            <td style="max-width: 300px;">${params}</td>
-                        </tr>`;
-                    });
-                    
-                    html += '</tbody></table></div>';
-                }
-                
                 // Summary Statistics Section
                 if (tools.customCommands && tools.customCommands.length > 0 || tools.minecraftCommands && tools.minecraftCommands.length > 0) {
                     const totalCustomCommands = tools.customCommands ? tools.customCommands.length : 0;
@@ -1661,7 +1652,8 @@ public class WebServer {
                                 status: 'Mapped',
                                 mappedTo: cmd.mappedTo || cmd.customCommand,
                                 targetType: cmd.type === 'Minecraft' ? 'Vanilla' : 'Tool Action',
-                                rowStyle: cmd.type === 'Minecraft' ? 'background-color: #f0f9f0;' : 'background-color: #fffbf0;'
+                                // Green background for Minecraft mappings, blue-tinted for Tool Actions (not red/yellow)
+                                rowStyle: cmd.type === 'Minecraft' ? 'background-color: #f0f9f0;' : 'background-color: #f0f4ff;'
                             });
                         });
                     }
@@ -1722,8 +1714,10 @@ public class WebServer {
                                 : '<span style="color: #999;">N/A</span>'
                             : '<span style="color: #999;">-</span>';
                         
-                        const nameColor = entry.type === 'Custom Command' ? '#667eea' : 
-                                         entry.status === 'Mapped' ? '#4CAF50' : '#f44336';
+                        // Color logic: Mapped commands are green, unmapped are red, custom commands are blue when mapped
+                        const nameColor = entry.status === 'Mapped' 
+                            ? (entry.type === 'Custom Command' ? '#667eea' : '#4CAF50')  // Custom: blue, Vanilla: green
+                            : '#f44336';  // Unmapped: red
                         
                         html += `<tr style="${entry.rowStyle}">
                             <td><strong style="color: ${nameColor}; font-family: monospace;">${escapeHtml(entry.name)}</strong></td>
