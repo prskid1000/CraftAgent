@@ -1607,9 +1607,6 @@ public class WebServer {
                     const minecraftMapped = tools.customCommands ? tools.customCommands.filter(cmd => cmd.type === 'Minecraft').length : 0;
                     const toolMapped = tools.customCommands ? tools.customCommands.filter(cmd => cmd.type === 'Tool').length : 0;
                     const totalVanillaCommands = tools.minecraftCommands ? tools.minecraftCommands.length : 0;
-                    const vanillaMapped = tools.minecraftCommands ? tools.minecraftCommands.filter(cmd => cmd.mapped === true).length : 0;
-                    const vanillaUnmapped = totalVanillaCommands - vanillaMapped;
-                    const mappingPercentage = totalVanillaCommands > 0 ? Math.round((vanillaMapped / totalVanillaCommands) * 100) : 0;
                     
                     html += '<div class="data-section"><h3>📊 Command Mapping Summary</h3>';
                     html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">';
@@ -1628,18 +1625,6 @@ public class WebServer {
                     html += `<div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                         <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${totalVanillaCommands}</div>
                         <div style="font-size: 0.9em; opacity: 0.9;">Total Vanilla Commands</div>
-                    </div>`;
-                    html += `<div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${vanillaMapped}</div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">Vanilla Commands Mapped</div>
-                    </div>`;
-                    html += `<div style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${vanillaUnmapped}</div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">Vanilla Commands Unmapped</div>
-                    </div>`;
-                    html += `<div style="background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${mappingPercentage}%</div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">Mapping Coverage</div>
                     </div>`;
                     html += '</div></div>';
                 }
