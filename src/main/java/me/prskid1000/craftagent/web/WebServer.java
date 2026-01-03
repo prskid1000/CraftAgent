@@ -903,6 +903,10 @@ public class WebServer {
             background: #f44336;
             color: white;
         }
+        .badge-error {
+            background: #f44336;
+            color: white;
+        }
         .message-bubble {
             margin-bottom: 15px;
             padding: 12px 16px;
@@ -1753,7 +1757,7 @@ public class WebServer {
             if (!text) return '';
             
             // Parse structured format by splitting into sections
-            // Format: "💭 Thought\n\n**Actions:**\n• action1\n• action2\n\n💬 Message"
+            // Expected format: Thought section, Actions section with bullet points, Message section
             let thought = null;
             let actions = [];
             let message = null;
@@ -1783,7 +1787,8 @@ public class WebServer {
                 }
                 
                 // Check for actions section
-                if (line.startsWith('**Actions:**')) {
+                const actionsMarker = '**Actions:**';
+                if (line.startsWith(actionsMarker)) {
                     inActions = true;
                 } else if (inActions && (line.startsWith('•') || line.startsWith('-'))) {
                     const action = line.substring(1).trim();
@@ -1860,7 +1865,7 @@ public class WebServer {
             // Convert section headers (=== HEADER ===)
             formatted = formatted.replace(/=== (.+?) ===/g, '<h4 style="margin-top: 15px; margin-bottom: 8px; color: #4CAF50; border-bottom: 1px solid #4CAF50; padding-bottom: 3px; font-weight: bold;">$1</h4>');
             
-            // Convert bold text (**text**)
+            // Convert bold text (**text**) - escape asterisks properly
             formatted = formatted.replace(/\\*\\*(.+?)\\*\\*/g, '<strong style="color: #FFC107;">$1</strong>');
             
             // Convert bullet points (- item) - must be done before line break conversion
