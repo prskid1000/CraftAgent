@@ -234,7 +234,7 @@ public class CommandMapper {
                     continue;
                 }
                 
-                // Show command format with all parameters
+                // Show command format with all parameters (all commands, including simple ones)
                 sb.append("  - ").append(cmd).append("\n");
             }
             sb.append("\n");

@@ -1663,8 +1663,12 @@ public class WebServer {
                         const mappedCommands = tools.minecraftCommands.filter(cmd => cmd.mapped === true);
                         mappedCommands.forEach(cmd => {
                             const customCmds = (cmd.customCommands || []).join(', ');
+                            // Combine command name with usage to show full syntax
+                            const fullSyntax = cmd.usage && cmd.usage.trim() 
+                                ? `${cmd.name} ${cmd.usage}` 
+                                : cmd.name || 'Unknown';
                             allEntries.push({
-                                name: cmd.name || 'Unknown',
+                                name: fullSyntax,
                                 type: 'Vanilla Command',
                                 category: '-',
                                 status: 'Mapped',
@@ -1677,8 +1681,12 @@ public class WebServer {
                         // Add vanilla Minecraft commands (unmapped)
                         const unmappedCommands = tools.minecraftCommands.filter(cmd => cmd.mapped === false);
                         unmappedCommands.forEach(cmd => {
+                            // Combine command name with usage to show full syntax
+                            const fullSyntax = cmd.usage && cmd.usage.trim() 
+                                ? `${cmd.name} ${cmd.usage}` 
+                                : cmd.name || 'Unknown';
                             allEntries.push({
-                                name: cmd.name || 'Unknown',
+                                name: fullSyntax,
                                 type: 'Vanilla Command',
                                 category: '-',
                                 status: 'Unmapped',
