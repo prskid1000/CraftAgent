@@ -1311,7 +1311,7 @@ public class WebServer {
                 let html = '';
                 
                 if (memory.locations && memory.locations.length > 0) {
-                    html += '<div class="data-section"><h3>📍 Remembered Locations</h3>';
+                    html += '<div class="data-section"><h3>📍 Locations</h3>';
                     html += '<table><thead><tr><th>Name</th><th>Position</th><th>Description</th></tr></thead><tbody>';
                     memory.locations.forEach(loc => {
                         const pos = loc.position || {};
@@ -1323,7 +1323,7 @@ public class WebServer {
                     });
                     html += '</tbody></table></div>';
                 } else {
-                    html += '<div class="data-section"><h3>📍 Remembered Locations</h3><p>No locations stored in memory</p></div>';
+                    html += '<div class="data-section"><h3>📍 Locations</h3><p>No locations stored in memory</p></div>';
                 }
                 
                 if (memory.contacts && memory.contacts.length > 0) {
