@@ -260,35 +260,58 @@ public class CommandMapper {
                 // Try multiple variations to find the mapping
                 String mapped = null;
                 
-                // 1. Try the base command without parameters
-                String baseCustomCmd = customCmd.split("\\[|\\<")[0].trim();
-                mapped = mapCommand(baseCustomCmd);
+                // 1. Build example command by replacing placeholders with actual values
+                // Replace required parameters first, then optional ones
+                String exampleCmd = customCmd
+                    .replaceAll("<item>", "wood")  // Replace <item> with example
+                    .replaceAll("<block>", "stone")
+                    .replaceAll("<mob>", "cow")
+                    .replaceAll("<name>", "Test")
+                    .replaceAll("<recipient>", "Bob")
+                    .replaceAll("<subject>", "Hello")
+                    .replaceAll("<title>", "Page")
+                    .replaceAll("\\[steps\\]", "5")  // Replace [steps] with example
+                    .replaceAll("\\[amount\\]", "64")
+                    .replaceAll("\\[direction\\]", "front")
+                    .replaceAll("\\[block/direction\\]", "front")
+                    .replaceAll("\\[mob\\]", "zombie")  // Replace [mob] if present
+                    .replaceAll("\\[.*?\\]", "")  // Remove any remaining [optional] params
+                    .trim();
                 
-                // 2. If that doesn't work or returns the same, try with example values
-                if (mapped == null || mapped.equals(baseCustomCmd) || mapped.equals(customCmd)) {
-                    // Build example command by replacing placeholders
-                    String exampleCmd = customCmd
-                        .replaceAll("\\[.*?\\]", "")  // Remove [optional] params
-                        .replaceAll("<item>", "wood")  // Replace <item> with example
-                        .replaceAll("<block>", "stone")
-                        .replaceAll("<mob>", "cow")
-                        .replaceAll("<name>", "Test")
-                        .replaceAll("<recipient>", "Bob")
-                        .replaceAll("<subject>", "Hello")
-                        .replaceAll("<title>", "Page")
-                        .replaceAll("\\[steps\\]", "5")  // Replace [steps] with example
-                        .replaceAll("\\[amount\\]", "64")
-                        .replaceAll("\\[direction\\]", "front")
-                        .replaceAll("\\[block/direction\\]", "front")
-                        .trim();
-                    mapped = mapCommand(exampleCmd);
+                // Try mapping with example values
+                mapped = mapCommand(exampleCmd);
+                
+                // 2. If that doesn't work or returns unchanged, try the base command without parameters
+                if (mapped == null || mapped.equals(exampleCmd) || mapped.equals(customCmd)) {
+                    String baseCustomCmd = customCmd.split("\\[|\\<")[0].trim();
+                    if (!baseCustomCmd.isEmpty() && !baseCustomCmd.equals(exampleCmd)) {
+                        String baseMapped = mapCommand(baseCustomCmd);
+                        if (baseMapped != null && !baseMapped.equals(baseCustomCmd) && !baseMapped.equals(customCmd)) {
+                            mapped = baseMapped;
+                        }
+                    }
                 }
                 
                 // 3. Check if it's a Minecraft command (not a tool action)
-                if (mapped != null && !mapped.contains(":") && !mapped.equals(customCmd)) {
-                    String vanillaCmd = extractBaseCommand(mapped);
-                    if (vanillaCmd != null && !vanillaCmd.isEmpty()) {
-                        result.computeIfAbsent(vanillaCmd, k -> new ArrayList<>()).add(customCmd);
+                // Tool actions contain ":" (like "manageMemory:add:location") or "|" (parameter delimiter)
+                if (mapped != null && !mapped.equals(customCmd)) {
+                    // Skip if mapped result is the same as example (no actual mapping occurred)
+                    if (mapped.equals(exampleCmd)) {
+                        continue;
+                    }
+                    
+                    // Check if it's a tool action
+                    String lowerMapped = mapped.toLowerCase();
+                    boolean isToolAction = mapped.contains("|") || 
+                                         lowerMapped.contains("managememory:") ||
+                                         lowerMapped.contains("sendmessage") ||
+                                         lowerMapped.contains("managebook:");
+                    
+                    if (!isToolAction) {
+                        String vanillaCmd = extractBaseCommand(mapped);
+                        if (vanillaCmd != null && !vanillaCmd.isEmpty()) {
+                            result.computeIfAbsent(vanillaCmd, k -> new ArrayList<>()).add(customCmd);
+                        }
                     }
                 }
             }
@@ -300,12 +323,18 @@ public class CommandMapper {
     /**
      * Extracts the base Minecraft command name from a full command string.
      * Example: "give @s minecraft:diamond 64" -> "give"
+     * Example: "/give @s minecraft:diamond 64" -> "give"
      */
     private static String extractBaseCommand(String command) {
         if (command == null || command.trim().isEmpty()) {
             return null;
         }
-        String[] parts = command.trim().split("\\s+");
+        String trimmed = command.trim();
+        // Strip leading slash if present
+        if (trimmed.startsWith("/")) {
+            trimmed = trimmed.substring(1);
+        }
+        String[] parts = trimmed.split("\\s+");
         return parts.length > 0 ? parts[0] : null;
     }
 }
