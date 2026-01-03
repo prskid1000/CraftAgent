@@ -92,9 +92,8 @@ CraftAgent includes a built-in web dashboard for monitoring NPCs in real-time. T
 - **Messages Tab**: Conversation history with role badges and timestamps
 - **Mail Tab**: Mail messages from other NPCs and players
 - **Memory Tab**: NPC's persistent memory including:
-  - Remembered locations with coordinates
-  - Contacts with relationship levels
-  - Shared book pages
+  - Private book pages (NPC-specific memory)
+  - Shared book pages (accessible to all NPCs)
 
 **Note:** The dashboard auto-refreshes every 5 minutes. Use the refresh button in the NPC detail modal to manually update data.
 

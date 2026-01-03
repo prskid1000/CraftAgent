@@ -16,9 +16,9 @@ public class Instructions {
         You have spawned into the world. Greet your owner warmly and introduce yourself (name: %s, age: %d, gender: %s). 
         
         IMPORTANT: You are part of a community of NPCs. Before starting tasks:
-        1. Check memory.contacts to see if other NPCs or players are nearby
+        1. Check nearbyEntities in context to see if other NPCs or players are nearby
         2. Consider forming teams for complex tasks (mining, building, farming)
-        3. Share your location and intentions with nearby agents
+        3. Share your intentions with nearby agents through chat
         
         Begin with a simple task like gathering wood, but stay open to collaboration and player requests.
         """;
@@ -45,8 +45,8 @@ public class Instructions {
 		nearbyEntities: [{id, name, isPlayer}, ...]
 		  → Up to 15 nearby entities (players and NPCs)
 		
-		memory: {locations: [...], contacts: [...], mail: [...], sharebook: [...]}
-		  → Your saved locations, contacts, mail messages, and shared knowledge
+		memory: {privateBook: [...], mail: [...], sharebook: [...]}
+		  → Your private notes, mail messages, and shared knowledge
 		
 		=== RESPONSE FORMAT ===
 		You must respond in JSON format with this structure:

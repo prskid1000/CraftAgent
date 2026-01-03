@@ -219,39 +219,22 @@ public class WebServer {
         try {
             var memoryManager = npc.getContextProvider().memoryManager;
             if (memoryManager == null) {
-                sendJsonResponse(exchange, 200, Map.of("locations", Collections.emptyList(), "contacts", Collections.emptyList()));
+                sendJsonResponse(exchange, 200, Map.of("privateBook", Collections.emptyList()));
                 return;
             }
             
             Map<String, Object> memory = new HashMap<>();
             
-            List<Map<String, Object>> locations = new ArrayList<>();
-            for (var loc : memoryManager.getLocations()) {
-                Map<String, Object> locMap = new HashMap<>();
-                locMap.put("name", loc.getName());
-                locMap.put("x", loc.getX());
-                locMap.put("y", loc.getY());
-                locMap.put("z", loc.getZ());
-                locMap.put("description", loc.getDescription());
-                locMap.put("timestamp", loc.getTimestamp());
-                locations.add(locMap);
+            List<Map<String, Object>> privatePages = new ArrayList<>();
+            for (var page : memoryManager.getPages()) {
+                Map<String, Object> pageMap = new HashMap<>();
+                pageMap.put("pageTitle", page.getPageTitle());
+                pageMap.put("content", page.getContent());
+                pageMap.put("timestamp", page.getTimestamp());
+                privatePages.add(pageMap);
             }
             
-            List<Map<String, Object>> contacts = new ArrayList<>();
-            for (var contact : memoryManager.getContacts()) {
-                Map<String, Object> contactMap = new HashMap<>();
-                contactMap.put("name", contact.getContactName());
-                contactMap.put("type", contact.getContactType());
-                contactMap.put("relationship", contact.getRelationship());
-                contactMap.put("notes", contact.getNotes());
-                contactMap.put("lastSeen", contact.getLastSeen());
-                contactMap.put("enmityLevel", contact.getEnmityLevel());
-                contactMap.put("friendshipLevel", contact.getFriendshipLevel());
-                contacts.add(contactMap);
-            }
-            
-            memory.put("locations", locations);
-            memory.put("contacts", contacts);
+            memory.put("privateBook", privatePages);
             sendJsonResponse(exchange, 200, memory);
         } catch (Exception e) {
             LogUtil.error("Error getting NPC memory", e);
@@ -1038,6 +1021,24 @@ public class WebServer {
                         <div class="data-card-value">${escapeHtml(npc.name)}</div>
                     </div>
                     <div class="data-card">
+                        <div class="data-card-label">Status</div>
+                        <div class="data-card-value">
+                            <span class="badge ${npc.isActive ? 'badge-success' : 'badge-danger'}">
+                                ${npc.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="data-card">
+                        <div class="data-card-label">Config UUID</div>
+                        <div class="data-card-value"><span class="coords">${escapeHtml(npc.uuid)}</span></div>
+                    </div>
+                    ${npc.entityUuid ? `
+                    <div class="data-card">
+                        <div class="data-card-label">Entity UUID</div>
+                        <div class="data-card-value"><span class="coords">${escapeHtml(npc.entityUuid)}</span></div>
+                    </div>
+                    ` : ''}
+                    <div class="data-card">
                         <div class="data-card-label">Age</div>
                         <div class="data-card-value">${npc.age} years</div>
                     </div>
@@ -1047,7 +1048,7 @@ public class WebServer {
                     </div>
                     <div class="data-card">
                         <div class="data-card-label">Position</div>
-                        <div class="data-card-value">${npc.position.x.toFixed(1)}, ${npc.position.y.toFixed(1)}, ${npc.position.z.toFixed(1)}</div>
+                        <div class="data-card-value"><span class="coords">${npc.position.x.toFixed(1)}, ${npc.position.y.toFixed(1)}, ${npc.position.z.toFixed(1)}</span></div>
                     </div>
                     <div class="data-card">
                         <div class="data-card-label">Health</div>
@@ -1065,6 +1066,18 @@ public class WebServer {
                         <div class="data-card-label">LLM Model</div>
                         <div class="data-card-value">${escapeHtml(npc.llmModel || 'N/A')}</div>
                     </div>
+                    ${npc.ollamaUrl ? `
+                    <div class="data-card">
+                        <div class="data-card-label">Ollama URL</div>
+                        <div class="data-card-value"><span class="coords">${escapeHtml(npc.ollamaUrl)}</span></div>
+                    </div>
+                    ` : ''}
+                    ${npc.lmStudioUrl ? `
+                    <div class="data-card">
+                        <div class="data-card-label">LM Studio URL</div>
+                        <div class="data-card-value"><span class="coords">${escapeHtml(npc.lmStudioUrl)}</span></div>
+                    </div>
+                    ` : ''}
                 `;
             } catch (error) {
                 document.getElementById('overviewGrid').innerHTML = 
@@ -1310,44 +1323,24 @@ public class WebServer {
                 
                 let html = '';
                 
-                if (memory.locations && memory.locations.length > 0) {
-                    html += '<div class="data-section"><h3>📍 Locations</h3>';
-                    html += '<table><thead><tr><th>Name</th><th>Position</th><th>Description</th></tr></thead><tbody>';
-                    memory.locations.forEach(loc => {
-                        const pos = loc.position || {};
+                if (memory.privateBook && memory.privateBook.length > 0) {
+                    html += '<div class="data-section"><h3>📔 Private Book</h3>';
+                    html += '<table><thead><tr><th>Page Title</th><th>Content</th><th>Last Updated</th></tr></thead><tbody>';
+                    memory.privateBook.forEach(page => {
+                        const date = page.timestamp ? new Date(page.timestamp).toLocaleString() : 'N/A';
                         html += `<tr>
-                            <td><strong>${escapeHtml(loc.name || 'Unnamed')}</strong></td>
-                            <td><span class="coords">${pos.x ? pos.x.toFixed(1) : 'N/A'}, ${pos.y ? pos.y.toFixed(1) : 'N/A'}, ${pos.z ? pos.z.toFixed(1) : 'N/A'}</span></td>
-                            <td>${escapeHtml(loc.description || 'No description')}</td>
+                            <td><strong>${escapeHtml(page.pageTitle || 'Untitled')}</strong></td>
+                            <td style="max-width: 500px; word-wrap: break-word;">${escapeHtml(page.content || 'Empty page')}</td>
+                            <td>${date}</td>
                         </tr>`;
                     });
                     html += '</tbody></table></div>';
                 } else {
-                    html += '<div class="data-section"><h3>📍 Locations</h3><p>No locations stored in memory</p></div>';
-                }
-                
-                if (memory.contacts && memory.contacts.length > 0) {
-                    html += '<div class="data-section"><h3>👥 Contacts</h3>';
-                    html += '<table><thead><tr><th>Name</th><th>Type</th><th>Relationship</th><th>Friendship</th><th>Enmity</th><th>Notes</th></tr></thead><tbody>';
-                    memory.contacts.forEach(contact => {
-                        const friendship = contact.friendshipLevel !== undefined ? (contact.friendshipLevel * 100).toFixed(0) + '%' : 'N/A';
-                        const enmity = contact.enmityLevel !== undefined ? (contact.enmityLevel * 100).toFixed(0) + '%' : 'N/A';
-                        html += `<tr>
-                            <td><strong>${escapeHtml(contact.name || contact.contactName || 'Unknown')}</strong></td>
-                            <td><span class="badge badge-info">${escapeHtml(contact.type || contact.contactType || 'N/A')}</span></td>
-                            <td>${escapeHtml(contact.relationship || 'N/A')}</td>
-                            <td><span class="badge badge-success">${friendship}</span></td>
-                            <td><span class="badge badge-danger">${enmity}</span></td>
-                            <td style="max-width: 200px; word-wrap: break-word;">${escapeHtml(contact.notes || 'No notes')}</td>
-                        </tr>`;
-                    });
-                    html += '</tbody></table></div>';
-                } else {
-                    html += '<div class="data-section"><h3>👥 Contacts</h3><p>No contacts stored in memory</p></div>';
+                    html += '<div class="data-section"><h3>📔 Private Book</h3><p>No pages in private book</p></div>';
                 }
                 
                 if (memory.sharebook && memory.sharebook.length > 0) {
-                    html += '<div class="data-section"><h3>📖 Shared Book Pages</h3>';
+                    html += '<div class="data-section"><h3>📖 Shared Book</h3>';
                     html += '<table><thead><tr><th>Page</th><th>Content</th></tr></thead><tbody>';
                     memory.sharebook.forEach((page, index) => {
                         html += `<tr>
@@ -1357,7 +1350,7 @@ public class WebServer {
                     });
                     html += '</tbody></table></div>';
                 } else {
-                    html += '<div class="data-section"><h3>📖 Shared Book Pages</h3><p>No pages in shared book</p></div>';
+                    html += '<div class="data-section"><h3>📖 Shared Book</h3><p>No pages in shared book</p></div>';
                 }
                 
                 document.getElementById('memory').innerHTML = html || '<div class="loading">No memory data available</div>';

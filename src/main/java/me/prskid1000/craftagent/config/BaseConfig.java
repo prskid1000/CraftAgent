@@ -14,8 +14,7 @@ public class BaseConfig implements Configurable {
     private int contextVerticalScanRange = 8;
     private int chunkExpiryTime = 60;
     private int conversationHistoryLength = 5;
-    private int maxLocations = 10;
-    private int maxContacts = 20;
+    private int maxPrivatePages = 20;
     private int maxMessages = 50;
     private int maxSharebookPages = 20;
     private int maxNearbyBlocks = 30;
@@ -72,20 +71,12 @@ public class BaseConfig implements Configurable {
         this.conversationHistoryLength = conversationHistoryLength;
     }
 
-    public int getMaxLocations() {
-        return maxLocations;
+    public int getMaxPrivatePages() {
+        return maxPrivatePages;
     }
 
-    public void setMaxLocations(int maxLocations) {
-        this.maxLocations = maxLocations;
-    }
-
-    public int getMaxContacts() {
-        return maxContacts;
-    }
-
-    public void setMaxContacts(int maxContacts) {
-        this.maxContacts = maxContacts;
+    public void setMaxPrivatePages(int maxPrivatePages) {
+        this.maxPrivatePages = maxPrivatePages;
     }
 
     public int getMaxMessages() {
@@ -147,8 +138,7 @@ public class BaseConfig implements Configurable {
             Endec.INT.fieldOf("contextVerticalScanRange", BaseConfig::getContextVerticalScanRange),
             Endec.INT.fieldOf("chunkExpiryTime", BaseConfig::getChunkExpiryTime),
             Endec.INT.fieldOf("conversationHistoryLength", BaseConfig::getConversationHistoryLength),
-            Endec.INT.fieldOf("maxLocations", BaseConfig::getMaxLocations),
-            Endec.INT.fieldOf("maxContacts", BaseConfig::getMaxContacts),
+            Endec.INT.fieldOf("maxPrivatePages", BaseConfig::getMaxPrivatePages),
             Endec.INT.fieldOf("maxMessages", BaseConfig::getMaxMessages),
             Endec.INT.fieldOf("maxSharebookPages", BaseConfig::getMaxSharebookPages),
             Endec.INT.fieldOf("maxNearbyBlocks", BaseConfig::getMaxNearbyBlocks),
@@ -167,8 +157,7 @@ public class BaseConfig implements Configurable {
                 ",contextVerticalScanRange=" + contextVerticalScanRange +
                 ",chunkExpiryTime=" + chunkExpiryTime +
                 ",conversationHistoryLength=" + conversationHistoryLength +
-                ",maxLocations=" + maxLocations +
-                ",maxContacts=" + maxContacts +
+                ",maxPrivatePages=" + maxPrivatePages +
                 ",maxMessages=" + maxMessages +
                 ",maxSharebookPages=" + maxSharebookPages +
                 ",maxNearbyBlocks=" + maxNearbyBlocks +
@@ -183,8 +172,7 @@ public class BaseConfig implements Configurable {
     public static final String CONTEXT_VERTICAL_RANGE_KEY = "Vertical Scan Range";
     public static final String CHUNK_EXPIRY_TIME_KEY = "Chunk Expiry Time";
     public static final String CONVERSATION_HISTORY_LENGTH_KEY = "Conversation History Length";
-    public static final String MAX_LOCATIONS_KEY = "Max Locations";
-    public static final String MAX_CONTACTS_KEY = "Max Contacts";
+    public static final String MAX_PRIVATE_PAGES_KEY = "Max Private Pages";
     public static final String MAX_MESSAGES_KEY = "Max Messages";
     public static final String MAX_SHAREBOOK_PAGES_KEY = "Max Sharebook Pages";
     public static final String MAX_NEARBY_BLOCKS_KEY = "Max Nearby Blocks";

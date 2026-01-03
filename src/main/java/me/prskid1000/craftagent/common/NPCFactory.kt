@@ -4,8 +4,7 @@ import me.prskid1000.craftagent.config.ConfigProvider
 import me.prskid1000.craftagent.config.NPCConfig
 import me.prskid1000.craftagent.constant.Instructions
 import me.prskid1000.craftagent.context.ContextProvider
-import me.prskid1000.craftagent.database.repositories.ContactRepository
-import me.prskid1000.craftagent.database.repositories.LocationMemoryRepository
+import me.prskid1000.craftagent.database.repositories.PrivateBookPageRepository
 import me.prskid1000.craftagent.database.repositories.MessageRepository
 import me.prskid1000.craftagent.database.repositories.SharebookRepository
 import me.prskid1000.craftagent.event.NPCEventHandler
@@ -23,8 +22,7 @@ import net.minecraft.server.network.ServerPlayerEntity
 
 class NPCFactory(
     private val configProvider: ConfigProvider,
-    private val locationRepository: LocationMemoryRepository,
-    private val contactRepository: ContactRepository,
+    private val privateBookPageRepository: PrivateBookPageRepository,
     private val messageRepository: MessageRepository,
     private val sharebookRepository: SharebookRepository
 ) {
@@ -33,7 +31,7 @@ class NPCFactory(
         val contextProvider = ContextProvider(npcEntity, baseConfig)
         
         // Create memory manager
-        val memoryManager = MemoryManager(locationRepository, contactRepository, config.uuid, baseConfig)
+        val memoryManager = MemoryManager(privateBookPageRepository, config.uuid, baseConfig)
         contextProvider.memoryManager = memoryManager
         
         // Set repositories for mail and sharebook

@@ -274,9 +274,8 @@ class NPCService(
             CompletableFuture.runAsync({
                 try {
                     resourceProvider.conversationRepository.deleteByUuid(uuid)
-                    // Delete memory data
-                    resourceProvider.locationRepository?.deleteByUuid(uuid)
-                    resourceProvider.contactRepository?.deleteByNpcUuid(uuid)
+                    // Delete private book pages for this NPC
+                    resourceProvider.privateBookPageRepository?.deleteByNpcUuid(uuid)
                     // Delete messages where NPC is sender or recipient
                     resourceProvider.messageRepository?.deleteByNpcUuid(uuid)
                     // Delete sharebook pages authored by this NPC
@@ -292,9 +291,8 @@ class NPCService(
                 try {
                     resourceProvider.loadedConversations.remove(uuid)
                     resourceProvider.conversationRepository.deleteByUuid(uuid)
-                    // Delete memory data
-                    resourceProvider.locationRepository?.deleteByUuid(uuid)
-                    resourceProvider.contactRepository?.deleteByNpcUuid(uuid)
+                    // Delete private book pages for this NPC
+                    resourceProvider.privateBookPageRepository?.deleteByNpcUuid(uuid)
                     // Delete messages where NPC is sender or recipient
                     resourceProvider.messageRepository?.deleteByNpcUuid(uuid)
                     // Delete sharebook pages authored by this NPC

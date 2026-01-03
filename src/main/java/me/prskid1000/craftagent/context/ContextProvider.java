@@ -82,34 +82,16 @@ public class ContextProvider {
 	private java.util.Map<String, Object> buildMemoryData() {
 		java.util.Map<String, Object> memory = new java.util.HashMap<>();
 		
-		// Add locations
-		java.util.List<java.util.Map<String, Object>> locations = new java.util.ArrayList<>();
-		memoryManager.getLocations().forEach(loc -> {
-			java.util.Map<String, Object> locMap = new java.util.HashMap<>();
-			locMap.put("name", loc.getName());
-			locMap.put("x", loc.getX());
-			locMap.put("y", loc.getY());
-			locMap.put("z", loc.getZ());
-			locMap.put("description", loc.getDescription());
-			locMap.put("lastVisited", loc.getTimestamp());
-			locations.add(locMap);
+		// Add private book pages (private memory for this NPC)
+		java.util.List<java.util.Map<String, Object>> privatePages = new java.util.ArrayList<>();
+		memoryManager.getPages().forEach(page -> {
+			java.util.Map<String, Object> pageMap = new java.util.HashMap<>();
+			pageMap.put("pageTitle", page.getPageTitle());
+			pageMap.put("content", page.getContent());
+			pageMap.put("timestamp", page.getTimestamp());
+			privatePages.add(pageMap);
 		});
-		memory.put("locations", locations);
-		
-		// Add contacts
-		java.util.List<java.util.Map<String, Object>> contacts = new java.util.ArrayList<>();
-		memoryManager.getContacts().forEach(contact -> {
-			java.util.Map<String, Object> contactMap = new java.util.HashMap<>();
-			contactMap.put("name", contact.getContactName());
-			contactMap.put("type", contact.getContactType());
-			contactMap.put("relationship", contact.getRelationship());
-			contactMap.put("notes", contact.getNotes());
-			contactMap.put("lastSeen", contact.getLastSeen());
-			contactMap.put("enmityLevel", contact.getEnmityLevel());
-			contactMap.put("friendshipLevel", contact.getFriendshipLevel());
-			contacts.add(contactMap);
-		});
-		memory.put("contacts", contacts);
+		memory.put("privateBook", privatePages);
 		
 		// Add mail (messages) - only unread messages to avoid overwhelming context
 		// Auto-mark messages as read when included in context

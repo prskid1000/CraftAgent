@@ -38,16 +38,14 @@ public class CraftAgent implements ModInitializer {
 
         ResourceProvider resourceProvider = new ResourceProvider(
             repositoryFactory.getConversationRepository(),
-            repositoryFactory.getLocationMemoryRepository(),
-            repositoryFactory.getContactRepository(),
+            repositoryFactory.getPrivateBookPageRepository(),
             repositoryFactory.getMessageRepository(),
             repositoryFactory.getSharebookRepository()
         );
 
         NPCFactory npcFactory = new NPCFactory(
             configProvider,
-            repositoryFactory.getLocationMemoryRepository(),
-            repositoryFactory.getContactRepository(),
+            repositoryFactory.getPrivateBookPageRepository(),
             repositoryFactory.getMessageRepository(),
             repositoryFactory.getSharebookRepository()
         );

@@ -40,11 +40,8 @@ public class BaseConfigScreen extends ConfigScreen<BaseConfig> {
         bindSlider(content, "conversationHistoryLength-label", "conversationHistoryLength",
                 BaseConfig.CONVERSATION_HISTORY_LENGTH_KEY, config.getConversationHistoryLength(), config::setConversationHistoryLength);
 
-        bindSlider(content, "maxLocations-label", "maxLocations",
-                BaseConfig.MAX_LOCATIONS_KEY, config.getMaxLocations(), config::setMaxLocations);
-
-        bindSlider(content, "maxContacts-label", "maxContacts",
-                BaseConfig.MAX_CONTACTS_KEY, config.getMaxContacts(), config::setMaxContacts);
+        bindSlider(content, "maxPrivatePages-label", "maxPrivatePages",
+                BaseConfig.MAX_PRIVATE_PAGES_KEY, config.getMaxPrivatePages(), config::setMaxPrivatePages);
 
         bindSlider(content, "maxMessages-label", "maxMessages",
                 BaseConfig.MAX_MESSAGES_KEY, config.getMaxMessages(), config::setMaxMessages);

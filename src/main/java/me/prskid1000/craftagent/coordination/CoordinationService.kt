@@ -42,40 +42,6 @@ class CoordinationService(
         val message = "NPC '${newNpc.config.npcName}' (${newNpc.entity.uuid}) has joined the world. " +
                 "You can now interact with them."
         broadcastMessage(message, excludeUuid = newNpc.config.uuid)
-        
-        // Add new NPC to all existing NPCs' contact lists
-        npcService.uuidToNpc.forEach { (uuid, npc) ->
-            if (uuid != newNpc.config.uuid) {
-                try {
-                    npc.contextProvider.memoryManager?.addOrUpdateContact(
-                        newNpc.config.uuid,
-                        newNpc.config.npcName,
-                        "npc",
-                        "neutral",
-                        "Recently joined the world"
-                    )
-                } catch (e: Exception) {
-                    LogUtil.error("Error adding new NPC to contact list", e)
-                }
-            }
-        }
-        
-        // Add all existing NPCs to new NPC's contact list
-        npcService.uuidToNpc.forEach { (uuid, npc) ->
-            if (uuid != newNpc.config.uuid) {
-                try {
-                    newNpc.contextProvider.memoryManager?.addOrUpdateContact(
-                        uuid,
-                        npc.config.npcName,
-                        "npc",
-                        "neutral",
-                        "Existing NPC in the world"
-                    )
-                } catch (e: Exception) {
-                    LogUtil.error("Error adding existing NPCs to new NPC contact list", e)
-                }
-            }
-        }
     }
 
     /**
@@ -84,25 +50,6 @@ class CoordinationService(
     fun notifyNpcRemoved(removedNpcName: String, removedUuid: UUID) {
         val message = "NPC '$removedNpcName' (${removedUuid}) has left the world."
         broadcastMessage(message, excludeUuid = removedUuid)
-        
-        // Update contact lists - mark as inactive or update notes
-        npcService.uuidToNpc.forEach { (uuid, npc) ->
-            try {
-                val contact = npc.contextProvider.memoryManager?.getContact(removedUuid)
-                if (contact != null) {
-                    // Update contact with removal information
-                    npc.contextProvider.memoryManager?.addOrUpdateContact(
-                        removedUuid,
-                        removedNpcName,
-                        "npc",
-                        contact.relationship,
-                        "${contact.notes}; Left the world at ${System.currentTimeMillis()}"
-                    )
-                }
-            } catch (e: Exception) {
-                LogUtil.error("Error updating contact list for removed NPC", e)
-            }
-        }
     }
 
     /**
@@ -111,30 +58,6 @@ class CoordinationService(
     fun notifyNpcDeath(deadNpcName: String, deadUuid: UUID) {
         val message = "NPC '$deadNpcName' (${deadUuid}) has died and will respawn."
         broadcastMessage(message, excludeUuid = deadUuid)
-        
-        // Update contact lists - mark as dead but will respawn
-        npcService.uuidToNpc.forEach { (uuid, npc) ->
-            try {
-                val contact = npc.contextProvider.memoryManager?.getContact(deadUuid)
-                if (contact != null) {
-                    // Update contact with death information
-                    val updatedNotes = if (contact.notes.isNotEmpty()) {
-                        "${contact.notes}; Died at ${System.currentTimeMillis()}, will respawn"
-                    } else {
-                        "Died at ${System.currentTimeMillis()}, will respawn"
-                    }
-                    npc.contextProvider.memoryManager?.addOrUpdateContact(
-                        deadUuid,
-                        deadNpcName,
-                        "npc",
-                        contact.relationship,
-                        updatedNotes
-                    )
-                }
-            } catch (e: Exception) {
-                LogUtil.error("Error updating contact list for dead NPC", e)
-            }
-        }
     }
 
     /**
@@ -167,9 +90,6 @@ class CoordinationService(
         // Update state (no LLM trigger)
         val formattedMessage = "${fromNpc.config.npcName} says to you: $message"
         targetNpc.eventHandler.updateState(formattedMessage)
-        
-        // Update last seen
-        targetNpc.contextProvider.memoryManager?.updateContactLastSeen(fromNpc.config.uuid)
         
         LogUtil.info("NPC ${fromNpc.config.npcName} sent direct message to ${targetNpc.config.npcName}: $message")
     }

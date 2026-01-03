@@ -1,9 +1,8 @@
 package me.prskid1000.craftagent.database.resources
 
-import me.prskid1000.craftagent.database.repositories.ContactRepository
 import me.prskid1000.craftagent.database.repositories.ConversationRepository
-import me.prskid1000.craftagent.database.repositories.LocationMemoryRepository
 import me.prskid1000.craftagent.database.repositories.MessageRepository
+import me.prskid1000.craftagent.database.repositories.PrivateBookPageRepository
 import me.prskid1000.craftagent.database.repositories.SharebookRepository
 import me.prskid1000.craftagent.history.Message
 import me.prskid1000.craftagent.model.database.Conversation
@@ -18,8 +17,7 @@ import java.util.concurrent.TimeUnit
 
 class ResourceProvider(
     val conversationRepository: ConversationRepository,
-    val locationRepository: LocationMemoryRepository? = null,
-    val contactRepository: ContactRepository? = null,
+    val privateBookPageRepository: PrivateBookPageRepository? = null,
     val messageRepository: MessageRepository? = null,
     val sharebookRepository: SharebookRepository? = null
 ) {
