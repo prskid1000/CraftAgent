@@ -243,4 +243,69 @@ public class CommandMapper {
             return minecraftExecutor.apply(mapped);
         }
     }
+    
+    /**
+     * Gets a map of vanilla Minecraft commands to the custom commands that map to them.
+     * Returns a map where:
+     * - Key: vanilla command name (e.g., "give", "tp", "effect")
+     * - Value: list of custom commands that map to this vanilla command
+     */
+    public static Map<String, List<String>> getVanillaCommandMappings() {
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        Map<String, List<String>> customCommands = getAllCustomCommands();
+        
+        // Iterate through all custom commands and find what they map to
+        for (Map.Entry<String, List<String>> category : customCommands.entrySet()) {
+            for (String customCmd : category.getValue()) {
+                // Try multiple variations to find the mapping
+                String mapped = null;
+                
+                // 1. Try the base command without parameters
+                String baseCustomCmd = customCmd.split("\\[|\\<")[0].trim();
+                mapped = mapCommand(baseCustomCmd);
+                
+                // 2. If that doesn't work or returns the same, try with example values
+                if (mapped == null || mapped.equals(baseCustomCmd) || mapped.equals(customCmd)) {
+                    // Build example command by replacing placeholders
+                    String exampleCmd = customCmd
+                        .replaceAll("\\[.*?\\]", "")  // Remove [optional] params
+                        .replaceAll("<item>", "wood")  // Replace <item> with example
+                        .replaceAll("<block>", "stone")
+                        .replaceAll("<mob>", "cow")
+                        .replaceAll("<name>", "Test")
+                        .replaceAll("<recipient>", "Bob")
+                        .replaceAll("<subject>", "Hello")
+                        .replaceAll("<title>", "Page")
+                        .replaceAll("\\[steps\\]", "5")  // Replace [steps] with example
+                        .replaceAll("\\[amount\\]", "64")
+                        .replaceAll("\\[direction\\]", "front")
+                        .replaceAll("\\[block/direction\\]", "front")
+                        .trim();
+                    mapped = mapCommand(exampleCmd);
+                }
+                
+                // 3. Check if it's a Minecraft command (not a tool action)
+                if (mapped != null && !mapped.contains(":") && !mapped.equals(customCmd)) {
+                    String vanillaCmd = extractBaseCommand(mapped);
+                    if (vanillaCmd != null && !vanillaCmd.isEmpty()) {
+                        result.computeIfAbsent(vanillaCmd, k -> new ArrayList<>()).add(customCmd);
+                    }
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Extracts the base Minecraft command name from a full command string.
+     * Example: "give @s minecraft:diamond 64" -> "give"
+     */
+    private static String extractBaseCommand(String command) {
+        if (command == null || command.trim().isEmpty()) {
+            return null;
+        }
+        String[] parts = command.trim().split("\\s+");
+        return parts.length > 0 ? parts[0] : null;
+    }
 }

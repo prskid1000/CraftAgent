@@ -267,15 +267,32 @@ public class WebServer {
             MinecraftServer server = npc.getContextProvider().getNpcEntity().getServer();
             Map<String, Object> toolsData = new HashMap<>();
             
-            // Get Minecraft commands
+            // Get mapping of vanilla commands to custom commands
+            Map<String, List<String>> vanillaMappings = me.prskid1000.craftagent.util.CommandMapper.getVanillaCommandMappings();
+            
+            // Get Minecraft commands with mapping status
             List<Map<String, Object>> minecraftCommands = new ArrayList<>();
             if (server != null) {
                 var commandsWithUsage = me.prskid1000.craftagent.util.MinecraftCommandUtil.getAllCommandsWithUsage(server);
                 for (var entry : commandsWithUsage.entrySet()) {
+                    String cmdName = entry.getKey();
                     Map<String, Object> cmd = new HashMap<>();
-                    cmd.put("name", entry.getKey());
+                    cmd.put("name", cmdName);
                     cmd.put("usage", entry.getValue());
                     cmd.put("type", "minecraft");
+                    
+                    // Check if this command is mapped to any custom command
+                    List<String> mappedCustomCommands = vanillaMappings.get(cmdName);
+                    if (mappedCustomCommands != null && !mappedCustomCommands.isEmpty()) {
+                        cmd.put("mapped", true);
+                        cmd.put("customCommands", mappedCustomCommands);
+                        cmd.put("availableToLLM", true);
+                    } else {
+                        cmd.put("mapped", false);
+                        cmd.put("customCommands", Collections.emptyList());
+                        cmd.put("availableToLLM", false);
+                    }
+                    
                     minecraftCommands.add(cmd);
                 }
             }
@@ -1593,28 +1610,70 @@ public class WebServer {
                 
                 // Minecraft Commands Section
                 if (tools.minecraftCommands && tools.minecraftCommands.length > 0) {
-                    html += '<div class="data-section"><h3>🎮 All Minecraft Commands</h3>';
-                    html += '<p style="margin-bottom: 15px; color: #666;">Complete list of available Minecraft commands (can be used directly or via custom commands above):</p>';
-                    html += '<div style="max-height: 400px; overflow-y: auto;">';
-                    html += '<table><thead><tr><th style="width: 250px;">Command</th><th>Usage / Parameters</th></tr></thead><tbody>';
+                    html += '<div class="data-section"><h3>🎮 All Vanilla Minecraft Commands</h3>';
+                    html += '<p style="margin-bottom: 15px; color: #666;">Complete list of available Minecraft commands. Shows which are mapped to custom commands (available to LLM) and which are not:</p>';
                     
-                    // Sort commands alphabetically
-                    const sortedCommands = [...tools.minecraftCommands].sort((a, b) => 
-                        (a.name || '').localeCompare(b.name || '')
-                    );
+                    // Separate mapped and unmapped commands
+                    const mappedCommands = tools.minecraftCommands.filter(cmd => cmd.mapped === true);
+                    const unmappedCommands = tools.minecraftCommands.filter(cmd => cmd.mapped === false);
                     
-                    sortedCommands.forEach(cmd => {
-                        const usage = cmd.usage && cmd.usage.trim() 
-                            ? `<code style="background-color: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #333;">${escapeHtml(cmd.usage)}</code>`
-                            : '<span style="color: #999; font-style: italic;">No parameters</span>';
+                    // Show mapped commands first
+                    if (mappedCommands.length > 0) {
+                        html += '<div style="margin-bottom: 20px;"><h4 style="color: #4CAF50; margin-bottom: 10px;">✅ Mapped Commands (Available to LLM)</h4>';
+                        html += '<div style="max-height: 400px; overflow-y: auto;">';
+                        html += '<table><thead><tr><th style="width: 200px;">Command</th><th style="width: 300px;">Usage / Parameters</th><th>Mapped Via Custom Commands</th><th style="width: 100px;">Status</th></tr></thead><tbody>';
                         
-                        html += `<tr>
-                            <td><strong style="color: #4CAF50; font-family: monospace;">${escapeHtml(cmd.name || 'Unknown')}</strong></td>
-                            <td>${usage}</td>
-                        </tr>`;
-                    });
+                        const sortedMapped = [...mappedCommands].sort((a, b) => 
+                            (a.name || '').localeCompare(b.name || '')
+                        );
+                        
+                        sortedMapped.forEach(cmd => {
+                            const usage = cmd.usage && cmd.usage.trim() 
+                                ? `<code style="background-color: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #333; font-size: 0.85em;">${escapeHtml(cmd.usage)}</code>`
+                                : '<span style="color: #999; font-style: italic;">No parameters</span>';
+                            
+                            const customCmds = (cmd.customCommands || []).map(c => 
+                                `<code style="background-color: #e8f4f8; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; display: inline-block; margin: 2px 4px 2px 0; font-family: monospace;">${escapeHtml(c)}</code>`
+                            ).join('');
+                            
+                            html += `<tr style="background-color: #f0f9f0;">
+                                <td><strong style="color: #4CAF50; font-family: monospace;">${escapeHtml(cmd.name || 'Unknown')}</strong></td>
+                                <td>${usage}</td>
+                                <td style="max-width: 400px; word-wrap: break-word;">${customCmds || '<span style="color: #999;">N/A</span>'}</td>
+                                <td><span class="badge badge-success">✅ Mapped</span></td>
+                            </tr>`;
+                        });
+                        
+                        html += '</tbody></table></div></div>';
+                    }
                     
-                    html += '</tbody></table></div></div>';
+                    // Show unmapped commands
+                    if (unmappedCommands.length > 0) {
+                        html += '<div style="margin-bottom: 20px;"><h4 style="color: #f44336; margin-bottom: 10px;">❌ Unmapped Commands (Not Available to LLM)</h4>';
+                        html += '<p style="margin-bottom: 10px; color: #666; font-size: 0.9em;">These commands are not mapped to any custom command. The LLM cannot use them directly.</p>';
+                        html += '<div style="max-height: 400px; overflow-y: auto;">';
+                        html += '<table><thead><tr><th style="width: 200px;">Command</th><th>Usage / Parameters</th><th style="width: 100px;">Status</th></tr></thead><tbody>';
+                        
+                        const sortedUnmapped = [...unmappedCommands].sort((a, b) => 
+                            (a.name || '').localeCompare(b.name || '')
+                        );
+                        
+                        sortedUnmapped.forEach(cmd => {
+                            const usage = cmd.usage && cmd.usage.trim() 
+                                ? `<code style="background-color: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #333; font-size: 0.85em;">${escapeHtml(cmd.usage)}</code>`
+                                : '<span style="color: #999; font-style: italic;">No parameters</span>';
+                            
+                            html += `<tr style="background-color: #fff5f5;">
+                                <td><strong style="color: #f44336; font-family: monospace;">${escapeHtml(cmd.name || 'Unknown')}</strong></td>
+                                <td>${usage}</td>
+                                <td><span class="badge badge-error">❌ Not Mapped</span></td>
+                            </tr>`;
+                        });
+                        
+                        html += '</tbody></table></div></div>';
+                    }
+                    
+                    html += '</div>';
                 } else {
                     html += '<div class="data-section"><h3>🎮 Minecraft Commands</h3>';
                     html += '<p style="color: #999;">No Minecraft commands available</p></div>';
@@ -1699,7 +1758,7 @@ public class WebServer {
             let actions = [];
             let message = null;
             
-            // Split by newlines (handle both \n and \r\n)
+            // Split by newlines (handle both \\n and \\r\\n)
             const lines = text.split(/\\n|\\r\\n/);
             let inActions = false;
             let thoughtEnded = false;
