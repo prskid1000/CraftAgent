@@ -332,6 +332,25 @@ public class WebServer {
             predefinedTools.add(manageBook);
             
             toolsData.put("predefinedTools", predefinedTools);
+            
+            // Get custom command mappings
+            Map<String, List<String>> customCommands = me.prskid1000.craftagent.util.CommandMapper.getAllCustomCommands();
+            List<Map<String, Object>> customCommandMappings = new ArrayList<>();
+            
+            for (Map.Entry<String, List<String>> category : customCommands.entrySet()) {
+                for (String customCmd : category.getValue()) {
+                    Map<String, Object> mapping = new HashMap<>();
+                    mapping.put("customCommand", customCmd);
+                    mapping.put("category", category.getKey());
+                    String mapped = me.prskid1000.craftagent.util.CommandMapper.mapCommand(customCmd);
+                    String mappingType = mapped != null && mapped.contains(":") ? "Tool" : "Minecraft";
+                    mapping.put("mappedTo", mapped != null ? mapped : customCmd);
+                    mapping.put("type", mappingType);
+                    customCommandMappings.add(mapping);
+                }
+            }
+            
+            toolsData.put("customCommands", customCommandMappings);
             sendJsonResponse(exchange, 200, toolsData);
         } catch (Exception e) {
             LogUtil.error("Error getting NPC tools", e);
@@ -1467,11 +1486,44 @@ public class WebServer {
                     html += '</tbody></table></div>';
                 }
                 
+                // Custom Command Mappings Section (NEW - shows simple commands that map to Minecraft/tools)
+                if (tools.customCommands && tools.customCommands.length > 0) {
+                    html += '<div class="data-section"><h3>🎯 Custom Commands (Easy-to-Use)</h3>';
+                    html += '<p style="margin-bottom: 15px; color: #666;">Simple commands the NPC can use in the action array. These are automatically mapped to Minecraft commands or tools:</p>';
+                    html += '<div style="max-height: 500px; overflow-y: auto;">';
+                    html += '<table><thead><tr><th style="width: 200px;">Custom Command</th><th style="width: 150px;">Category</th><th>Maps To</th><th style="width: 100px;">Type</th></tr></thead><tbody>';
+                    
+                    // Group by category
+                    const byCategory = {};
+                    tools.customCommands.forEach(cmd => {
+                        const cat = cmd.category || 'Other';
+                        if (!byCategory[cat]) byCategory[cat] = [];
+                        byCategory[cat].push(cmd);
+                    });
+                    
+                    // Display by category
+                    Object.keys(byCategory).sort().forEach(category => {
+                        html += `<tr><td colspan="4" style="background: #f5f5f5; font-weight: bold; padding: 8px;">📁 ${escapeHtml(category)}</td></tr>`;
+                        byCategory[category].forEach(cmd => {
+                            const typeBadge = cmd.type === 'Tool' ? 'badge-info' : 'badge-success';
+                            const mappedTo = cmd.mappedTo || cmd.customCommand;
+                            html += `<tr>
+                                <td><strong style="color: #667eea; font-family: monospace;">${escapeHtml(cmd.customCommand || 'Unknown')}</strong></td>
+                                <td>${escapeHtml(category)}</td>
+                                <td><code style="background-color: #e8f4f8; padding: 3px 6px; border-radius: 3px; font-size: 0.9em; font-family: monospace;">${escapeHtml(mappedTo)}</code></td>
+                                <td><span class="badge ${typeBadge}">${escapeHtml(cmd.type || 'Unknown')}</span></td>
+                            </tr>`;
+                        });
+                    });
+                    
+                    html += '</tbody></table></div></div>';
+                }
+                
                 // Minecraft Commands Section
                 if (tools.minecraftCommands && tools.minecraftCommands.length > 0) {
-                    html += '<div class="data-section"><h3>🎮 Minecraft Commands</h3>';
-                    html += '<p style="margin-bottom: 15px; color: #666;">Available Minecraft commands that the NPC can execute:</p>';
-                    html += '<div style="max-height: 600px; overflow-y: auto;">';
+                    html += '<div class="data-section"><h3>🎮 All Minecraft Commands</h3>';
+                    html += '<p style="margin-bottom: 15px; color: #666;">Complete list of available Minecraft commands (can be used directly or via custom commands above):</p>';
+                    html += '<div style="max-height: 400px; overflow-y: auto;">';
                     html += '<table><thead><tr><th style="width: 250px;">Command</th><th>Usage / Parameters</th></tr></thead><tbody>';
                     
                     // Sort commands alphabetically

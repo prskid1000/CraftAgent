@@ -11,24 +11,37 @@ public class StructuredOutputSchema {
     private StructuredOutputSchema() {}
 
     /**
-     * Returns the JSON schema for CommandMessage structure.
-     * Used by Ollama's format parameter and OpenAI's tools/response_format.
+     * Returns the JSON schema for ActionResponse structure.
+     * Uses simplified format: thought + action array of custom commands.
      */
-    public static Map<String, Object> getCommandMessageSchema() {
+    public static Map<String, Object> getActionResponseSchema() {
         return Map.of(
             "type", "object",
             "properties", Map.of(
-                "command", Map.of(
+                "thought", Map.of(
                     "type", "string",
-                    "description", "A valid Minecraft command from the available commands list. Must be exactly one command name, not a description or sentence. Use vanilla Minecraft commands like 'give', 'tp', 'effect', etc."
+                    "description", "Your reasoning about what to do next. Keep it brief (1-2 sentences)."
+                ),
+                "action", Map.of(
+                    "type", "array",
+                    "items", Map.of("type", "string"),
+                    "description", "Array of custom commands to execute in sequence. Use simple commands like 'walk forward', 'get wood', 'craft pickaxe', 'save location', etc. See available custom commands in the system prompt. Use 'idle' to do nothing."
                 ),
                 "message", Map.of(
                     "type", "string",
-                    "description", "An optional in-character chat message (under 250 characters). Use empty string \"\" if the NPC should not speak."
+                    "description", "Optional chat message to say (under 250 characters). Use empty string \"\" if no message."
                 )
             ),
-            "required", new String[]{"command", "message"}
+            "required", new String[]{"thought", "action", "message"}
         );
+    }
+    
+    /**
+     * Legacy method - kept for backward compatibility.
+     * Returns the JSON schema for CommandMessage structure.
+     */
+    public static Map<String, Object> getCommandMessageSchema() {
+        return getActionResponseSchema();
     }
 
     /**

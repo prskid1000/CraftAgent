@@ -88,88 +88,132 @@ class NPCEventHandler(
                 messagesForLLM.add(Message(formattedPrompt, "user"))
             }
             
-            // Use tool calling for commands, structured output for messages (hybrid approach)
-            // Pass server to get tools with command information
+            // Use structured output only (no tool calling)
+            // The LLM returns JSON with thought, action array, and message
             val server = contextProvider.getNpcEntity().server
             val toolResponse = llmClient.chatWithTools(messagesForLLM, server)
             
-            // Process tool calls (commands and memory management)
-            var command: String? = null
-            val toolCallDescriptions = mutableListOf<String>()
-            if (toolResponse.hasToolCalls()) {
-                // Handle memory management tools first
-                toolResponse.toolCalls.forEach { toolCall ->
-                    when (toolCall.name) {
-                        "execute_command" -> {
-                            command = toolCall.getCommand()
-                            if (command != null && command.isNotEmpty() && command != "idle") {
-                                toolCallDescriptions.add("🔧 Executed command: $command")
+            // Parse structured output (ActionResponse format)
+            val content = toolResponse.content.trim()
+            val actionResponse = try {
+                if (content.startsWith("{") && (content.contains("\"action\"") || content.contains("\"message\""))) {
+                    commandMessageParser.parseActionResponse(content)
+                } else {
+                    // Fallback: treat as plain message
+                    CommandMessageParser.ActionResponse(
+                        thought = null,
+                        action = emptyList(),
+                        message = content
+                    )
+                }
+            } catch (e: Exception) {
+                LogUtil.error("Failed to parse LLM response", e)
+                // Fallback: treat as plain message
+                CommandMessageParser.ActionResponse(
+                    thought = null,
+                    action = emptyList(),
+                    message = content
+                )
+            }
+            
+            // Process actions in sequence
+            val actionDescriptions = mutableListOf<String>()
+            for (customCommand in actionResponse.action) {
+                if (customCommand.isBlank() || customCommand == "idle") {
+                    continue
+                }
+                
+                // Map custom command to actual command/tool
+                val mapped: String? = me.prskid1000.craftagent.util.CommandMapper.mapCommand(customCommand)
+                if (mapped == null) {
+                    LogUtil.info("Unknown custom command: $customCommand")
+                    actionDescriptions.add("⚠️ Unknown command: $customCommand")
+                    continue
+                }
+                
+                // Check if it's a tool action (contains : or |)
+                if (mapped.contains(":") || mapped.contains("|")) {
+                    // Parse tool action with parameters
+                    val toolParams = me.prskid1000.craftagent.util.CommandMapper.parseToolAction(mapped)
+                    
+                    when {
+                        mapped.startsWith("manageMemory:") -> {
+                            val actionParts = mapped.split(":")[1].split("|")[0].split(":")
+                            val action = actionParts[0]
+                            val infoType = if (actionParts.size > 1) actionParts[1] else null
+                            
+                            // Create a mock ToolCall with parsed parameters
+                            val mockArgs = mutableMapOf<String, Any>()
+                            mockArgs["action"] = action
+                            if (infoType != null) mockArgs["infoType"] = infoType
+                            toolParams.forEach { (key, value) ->
+                                mockArgs[key] = value
                             }
+                            
+                            val mockToolCall = me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall(
+                                "fake-id", "manageMemory", mockArgs
+                            )
+                            
+                            handleManageMemory(mockToolCall)
+                            val name = toolParams["name"] ?: "unknown"
+                            val actionCap = action.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
+                            actionDescriptions.add("💾 $actionCap $infoType: $name")
                         }
-                        "manageMemory" -> {
-                            val description = formatManageMemoryDescription(toolCall)
-                            handleManageMemory(toolCall)
-                            if (description.isNotEmpty()) {
-                                toolCallDescriptions.add(description)
-                            }
+                        mapped.startsWith("sendMessage") -> {
+                            val recipient = toolParams["recipient"] ?: "unknown"
+                            val subject = toolParams["subject"] ?: ""
+                            val content = toolParams["content"] ?: ""
+                            
+                            // Create a mock ToolCall
+                            val mockArgs = mutableMapOf<String, Any>()
+                            mockArgs["recipientName"] = recipient
+                            mockArgs["subject"] = subject
+                            mockArgs["content"] = content
+                            
+                            val mockToolCall = me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall(
+                                "fake-id", "sendMessage", mockArgs
+                            )
+                            
+                            handleSendMessage(mockToolCall)
+                            actionDescriptions.add("📧 Sent message to $recipient: $subject")
                         }
-                        "sendMessage" -> {
-                            val description = formatSendMessageDescription(toolCall)
-                            handleSendMessage(toolCall)
-                            if (description.isNotEmpty()) {
-                                toolCallDescriptions.add(description)
-                            }
+                        mapped.startsWith("manageBook:") -> {
+                            val action = mapped.split(":")[1].split("|")[0]
+                            val title = toolParams["title"] ?: "unknown"
+                            val content = toolParams["content"] ?: ""
+                            
+                            // Create a mock ToolCall
+                            val mockArgs = mutableMapOf<String, Any>()
+                            mockArgs["action"] = action
+                            mockArgs["pageTitle"] = title
+                            mockArgs["content"] = content
+                            
+                            val mockToolCall = me.prskid1000.craftagent.llm.ToolCallResponse.ToolCall(
+                                "fake-id", "manageBook", mockArgs
+                            )
+                            
+                            handleManageBook(mockToolCall)
+                            val actionCap = action.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
+                            actionDescriptions.add("📖 $actionCap book page: $title")
                         }
-                        "manageBook" -> {
-                            val description = formatManageBookDescription(toolCall)
-                            handleManageBook(toolCall)
-                            if (description.isNotEmpty()) {
-                                toolCallDescriptions.add(description)
-                            }
+                        else -> {
+                            actionDescriptions.add("🔧 Tool action: $customCommand")
                         }
+                    }
+                } else {
+                    // It's a Minecraft command - execute it
+                    val succeeded = execute(mapped)
+                    if (succeeded) {
+                        actionDescriptions.add("✅ $customCommand")
+                    } else {
+                        actionDescriptions.add("❌ Failed: $customCommand")
+                        // Don't stop on first failure, continue with other actions
                     }
                 }
             }
             
-            // Extract message from content (structured output or plain text)
-            var message = toolResponse.content.trim()
-            // If content is JSON (structured output), try to parse it
-            if (message.startsWith("{") && message.contains("\"message\"")) {
-                try {
-                    val parsedMessage = commandMessageParser.parse(message)
-                    message = parsedMessage.message
-                    // If no command from tool call, try to get from parsed JSON (fallback for compatibility)
-                    if (command == null && parsedMessage.command.isNotEmpty()) {
-                        command = parsedMessage.command
-                    }
-                } catch (e: Exception) {
-                    // If parsing fails, try to extract message field directly
-                    try {
-                        val messageStart = message.indexOf("\"message\"")
-                        if (messageStart >= 0) {
-                            val valueStart = message.indexOf("\"", messageStart + 10) + 1
-                            val valueEnd = message.indexOf("\"", valueStart)
-                            if (valueEnd > valueStart) {
-                                message = message.substring(valueStart, valueEnd)
-                            }
-                        }
-                    } catch (e2: Exception) {
-                        // If all parsing fails, use content as-is (might be plain text)
-                    }
-                }
-            }
-            // If message is empty or just whitespace, treat as no message
-            if (message.isBlank()) {
-                message = ""
-            }
-            
-            // Execute command if present
-            if (command != null && command.isNotEmpty() && command != "idle") {
-                val succeeded = execute(command)
-                if (!succeeded) {
-                    return false
-                }
-            }
+            // Extract message
+            val message = actionResponse.message.trim()
             
             // Send message if present and different from last
             if (message.isNotEmpty() && message != history.getLastMessage()) {
@@ -177,27 +221,32 @@ class NPCEventHandler(
                 me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(npcEntity, message)
             }
             
-            // Add response to history (for tool calls or messages)
+            // Add response to history
             val responseText = buildString {
+                // Add thought if present
+                if (!actionResponse.thought.isNullOrBlank()) {
+                    append("💭 ${actionResponse.thought}\n\n")
+                }
+                
                 // Add chat message if present
                 if (message.isNotEmpty()) {
                     append(message)
                 }
                 
-                // Add tool call descriptions if present
-                if (toolCallDescriptions.isNotEmpty()) {
-                    if (message.isNotEmpty()) {
+                // Add action descriptions if present
+                if (actionDescriptions.isNotEmpty()) {
+                    if (message.isNotEmpty() || !actionResponse.thought.isNullOrBlank()) {
                         append("\n\n")
                     }
-                    append("**Actions taken:**\n")
-                    toolCallDescriptions.forEach { desc ->
+                    append("**Actions:**\n")
+                    actionDescriptions.forEach { desc ->
                         append("• $desc\n")
                     }
                 }
                 
                 // Fallback if nothing else
                 if (isEmpty()) {
-                    append(toolResponse.content.ifEmpty { "No action" })
+                    append(content.ifEmpty { "No action" })
                 }
             }.trim()
             

@@ -264,19 +264,10 @@ public class ToolDefinitions {
 
     /**
      * Creates a message schema for structured output.
-     * Used for chat messages (simple data, not actions).
+     * Uses simplified format with thought and action array.
      */
     public static Map<String, Object> getMessageSchema() {
-        return Map.of(
-            "type", "object",
-            "properties", Map.of(
-                "message", Map.of(
-                    "type", "string",
-                    "description", "An optional in-character chat message (under 250 characters). Use empty string \"\" if the NPC should not speak."
-                )
-            ),
-            "required", List.of("message")
-        );
+        return me.prskid1000.craftagent.llm.StructuredOutputSchema.getActionResponseSchema();
     }
 }
 
