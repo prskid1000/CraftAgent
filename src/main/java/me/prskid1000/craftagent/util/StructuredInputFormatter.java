@@ -1,6 +1,7 @@
 package me.prskid1000.craftagent.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import me.prskid1000.craftagent.model.context.ContextData;
 import me.prskid1000.craftagent.model.context.WorldContext;
 
 import java.util.HashMap;
@@ -74,7 +75,7 @@ public class StructuredInputFormatter {
         }
     }
 
-    private static Map<String, Object> createStateMap(me.prskid1000.craftagent.model.context.StateData state) {
+    private static Map<String, Object> createStateMap(ContextData.StateData state) {
         Map<String, Object> stateMap = new HashMap<>();
         stateMap.put("position", Map.of(
                 "x", state.position().getX(),
@@ -87,7 +88,7 @@ public class StructuredInputFormatter {
         return stateMap;
     }
 
-    private static Map<String, Object> createInventoryMap(me.prskid1000.craftagent.model.context.InventoryData inventory) {
+    private static Map<String, Object> createInventoryMap(ContextData.InventoryData inventory) {
         Map<String, Object> invMap = new HashMap<>();
         invMap.put("hotbar", inventory.hotbar().stream()
                 .map(item -> Map.of("type", item.type(), "count", item.count(), "slot", item.slot()))
