@@ -218,15 +218,22 @@ public class CommandMapper {
      * Excludes craftagent command from display.
      * 
      * @param server Optional MinecraftServer to look up usage for simple commands without parameters
+     * @param disableVanillaCommands If true, don't enhance commands with vanilla command usage
+     * @param disableUtilityCommands If true, exclude Utility category commands
      */
-    public static String getFormattedCommandList(net.minecraft.server.MinecraftServer server) {
+    public static String getFormattedCommandList(net.minecraft.server.MinecraftServer server, boolean disableVanillaCommands, boolean disableUtilityCommands) {
         Map<String, List<String>> commands = getAllCustomCommands();
-        Map<String, String> vanillaUsage = server != null 
+        Map<String, String> vanillaUsage = (!disableVanillaCommands && server != null)
             ? me.prskid1000.craftagent.util.MinecraftCommandUtil.getAllCommandsWithUsage(server)
             : Collections.emptyMap();
         
         StringBuilder sb = new StringBuilder();
         for (Map.Entry<String, List<String>> category : commands.entrySet()) {
+            // Skip Utility category if disabled
+            if (disableUtilityCommands && "Utility".equals(category.getKey())) {
+                continue;
+            }
+            
             sb.append(category.getKey()).append(":\n");
             for (String cmd : category.getValue()) {
                 if (cmd.toLowerCase().trim().equals("craftagent")) {
@@ -239,6 +246,29 @@ public class CommandMapper {
             sb.append("\n");
         }
         return sb.toString();
+    }
+    
+    /**
+     * Gets formatted list of all custom commands for system prompt.
+     * Shows command format with all parameters (no examples).
+     * Excludes craftagent command from display.
+     * 
+     * @param server Optional MinecraftServer to look up usage for simple commands without parameters
+     * @param disableVanillaCommands If true, don't enhance commands with vanilla command usage
+     */
+    public static String getFormattedCommandList(net.minecraft.server.MinecraftServer server, boolean disableVanillaCommands) {
+        return getFormattedCommandList(server, disableVanillaCommands, false);
+    }
+    
+    /**
+     * Gets formatted list of all custom commands for system prompt (without disabling vanilla commands).
+     * Shows command format with all parameters (no examples).
+     * Excludes craftagent command from display.
+     * 
+     * @param server Optional MinecraftServer to look up usage for simple commands without parameters
+     */
+    public static String getFormattedCommandList(net.minecraft.server.MinecraftServer server) {
+        return getFormattedCommandList(server, false, false);
     }
     
     /**

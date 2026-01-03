@@ -170,14 +170,18 @@ public class Instructions {
 	 * Builds simplified system prompt with custom command mappings
 	 * 
 	 * @param server Optional MinecraftServer to look up full command syntax for simple commands
+	 * @param baseConfig Optional BaseConfig to check if vanilla commands or utility commands should be disabled
 	 */
 	public static String getLlmSystemPrompt(String npcName, int age, String gender, 
 	                                        String commands, 
 	                                        String customSystemPrompt, 
 	                                        LLMType llmType,
-	                                        net.minecraft.server.MinecraftServer server) {
+	                                        net.minecraft.server.MinecraftServer server,
+	                                        me.prskid1000.craftagent.config.BaseConfig baseConfig) {
         // Get formatted command list from CommandMapper with server for full syntax
-        String commandList = me.prskid1000.craftagent.util.CommandMapper.getFormattedCommandList(server);
+        boolean disableVanillaCommands = baseConfig != null && baseConfig.isDisableDirectVanillaCommands();
+        boolean disableUtilityCommands = baseConfig != null && baseConfig.isDisableUtilityCommands();
+        String commandList = me.prskid1000.craftagent.util.CommandMapper.getFormattedCommandList(server, disableVanillaCommands, disableUtilityCommands);
         
         // Build simplified prompt with command mappings
         String enhancedPrompt = String.format(
@@ -194,13 +198,26 @@ public class Instructions {
 	}
 	
 	/**
+	 * Builds simplified system prompt with custom command mappings
+	 * 
+	 * @param server Optional MinecraftServer to look up full command syntax for simple commands
+	 */
+	public static String getLlmSystemPrompt(String npcName, int age, String gender, 
+	                                        String commands, 
+	                                        String customSystemPrompt, 
+	                                        LLMType llmType,
+	                                        net.minecraft.server.MinecraftServer server) {
+        return getLlmSystemPrompt(npcName, age, gender, commands, customSystemPrompt, llmType, server, null);
+	}
+	
+	/**
 	 * Builds simplified system prompt with custom command mappings (without server access)
 	 */
 	public static String getLlmSystemPrompt(String npcName, int age, String gender, 
 	                                        String commands, 
 	                                        String customSystemPrompt, 
 	                                        LLMType llmType) {
-        return getLlmSystemPrompt(npcName, age, gender, commands, customSystemPrompt, llmType, null);
+        return getLlmSystemPrompt(npcName, age, gender, commands, customSystemPrompt, llmType, null, null);
 	}
 
 	/**

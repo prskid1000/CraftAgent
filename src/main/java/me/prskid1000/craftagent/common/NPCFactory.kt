@@ -50,7 +50,8 @@ class NPCFactory(
             "", // Commands are in tool definition now, not in prompt
             config.customSystemPrompt,
             config.llmType,
-            npcEntity.server
+            npcEntity.server,
+            baseConfig
         )
 
         val messages = loadedConversation

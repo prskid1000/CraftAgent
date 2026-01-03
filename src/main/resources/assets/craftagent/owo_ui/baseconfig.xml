@@ -173,6 +173,22 @@
                                         </children>
                                     </flow-layout>
 
+                                    <flow-layout direction="vertical" id="disableDirectVanillaCommandsRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="disableDirectVanillaCommands-label"><shadow>true</shadow></label>
+                                            <checkbox id="disableDirectVanillaCommands"/>
+                                        </children>
+                                    </flow-layout>
+
+                                    <flow-layout direction="vertical" id="disableUtilityCommandsRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="disableUtilityCommands-label"><shadow>true</shadow></label>
+                                            <checkbox id="disableUtilityCommands"/>
+                                        </children>
+                                    </flow-layout>
+
                                     <flow-layout direction="vertical" id="llmProcessingIntervalRow">
                                         <sizing><horizontal method="fill">100</horizontal></sizing>
                                         <children>

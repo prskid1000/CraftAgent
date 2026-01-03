@@ -63,6 +63,16 @@ public class BaseConfigScreen extends ConfigScreen<BaseConfig> {
         verbose.checked(config.isVerbose());
         verbose.onChanged(config::setVerbose);
 
+        content.childById(LabelComponent.class, "disableDirectVanillaCommands-label").text(Text.of(BaseConfig.DISABLE_DIRECT_VANILLA_COMMANDS_KEY));
+        CheckboxComponent disableDirectVanillaCommands = content.childById(CheckboxComponent.class, "disableDirectVanillaCommands");
+        disableDirectVanillaCommands.checked(config.isDisableDirectVanillaCommands());
+        disableDirectVanillaCommands.onChanged(config::setDisableDirectVanillaCommands);
+
+        content.childById(LabelComponent.class, "disableUtilityCommands-label").text(Text.of(BaseConfig.DISABLE_UTILITY_COMMANDS_KEY));
+        CheckboxComponent disableUtilityCommands = content.childById(CheckboxComponent.class, "disableUtilityCommands");
+        disableUtilityCommands.checked(config.isDisableUtilityCommands());
+        disableUtilityCommands.onChanged(config::setDisableUtilityCommands);
+
         bindSlider(content, "llmProcessingInterval-label", "llmProcessingInterval",
                 BaseConfig.LLM_PROCESSING_INTERVAL_KEY, config.getLlmProcessingInterval(), config::setLlmProcessingInterval);
 

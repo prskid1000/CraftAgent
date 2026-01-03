@@ -412,7 +412,8 @@ class NPCService(
                 "", // Commands are in tool definition now, not in prompt
                 config.customSystemPrompt,
                 config.llmType,
-                npc.entity.server
+                npc.entity.server,
+                configProvider.getBaseConfig()
             )
             // Update system prompt in conversation history
             npc.history.updateSystemPrompt(newSystemPrompt)

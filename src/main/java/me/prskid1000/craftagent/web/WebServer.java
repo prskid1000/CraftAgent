@@ -270,9 +270,13 @@ public class WebServer {
             // Get mapping of vanilla commands to custom commands
             Map<String, List<String>> vanillaMappings = me.prskid1000.craftagent.util.CommandMapper.getVanillaCommandMappings();
             
+            // Check if vanilla commands should be disabled
+            me.prskid1000.craftagent.config.BaseConfig baseConfig = configProvider.getBaseConfig();
+            boolean disableVanillaCommands = baseConfig != null && baseConfig.isDisableDirectVanillaCommands();
+            
             // Get Minecraft commands with mapping status
             List<Map<String, Object>> minecraftCommands = new ArrayList<>();
-            if (server != null) {
+            if (server != null && !disableVanillaCommands) {
                 var commandsWithUsage = me.prskid1000.craftagent.util.MinecraftCommandUtil.getAllCommandsWithUsage(server);
                 for (var entry : commandsWithUsage.entrySet()) {
                     String cmdName = entry.getKey();
@@ -360,7 +364,15 @@ public class WebServer {
             Map<String, List<String>> customCommands = me.prskid1000.craftagent.util.CommandMapper.getAllCustomCommands();
             List<Map<String, Object>> customCommandMappings = new ArrayList<>();
             
+            // Check if utility commands should be disabled
+            boolean disableUtilityCommands = baseConfig != null && baseConfig.isDisableUtilityCommands();
+            
             for (Map.Entry<String, List<String>> category : customCommands.entrySet()) {
+                // Skip Utility category if disabled
+                if (disableUtilityCommands && "Utility".equals(category.getKey())) {
+                    continue;
+                }
+                
                 for (String customCmd : category.getValue()) {
                     // Skip craftagent command - don't show it in UI
                     if (customCmd.toLowerCase().trim().equals("craftagent")) {
