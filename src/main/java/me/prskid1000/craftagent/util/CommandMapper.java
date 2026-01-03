@@ -71,19 +71,17 @@ public class CommandMapper {
         );
         
         List<String> mining = Arrays.asList(
-            "mine [block/direction]", "mine front", "mine above", "mine below",
-            "get <item> [amount]", "get wood 64", "get stone 32", "get iron 16", "get diamond 8"
+            "mine [block/direction]",
+            "get <item> [amount]"
         );
         
         List<String> crafting = Arrays.asList(
-            "craft <item> [amount]", "craft pickaxe", "craft iron pickaxe", "craft sword",
-            "craft axe", "craft shovel", "craft planks 64", "craft sticks 32",
-            "craft bread 16", "craft cooked beef 32"
+            "craft <item> [amount]"
         );
         
         List<String> combat = Arrays.asList(
-            "kill [mob]", "kill nearest mob", "kill zombie", "kill creeper", "kill skeleton", "clear mobs",
-            "spawn <mob>", "spawn cow", "spawn pig", "spawn chicken"
+            "kill [mob]",
+            "spawn <mob>"
         );
         
         List<String> survival = Arrays.asList(
@@ -91,12 +89,11 @@ public class CommandMapper {
         );
         
         List<String> building = Arrays.asList(
-            "place <block> [direction]", "place wood", "place stone", "place wood front", "place stone below"
+            "place <block> [direction]"
         );
         
         List<String> farming = Arrays.asList(
-            "get wheat [amount]", "get carrot [amount]", "get potato [amount]",
-            "spawn cow", "spawn pig", "spawn chicken"
+            "get wheat [amount]", "get carrot [amount]", "get potato [amount]"
         );
         
         List<String> fishing = Arrays.asList(
@@ -176,12 +173,10 @@ public class CommandMapper {
             "defaultgamemode <mode>", "setworldspawn [x] [y] [z]", "publish", "reload",
             "debug <start|stop|function>", "execute <subcommand> ...",
             // Simple commands that map directly (no parameters or simple pass-through)
-            "tell <target> <message>",
-            // Mod-specific or unknown commands (pass-through - these are exact matches)
             // Note: craftagent is excluded - it's the mod's own command and shouldn't be shown to users/LLM
             "carpet", "counter", "dialog", "distance", "draw", "info", "item", "jfr", 
-            "log", "perf", "perimeterinfo", "place", "player", "profile", "random", 
-            "return", "rotate", "script", "spawn", "test", "tick", "track", "waypoint"
+            "log", "perf", "perimeterinfo", "player", "profile", "random", 
+            "return", "rotate", "script", "test", "tick", "track", "waypoint"
         );
         
         result.put("Movement", movement);
@@ -221,26 +216,73 @@ public class CommandMapper {
      * Gets formatted list of all custom commands for system prompt.
      * Shows command format with all parameters (no examples).
      * Excludes craftagent command from display.
+     * 
+     * @param server Optional MinecraftServer to look up usage for simple commands without parameters
      */
-    public static String getFormattedCommandList() {
+    public static String getFormattedCommandList(net.minecraft.server.MinecraftServer server) {
         Map<String, List<String>> commands = getAllCustomCommands();
-        StringBuilder sb = new StringBuilder();
+        Map<String, String> vanillaUsage = server != null 
+            ? me.prskid1000.craftagent.util.MinecraftCommandUtil.getAllCommandsWithUsage(server)
+            : Collections.emptyMap();
         
-        for (Map.Entry<String, List<String>> entry : commands.entrySet()) {
-            sb.append(entry.getKey()).append(":\n");
-            for (String cmd : entry.getValue()) {
-                // Skip craftagent command - don't show it to LLM or users
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, List<String>> category : commands.entrySet()) {
+            sb.append(category.getKey()).append(":\n");
+            for (String cmd : category.getValue()) {
                 if (cmd.toLowerCase().trim().equals("craftagent")) {
                     continue;
                 }
                 
-                // Show command format with all parameters (all commands, including simple ones)
-                sb.append("  - ").append(cmd).append("\n");
+                String formattedCmd = formatCommandForPrompt(cmd, vanillaUsage);
+                sb.append("  - ").append(formattedCmd).append("\n");
             }
             sb.append("\n");
         }
-        
         return sb.toString();
+    }
+    
+    /**
+     * Formats a single command for the LLM prompt, enhancing simple commands with vanilla usage if available.
+     */
+    private static String formatCommandForPrompt(String cmd, Map<String, String> vanillaUsage) {
+        String trimmed = cmd.trim();
+        boolean hasParams = trimmed.contains("[") || trimmed.contains("<");
+        
+        // If command already has parameters, return as-is
+        if (hasParams) {
+            return trimmed;
+        }
+        
+        // For simple commands, try to enhance with vanilla usage
+        if (!vanillaUsage.isEmpty()) {
+            String baseCmd = trimmed.split("\\[|\\<")[0].trim();
+            String usage = findVanillaUsage(baseCmd, vanillaUsage);
+            if (usage != null && !usage.trim().isEmpty()) {
+                return baseCmd + " " + usage;
+            }
+        }
+        
+        return trimmed;
+    }
+    
+    /**
+     * Finds vanilla command usage by case-insensitive lookup.
+     */
+    private static String findVanillaUsage(String baseCmd, Map<String, String> vanillaUsage) {
+        return vanillaUsage.entrySet().stream()
+            .filter(e -> e.getKey().equalsIgnoreCase(baseCmd))
+            .map(Map.Entry::getValue)
+            .findFirst()
+            .orElse(null);
+    }
+    
+    /**
+     * Gets formatted list of all custom commands for system prompt (without server access).
+     * Shows command format with all parameters (no examples).
+     * Excludes craftagent command from display.
+     */
+    public static String getFormattedCommandList() {
+        return getFormattedCommandList(null);
     }
     
     /**

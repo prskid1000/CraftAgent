@@ -168,13 +168,16 @@ public class Instructions {
 
 	/**
 	 * Builds simplified system prompt with custom command mappings
+	 * 
+	 * @param server Optional MinecraftServer to look up full command syntax for simple commands
 	 */
 	public static String getLlmSystemPrompt(String npcName, int age, String gender, 
 	                                        String commands, 
 	                                        String customSystemPrompt, 
-	                                        LLMType llmType) {
-        // Get formatted command list from CommandMapper
-        String commandList = me.prskid1000.craftagent.util.CommandMapper.getFormattedCommandList();
+	                                        LLMType llmType,
+	                                        net.minecraft.server.MinecraftServer server) {
+        // Get formatted command list from CommandMapper with server for full syntax
+        String commandList = me.prskid1000.craftagent.util.CommandMapper.getFormattedCommandList(server);
         
         // Build simplified prompt with command mappings
         String enhancedPrompt = String.format(
@@ -188,6 +191,16 @@ public class Instructions {
         }
         
         return enhancedPrompt;
+	}
+	
+	/**
+	 * Builds simplified system prompt with custom command mappings (without server access)
+	 */
+	public static String getLlmSystemPrompt(String npcName, int age, String gender, 
+	                                        String commands, 
+	                                        String customSystemPrompt, 
+	                                        LLMType llmType) {
+        return getLlmSystemPrompt(npcName, age, gender, commands, customSystemPrompt, llmType, null);
 	}
 
 	/**
