@@ -76,12 +76,9 @@ class NPCService(
         messageRepository.insert(message, maxMessages)
         LogUtil.info("Player $playerName sent message to NPC $npcUuid: $messageContent")
         
-        // Update state (store in history, no LLM trigger)
+        // Message is stored in mail system and will be available in context during next LLM call
         // Note: Don't display in chat again - the original player message is already visible
-        val npc = uuidToNpc[npcUuid]
-        if (npc != null) {
-            npc.eventHandler.updateState("Player $playerName sent you a message: $messageContent")
-        }
+        // Note: Not adding to conversation history - mail is accessed via context instead
     }
 
     fun init(server: MinecraftServer) {

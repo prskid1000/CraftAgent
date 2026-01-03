@@ -13,7 +13,7 @@ class CoordinationService(
 ) {
     /**
      * Send a direct message from one NPC to another.
-     * Stores in database, displays in chat, and updates state (no LLM trigger).
+     * Stores in database and displays in chat. Message is available via context during next LLM call.
      */
     fun sendDirectMessage(fromNpc: NPC, toNpcUuid: UUID, message: String) {
         val targetNpc = npcService.uuidToNpc[toNpcUuid] ?: return
@@ -38,9 +38,8 @@ class CoordinationService(
         val chatMessage = "${fromNpc.config.npcName} says to ${targetNpc.config.npcName}: $message"
         me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(targetNpc.entity, chatMessage)
         
-        // Update state (no LLM trigger)
-        val formattedMessage = "${fromNpc.config.npcName} says to you: $message"
-        targetNpc.eventHandler.updateState(formattedMessage)
+        // Message is stored in mail system and will be available in context during next LLM call
+        // Note: Not adding to conversation history - mail is accessed via context instead
         
         LogUtil.info("NPC ${fromNpc.config.npcName} sent direct message to ${targetNpc.config.npcName}: $message")
     }

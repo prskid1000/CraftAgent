@@ -2,7 +2,6 @@ package me.prskid1000.craftagent.networking;
 
 import io.wispforest.owo.network.OwoNetChannel;
 import me.prskid1000.craftagent.auth.PlayerAuthorizer;
-import me.prskid1000.craftagent.callback.STTCallback;
 import me.prskid1000.craftagent.common.NPCService;
 import me.prskid1000.craftagent.config.BaseConfig;
 import me.prskid1000.craftagent.config.ConfigProvider;
@@ -45,7 +44,6 @@ public class NetworkHandler {
         registerUpdateNpcConfig();
         registerAddNpc();
         registerDeleteNpc();
-        registerStartStopSTT();
 
         CHANNEL.registerClientboundDeferred(ConfigPacket.class);
     }
@@ -109,15 +107,6 @@ public class NetworkHandler {
         });
     }
 
-    private void registerStartStopSTT() {
-        CHANNEL.registerServerbound(STTPacket.class, (sttPacket, serverAccess) -> {
-            if (authorizer.isAuthorized(serverAccess) && authorizer.isLocalConnection(serverAccess)) {
-                STTCallback.EVENT.invoker().onSTTAction(sttPacket.type());
-                LogUtil.info("STT action: " + sttPacket);
-            }
-        });
-    }
-
     private void registerEndecs() {
         CHANNEL.addEndecs(builder -> {
             builder.register(ConfigPacket.ENDEC, ConfigPacket.class);
@@ -127,7 +116,6 @@ public class NetworkHandler {
             builder.register(DeleteNpcPacket.ENDEC, DeleteNpcPacket.class);
             builder.register(UpdateNpcConfigPacket.ENDEC, UpdateNpcConfigPacket.class);
             builder.register(UpdateBaseConfigPacket.ENDEC, UpdateBaseConfigPacket.class);
-            builder.register(STTPacket.ENDEC, STTPacket.class);
         });
     }
 }
