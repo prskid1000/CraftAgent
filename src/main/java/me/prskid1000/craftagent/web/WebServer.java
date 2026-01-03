@@ -360,7 +360,26 @@ public class WebServer {
                     mapping.put("customCommand", customCmd);
                     mapping.put("category", category.getKey());
                     String mapped = me.prskid1000.craftagent.util.CommandMapper.mapCommand(customCmd);
-                    String mappingType = mapped != null && mapped.contains(":") ? "Tool" : "Minecraft";
+                    
+                    // Properly identify tool actions: they contain "|" (parameter delimiter) 
+                    // or start with known tool prefixes (manageMemory:, sendMessage, manageBook:)
+                    boolean isToolAction = false;
+                    if (mapped != null) {
+                        // Tool actions use "|" as parameter delimiter
+                        if (mapped.contains("|")) {
+                            isToolAction = true;
+                        } else {
+                            // Check for known tool action prefixes (without parameters)
+                            String lowerMapped = mapped.toLowerCase();
+                            if (lowerMapped.startsWith("managememory:") || 
+                                lowerMapped.startsWith("sendmessage") ||
+                                lowerMapped.startsWith("managebook:")) {
+                                isToolAction = true;
+                            }
+                        }
+                    }
+                    
+                    String mappingType = isToolAction ? "Tool" : "Minecraft";
                     mapping.put("mappedTo", mapped != null ? mapped : customCmd);
                     mapping.put("type", mappingType);
                     customCommandMappings.add(mapping);
@@ -1579,108 +1598,143 @@ public class WebServer {
                     html += '</tbody></table></div>';
                 }
                 
-                // Custom Command Mappings Section (NEW - shows simple commands that map to Minecraft/tools)
-                if (tools.customCommands && tools.customCommands.length > 0) {
-                    html += '<div class="data-section"><h3>🎯 Custom Commands (Easy-to-Use)</h3>';
-                    html += '<p style="margin-bottom: 15px; color: #666;">Simple commands the NPC can use in the action array. These are automatically mapped to Minecraft commands or tools:</p>';
-                    html += '<div style="max-height: 500px; overflow-y: auto;">';
-                    html += '<table><thead><tr><th style="width: 200px;">Custom Command</th><th style="width: 150px;">Category</th><th>Maps To</th><th style="width: 100px;">Type</th></tr></thead><tbody>';
+                // Summary Statistics Section
+                if (tools.customCommands && tools.customCommands.length > 0 || tools.minecraftCommands && tools.minecraftCommands.length > 0) {
+                    const totalCustomCommands = tools.customCommands ? tools.customCommands.length : 0;
+                    const minecraftMapped = tools.customCommands ? tools.customCommands.filter(cmd => cmd.type === 'Minecraft').length : 0;
+                    const toolMapped = tools.customCommands ? tools.customCommands.filter(cmd => cmd.type === 'Tool').length : 0;
+                    const totalVanillaCommands = tools.minecraftCommands ? tools.minecraftCommands.length : 0;
+                    const vanillaMapped = tools.minecraftCommands ? tools.minecraftCommands.filter(cmd => cmd.mapped === true).length : 0;
+                    const vanillaUnmapped = totalVanillaCommands - vanillaMapped;
+                    const mappingPercentage = totalVanillaCommands > 0 ? Math.round((vanillaMapped / totalVanillaCommands) * 100) : 0;
                     
-                    // Group by category
-                    const byCategory = {};
-                    tools.customCommands.forEach(cmd => {
-                        const cat = cmd.category || 'Other';
-                        if (!byCategory[cat]) byCategory[cat] = [];
-                        byCategory[cat].push(cmd);
+                    html += '<div class="data-section"><h3>📊 Command Mapping Summary</h3>';
+                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">';
+                    html += `<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${totalCustomCommands}</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Total Custom Commands</div>
+                    </div>`;
+                    html += `<div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${minecraftMapped}</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Mapped to Vanilla Commands</div>
+                    </div>`;
+                    html += `<div style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${toolMapped}</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Mapped to Tool Actions</div>
+                    </div>`;
+                    html += `<div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${totalVanillaCommands}</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Total Vanilla Commands</div>
+                    </div>`;
+                    html += `<div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${vanillaMapped}</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Vanilla Commands Mapped</div>
+                    </div>`;
+                    html += `<div style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${vanillaUnmapped}</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Vanilla Commands Unmapped</div>
+                    </div>`;
+                    html += `<div style="background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${mappingPercentage}%</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Mapping Coverage</div>
+                    </div>`;
+                    html += '</div></div>';
+                }
+                
+                // Unified Commands & Tools Table
+                if ((tools.customCommands && tools.customCommands.length > 0) || (tools.minecraftCommands && tools.minecraftCommands.length > 0)) {
+                    html += '<div class="data-section"><h3>📋 All Commands & Tools</h3>';
+                    html += '<p style="margin-bottom: 15px; color: #666;">Unified view of all custom commands, vanilla Minecraft commands, and tool actions:</p>';
+                    html += '<div style="max-height: 600px; overflow-y: auto;">';
+                    html += '<table><thead><tr><th style="width: 200px;">Command/Name</th><th style="width: 120px;">Type</th><th style="width: 120px;">Category</th><th style="width: 120px;">Status</th><th>Maps To / Mapped Via</th></tr></thead><tbody>';
+                    
+                    // Collect all entries
+                    const allEntries = [];
+                    
+                    // Add custom commands
+                    if (tools.customCommands && tools.customCommands.length > 0) {
+                        tools.customCommands.forEach(cmd => {
+                            allEntries.push({
+                                name: cmd.customCommand || 'Unknown',
+                                type: 'Custom Command',
+                                category: cmd.category || 'Other',
+                                status: 'Mapped',
+                                mappedTo: cmd.mappedTo || cmd.customCommand,
+                                targetType: cmd.type === 'Minecraft' ? 'Vanilla' : 'Tool Action',
+                                rowStyle: cmd.type === 'Minecraft' ? 'background-color: #f0f9f0;' : 'background-color: #fffbf0;'
+                            });
+                        });
+                    }
+                    
+                    // Add vanilla Minecraft commands (mapped)
+                    if (tools.minecraftCommands && tools.minecraftCommands.length > 0) {
+                        const mappedCommands = tools.minecraftCommands.filter(cmd => cmd.mapped === true);
+                        mappedCommands.forEach(cmd => {
+                            const customCmds = (cmd.customCommands || []).join(', ');
+                            allEntries.push({
+                                name: cmd.name || 'Unknown',
+                                type: 'Vanilla Command',
+                                category: '-',
+                                status: 'Mapped',
+                                mappedTo: customCmds || 'N/A',
+                                targetType: 'Custom Commands',
+                                rowStyle: 'background-color: #f0f9f0;'
+                            });
+                        });
+                        
+                        // Add vanilla Minecraft commands (unmapped)
+                        const unmappedCommands = tools.minecraftCommands.filter(cmd => cmd.mapped === false);
+                        unmappedCommands.forEach(cmd => {
+                            allEntries.push({
+                                name: cmd.name || 'Unknown',
+                                type: 'Vanilla Command',
+                                category: '-',
+                                status: 'Unmapped',
+                                mappedTo: '-',
+                                targetType: '-',
+                                rowStyle: 'background-color: #fff5f5;'
+                            });
+                        });
+                    }
+                    
+                    // Sort entries: Custom Commands first, then Vanilla (mapped), then Vanilla (unmapped)
+                    allEntries.sort((a, b) => {
+                        if (a.type === 'Custom Command' && b.type !== 'Custom Command') return -1;
+                        if (a.type !== 'Custom Command' && b.type === 'Custom Command') return 1;
+                        if (a.status === 'Mapped' && b.status === 'Unmapped') return -1;
+                        if (a.status === 'Unmapped' && b.status === 'Mapped') return 1;
+                        return (a.name || '').localeCompare(b.name || '');
                     });
                     
-                    // Display by category
-                    Object.keys(byCategory).sort().forEach(category => {
-                        html += `<tr><td colspan="4" style="background: #f5f5f5; font-weight: bold; padding: 8px;">📁 ${escapeHtml(category)}</td></tr>`;
-                        byCategory[category].forEach(cmd => {
-                            const typeBadge = cmd.type === 'Tool' ? 'badge-info' : 'badge-success';
-                            const mappedTo = cmd.mappedTo || cmd.customCommand;
-                            html += `<tr>
-                                <td><strong style="color: #667eea; font-family: monospace;">${escapeHtml(cmd.customCommand || 'Unknown')}</strong></td>
-                                <td>${escapeHtml(category)}</td>
-                                <td><code style="background-color: #e8f4f8; padding: 3px 6px; border-radius: 3px; font-size: 0.9em; font-family: monospace;">${escapeHtml(mappedTo)}</code></td>
-                                <td><span class="badge ${typeBadge}">${escapeHtml(cmd.type || 'Unknown')}</span></td>
-                            </tr>`;
-                        });
+                    // Display all entries
+                    allEntries.forEach(entry => {
+                        const statusBadge = entry.status === 'Mapped' 
+                            ? '<span class="badge badge-success">✅ Mapped</span>'
+                            : '<span class="badge badge-error">❌ Unmapped</span>';
+                        
+                        const mappedToDisplay = entry.targetType === 'Vanilla' 
+                            ? `<code style="background-color: #e8f4f8; padding: 3px 6px; border-radius: 3px; font-size: 0.9em; font-family: monospace;">${escapeHtml(entry.mappedTo)}</code>`
+                            : entry.targetType === 'Tool Action'
+                            ? `<code style="background-color: #fff3cd; padding: 3px 6px; border-radius: 3px; font-size: 0.9em; font-family: monospace;">${escapeHtml(entry.mappedTo)}</code>`
+                            : entry.targetType === 'Custom Commands'
+                            ? entry.mappedTo !== 'N/A' 
+                                ? entry.mappedTo.split(', ').map(c => `<code style="background-color: #e8f4f8; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; display: inline-block; margin: 2px 4px 2px 0; font-family: monospace;">${escapeHtml(c)}</code>`).join('')
+                                : '<span style="color: #999;">N/A</span>'
+                            : '<span style="color: #999;">-</span>';
+                        
+                        const nameColor = entry.type === 'Custom Command' ? '#667eea' : 
+                                         entry.status === 'Mapped' ? '#4CAF50' : '#f44336';
+                        
+                        html += `<tr style="${entry.rowStyle}">
+                            <td><strong style="color: ${nameColor}; font-family: monospace;">${escapeHtml(entry.name)}</strong></td>
+                            <td>${escapeHtml(entry.type)}</td>
+                            <td>${escapeHtml(entry.category)}</td>
+                            <td>${statusBadge}</td>
+                            <td style="max-width: 400px; word-wrap: break-word;">${mappedToDisplay}</td>
+                        </tr>`;
                     });
                     
                     html += '</tbody></table></div></div>';
-                }
-                
-                // Minecraft Commands Section
-                if (tools.minecraftCommands && tools.minecraftCommands.length > 0) {
-                    html += '<div class="data-section"><h3>🎮 All Vanilla Minecraft Commands</h3>';
-                    html += '<p style="margin-bottom: 15px; color: #666;">Complete list of available Minecraft commands. Shows which are mapped to custom commands (available to LLM) and which are not:</p>';
-                    
-                    // Separate mapped and unmapped commands
-                    const mappedCommands = tools.minecraftCommands.filter(cmd => cmd.mapped === true);
-                    const unmappedCommands = tools.minecraftCommands.filter(cmd => cmd.mapped === false);
-                    
-                    // Show mapped commands first
-                    if (mappedCommands.length > 0) {
-                        html += '<div style="margin-bottom: 20px;"><h4 style="color: #4CAF50; margin-bottom: 10px;">✅ Mapped Commands (Available to LLM)</h4>';
-                        html += '<div style="max-height: 400px; overflow-y: auto;">';
-                        html += '<table><thead><tr><th style="width: 200px;">Command</th><th style="width: 300px;">Usage / Parameters</th><th>Mapped Via Custom Commands</th><th style="width: 100px;">Status</th></tr></thead><tbody>';
-                        
-                        const sortedMapped = [...mappedCommands].sort((a, b) => 
-                            (a.name || '').localeCompare(b.name || '')
-                        );
-                        
-                        sortedMapped.forEach(cmd => {
-                            const usage = cmd.usage && cmd.usage.trim() 
-                                ? `<code style="background-color: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #333; font-size: 0.85em;">${escapeHtml(cmd.usage)}</code>`
-                                : '<span style="color: #999; font-style: italic;">No parameters</span>';
-                            
-                            const customCmds = (cmd.customCommands || []).map(c => 
-                                `<code style="background-color: #e8f4f8; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; display: inline-block; margin: 2px 4px 2px 0; font-family: monospace;">${escapeHtml(c)}</code>`
-                            ).join('');
-                            
-                            html += `<tr style="background-color: #f0f9f0;">
-                                <td><strong style="color: #4CAF50; font-family: monospace;">${escapeHtml(cmd.name || 'Unknown')}</strong></td>
-                                <td>${usage}</td>
-                                <td style="max-width: 400px; word-wrap: break-word;">${customCmds || '<span style="color: #999;">N/A</span>'}</td>
-                                <td><span class="badge badge-success">✅ Mapped</span></td>
-                            </tr>`;
-                        });
-                        
-                        html += '</tbody></table></div></div>';
-                    }
-                    
-                    // Show unmapped commands
-                    if (unmappedCommands.length > 0) {
-                        html += '<div style="margin-bottom: 20px;"><h4 style="color: #f44336; margin-bottom: 10px;">❌ Unmapped Commands (Not Available to LLM)</h4>';
-                        html += '<p style="margin-bottom: 10px; color: #666; font-size: 0.9em;">These commands are not mapped to any custom command. The LLM cannot use them directly.</p>';
-                        html += '<div style="max-height: 400px; overflow-y: auto;">';
-                        html += '<table><thead><tr><th style="width: 200px;">Command</th><th>Usage / Parameters</th><th style="width: 100px;">Status</th></tr></thead><tbody>';
-                        
-                        const sortedUnmapped = [...unmappedCommands].sort((a, b) => 
-                            (a.name || '').localeCompare(b.name || '')
-                        );
-                        
-                        sortedUnmapped.forEach(cmd => {
-                            const usage = cmd.usage && cmd.usage.trim() 
-                                ? `<code style="background-color: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #333; font-size: 0.85em;">${escapeHtml(cmd.usage)}</code>`
-                                : '<span style="color: #999; font-style: italic;">No parameters</span>';
-                            
-                            html += `<tr style="background-color: #fff5f5;">
-                                <td><strong style="color: #f44336; font-family: monospace;">${escapeHtml(cmd.name || 'Unknown')}</strong></td>
-                                <td>${usage}</td>
-                                <td><span class="badge badge-error">❌ Not Mapped</span></td>
-                            </tr>`;
-                        });
-                        
-                        html += '</tbody></table></div></div>';
-                    }
-                    
-                    html += '</div>';
-                } else {
-                    html += '<div class="data-section"><h3>🎮 Minecraft Commands</h3>';
-                    html += '<p style="color: #999;">No Minecraft commands available</p></div>';
                 }
                 
                 document.getElementById('tools').innerHTML = html || '<div class="loading">No tools data available</div>';
