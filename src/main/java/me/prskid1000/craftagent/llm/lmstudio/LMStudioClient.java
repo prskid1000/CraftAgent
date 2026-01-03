@@ -113,8 +113,8 @@ public class LMStudioClient implements LLMClient {
 			requestBody.put("model", model);
 			requestBody.put("messages", openaiMessages);
 			requestBody.put("stream", false);
-			// Add tools for command execution (actions) - with command information from server
-			requestBody.put("tools", ToolDefinitions.getTools(server));
+			// Note: Tools are not needed when using structured output (json_schema)
+			// The LLM uses custom commands from the system prompt instead
 			// Add response_format for message output (structured output for simple data)
 			// Use json_schema type (not json_object) - LM Studio only accepts "json_schema" or "text"
 			Map<String, Object> responseFormat = new HashMap<>();

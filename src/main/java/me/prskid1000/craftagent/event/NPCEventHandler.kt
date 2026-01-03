@@ -157,7 +157,9 @@ class NPCEventHandler(
                             handleManageMemory(mockToolCall)
                             val name = toolParams["name"] ?: "unknown"
                             val actionCap = action.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
-                            actionDescriptions.add("💾 $actionCap $infoType: $name")
+                            // Get infoType from actionParts, toolParams, or use a default
+                            val infoTypeDisplay = infoType ?: (toolParams["infoType"]?.toString() ?: "item")
+                            actionDescriptions.add("💾 $actionCap $infoTypeDisplay: $name")
                         }
                         mapped.startsWith("sendMessage") -> {
                             val recipient = toolParams["recipient"] ?: "unknown"

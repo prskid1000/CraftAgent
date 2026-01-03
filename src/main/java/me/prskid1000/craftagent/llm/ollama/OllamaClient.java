@@ -150,8 +150,8 @@ public class OllamaClient implements LLMClient {
 			requestBody.put("model", model);
 			requestBody.put("messages", ollamaMessages);
 			requestBody.put("stream", false);
-			// Use tools for command execution (actions) - with command information from server
-			requestBody.put("tools", ToolDefinitions.getTools(server));
+			// Note: Tools are not needed when using structured output (format)
+			// The LLM uses custom commands from the system prompt instead
 			// Use format for message output (structured output for simple data)
 			requestBody.put("format", ToolDefinitions.getMessageSchema());
 			// Set temperature to 0 for deterministic outputs
