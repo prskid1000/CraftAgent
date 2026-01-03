@@ -2,7 +2,7 @@ package me.prskid1000.craftagent.llm.ollama;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import me.prskid1000.craftagent.exception.LLMServiceException;
+import me.prskid1000.craftagent.exception.CraftAgentException;
 import me.prskid1000.craftagent.util.LogUtil;
 
 import java.net.URI;
@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import me.prskid1000.craftagent.history.Message;
+import me.prskid1000.craftagent.history.ConversationMessage;
 import me.prskid1000.craftagent.llm.LLMClient;
 import me.prskid1000.craftagent.llm.StructuredOutputSchema;
 import me.prskid1000.craftagent.llm.LLMResponse;
@@ -63,7 +63,7 @@ public class OllamaClient implements LLMClient {
 
 	/**
 	 * Check if the service is reachable.
-	 * @throws LLMServiceException if server is not reachable
+	 * @throws CraftAgentException if server is not reachable
 	 */
 	@Override
 	public void checkServiceIsReachable() {
@@ -78,10 +78,10 @@ public class OllamaClient implements LLMClient {
 			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 			
 			if (response.statusCode() != 200) {
-				throw new LLMServiceException("Ollama server is not reachable at: " + url);
+				throw CraftAgentException.llmService("Ollama server is not reachable at: " + url);
 			}
 		} catch (Exception e) {
-			throw new LLMServiceException("Ollama server is not reachable at: " + url, e);
+			throw CraftAgentException.llmService("Ollama server is not reachable at: " + url, e);
 		}
 	}
 
@@ -134,11 +134,11 @@ public class OllamaClient implements LLMClient {
 //    }
 
 	@Override
-	public LLMResponse chat(List<Message> messages, net.minecraft.server.MinecraftServer server) {
+	public LLMResponse chat(List<ConversationMessage> messages, net.minecraft.server.MinecraftServer server) {
 		try {
 			// Convert messages to Ollama format
 			List<Map<String, String>> ollamaMessages = new ArrayList<>();
-			for (Message msg : messages) {
+			for (ConversationMessage msg : messages) {
 				Map<String, String> ollamaMsg = new HashMap<>();
 				ollamaMsg.put("role", msg.getRole());
 				ollamaMsg.put("content", msg.getMessage());
@@ -177,7 +177,7 @@ public class OllamaClient implements LLMClient {
 			LogUtil.debugInChat("LLM Response received from Ollama");
 			
 			if (response.statusCode() != 200) {
-				throw new LLMServiceException("Ollama API returned status code: " + response.statusCode() + 
+				throw CraftAgentException.llmService("Ollama API returned status code: " + response.statusCode() + 
 						", response: " + response.body());
 			}
 			
@@ -186,16 +186,16 @@ public class OllamaClient implements LLMClient {
 			Map<String, Object> messageMap = (Map<String, Object>) responseMap.get("message");
 			
 			if (messageMap == null) {
-				throw new LLMServiceException("Ollama API response missing 'message' field");
+				throw CraftAgentException.llmService("Ollama API response missing 'message' field");
 			}
 			
 			String content = (String) messageMap.get("content");
 			
 			return new LLMResponse(content != null ? content : "");
-		} catch (LLMServiceException e) {
+		} catch (CraftAgentException e) {
 			throw e;
 		} catch (Exception e) {
-			throw new LLMServiceException("Could not generate Response for last prompt: " + messages.get(messages.size() - 1).getMessage(), e);
+			throw CraftAgentException.llmService("Could not generate Response for last prompt: " + messages.get(messages.size() - 1).getMessage(), e);
 		}
 	}
 

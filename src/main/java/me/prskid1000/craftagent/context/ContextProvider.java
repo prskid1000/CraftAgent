@@ -5,7 +5,8 @@ import java.util.*;
 import me.prskid1000.craftagent.config.BaseConfig;
 import me.prskid1000.craftagent.database.repositories.MessageRepository;
 import me.prskid1000.craftagent.database.repositories.SharebookRepository;
-import me.prskid1000.craftagent.model.context.*;
+import me.prskid1000.craftagent.model.context.ContextData;
+import me.prskid1000.craftagent.model.context.WorldContext;
 import me.prskid1000.craftagent.memory.MemoryManager;
 import me.prskid1000.craftagent.util.LogUtil;
 import me.prskid1000.craftagent.util.MCDataUtil;
@@ -133,17 +134,17 @@ public class ContextProvider {
 		return memory;
 	}
 
-	private StateData getNpcState() {
-		return new StateData(
+	private ContextData.StateData getNpcState() {
+		return new ContextData.StateData(
 				npcEntity.getBlockPos(),
 				npcEntity.getHealth(),
 				npcEntity.getHungerManager().getFoodLevel(),
 				MCDataUtil.getBiome(npcEntity));
 	}
 
-	private InventoryData getInventoryState() {
+	private ContextData.InventoryData getInventoryState() {
 		PlayerInventory inventory = npcEntity.getInventory();
-		return new InventoryData(
+		return new ContextData.InventoryData(
 				// armour
 				getItemsInRange(inventory, 36, 39),
 				// main inventory
@@ -155,8 +156,8 @@ public class ContextProvider {
 		);
 	}
 
-	private List<ItemData> getItemsInRange(PlayerInventory inventory, int start, int end) {
-		List<ItemData> items = new ArrayList<>();
+	private List<ContextData.ItemData> getItemsInRange(PlayerInventory inventory, int start, int end) {
+		List<ContextData.ItemData> items = new ArrayList<>();
 		for (int i = start; i <= end; i++) {
 			ItemStack stack = inventory.getStack(i);
 			addItemData(stack, items, i);
@@ -164,9 +165,9 @@ public class ContextProvider {
 		return items;
 	}
 
-	private void addItemData(ItemStack stack, List<ItemData> items, int slot) {
+	private void addItemData(ItemStack stack, List<ContextData.ItemData> items, int slot) {
 		if (!stack.isEmpty()) {
-			items.add(new ItemData(getBlockName(stack), stack.getCount(), slot));
+			items.add(new ContextData.ItemData(getBlockName(stack), stack.getCount(), slot));
 		}
 	}
 
@@ -175,8 +176,8 @@ public class ContextProvider {
 		return translationKey.substring(translationKey.lastIndexOf(".") + 1);
 	}
 
-	private List<EntityData> getNearbyEntities() {
-		List<EntityData> nearbyEntities = new ArrayList<>();
+	private List<ContextData.EntityData> getNearbyEntities() {
+		List<ContextData.EntityData> nearbyEntities = new ArrayList<>();
 		List<Entity> entities = MCDataUtil.getNearbyEntities(npcEntity);
 		
 		// Limit to maxNearbyEntities (prioritize players, then by distance)
@@ -194,7 +195,7 @@ public class ContextProvider {
 		sortedEntities.stream()
 			.limit(maxNearbyEntities)
 			.forEach(entity ->
-				nearbyEntities.add(new EntityData(entity.getId(), entity.getName().getString(), entity.isPlayer()))
+				nearbyEntities.add(new ContextData.EntityData(entity.getId(), entity.getName().getString(), entity.isPlayer()))
 			);
 		return nearbyEntities;
 	}

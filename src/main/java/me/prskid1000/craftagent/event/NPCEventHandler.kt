@@ -5,7 +5,7 @@ import me.prskid1000.craftagent.context.ContextProvider
 import me.prskid1000.craftagent.database.repositories.MessageRepository
 import me.prskid1000.craftagent.database.repositories.SharebookRepository
 import me.prskid1000.craftagent.history.ConversationHistory
-import me.prskid1000.craftagent.history.Message
+import me.prskid1000.craftagent.history.ConversationMessage
 import me.prskid1000.craftagent.llm.LLMClient
 import me.prskid1000.craftagent.util.LogUtil
 import me.prskid1000.craftagent.util.StructuredInputFormatter
@@ -44,7 +44,7 @@ class NPCEventHandler(
         CompletableFuture.runAsync({
             LogUtil.info("updateState: $prompt")
             // Store only the original prompt in history (without context to avoid duplication)
-            history.add(Message(prompt, "user"))
+            history.add(ConversationMessage(prompt, "user"))
         }, executorService)
             .exceptionally {
                 LogUtil.error("Error updating state: $prompt", it)
@@ -65,7 +65,7 @@ class NPCEventHandler(
             history.performSummarizationIfNeeded()
 
             // Build messages for LLM: history + current state with context
-            val messagesForLLM = mutableListOf<Message>()
+            val messagesForLLM = mutableListOf<ConversationMessage>()
             // Add all history messages (without context)
             messagesForLLM.addAll(history.latestConversations)
             
@@ -73,12 +73,12 @@ class NPCEventHandler(
             if (messagesForLLM.isNotEmpty() && messagesForLLM.last().role == "user") {
                 val lastUserMessage = messagesForLLM.last().message
                 val formattedPrompt: String = StructuredInputFormatter.formatStructured(lastUserMessage, contextProvider.buildContext())
-                messagesForLLM[messagesForLLM.size - 1] = Message(formattedPrompt, "user")
+                messagesForLLM[messagesForLLM.size - 1] = ConversationMessage(formattedPrompt, "user")
             } else {
                 // No recent user message, create a context-only prompt
                 val contextPrompt = "Current state and context. What should I do?"
                 val formattedPrompt: String = StructuredInputFormatter.formatStructured(contextPrompt, contextProvider.buildContext())
-                messagesForLLM.add(Message(formattedPrompt, "user"))
+                messagesForLLM.add(ConversationMessage(formattedPrompt, "user"))
             }
             
             // Call LLM and get response
@@ -95,7 +95,7 @@ class NPCEventHandler(
             }
             
             // Add response to history
-            history.add(Message(content, "assistant"))
+            history.add(ConversationMessage(content, "assistant"))
             
             true
         } catch (e: Exception) {
@@ -123,7 +123,7 @@ class NPCEventHandler(
 
     private fun buildErrorMessage(exception: Throwable): String? {
         val chain = generateSequence(exception) { it.cause }
-        val custom = chain.filterIsInstance<CustomEventException>().firstOrNull()
+        val custom = chain.filterIsInstance<me.prskid1000.craftagent.exception.CraftAgentException>().firstOrNull()
         if (custom != null) {
             return custom.message
         }

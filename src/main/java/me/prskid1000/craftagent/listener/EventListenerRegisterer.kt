@@ -19,7 +19,7 @@ class EventListenerRegisterer(
         val scheduler = LLMProcessingScheduler(npcService, configProvider)
         llmProcessingScheduler = scheduler
         
-        listOf<IEventListener>(
+        listOf<EventListener>(
             ChatMessageListener(npcService),
             AgeUpdateListener(npcService),
             scheduler

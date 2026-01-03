@@ -4,7 +4,7 @@ import me.prskid1000.craftagent.database.repositories.ConversationRepository
 import me.prskid1000.craftagent.database.repositories.MessageRepository
 import me.prskid1000.craftagent.database.repositories.PrivateBookPageRepository
 import me.prskid1000.craftagent.database.repositories.SharebookRepository
-import me.prskid1000.craftagent.history.Message
+import me.prskid1000.craftagent.history.ConversationMessage
 import me.prskid1000.craftagent.model.database.Conversation
 import me.prskid1000.craftagent.util.LogUtil
 import java.util.UUID
@@ -47,7 +47,7 @@ class ResourceProvider(
         }
     }
 
-    fun addConversations(uuid: UUID, messages: List<Message>) {
+    fun addConversations(uuid: UUID, messages: List<ConversationMessage>) {
         this.loadedConversations[uuid] = messages.map { Conversation(uuid, it.role, it.message) }
     }
 

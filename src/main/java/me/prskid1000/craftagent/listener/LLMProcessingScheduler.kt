@@ -19,7 +19,7 @@ import java.util.concurrent.ArrayBlockingQueue
 class LLMProcessingScheduler(
     private val npcService: NPCService,
     private val configProvider: ConfigProvider
-) : AEventListener() {
+) : BaseEventListener() {
 
     // Thread-safe queue for multi-threaded access
     private val fifoQueue = ConcurrentLinkedQueue<UUID>()

@@ -7,7 +7,7 @@ import me.prskid1000.craftagent.llm.LLMClient
 class ConversationHistory(
     private val llmClient: LLMClient,
     initMessage: String,
-    val latestConversations: MutableList<Message>,
+    val latestConversations: MutableList<ConversationMessage>,
     private val maxHistoryLength: Int = 5
 ) {
     companion object {
@@ -21,7 +21,7 @@ class ConversationHistory(
     private var needsSummarization = false
 
     @Synchronized
-    fun add(message: Message) {
+    fun add(message: ConversationMessage) {
         latestConversations.add(message)
 
         if (latestConversations.size >= maxHistoryLength) {
@@ -63,22 +63,22 @@ class ConversationHistory(
         performSummarizationIfNeeded()
     }
 
-    private fun summarize(conversations: List<Message>): Message {
-        val summarizeMessage = Message(
+    private fun summarize(conversations: List<ConversationMessage>): ConversationMessage {
+        val summarizeMessage = ConversationMessage(
             Instructions.SUMMARY_PROMPT.format( objectMapper.writeValueAsString(conversations)),
             "user")
         // Use chat and extract content
         // NOTE: This is called during processLLM(), so it's within the scheduler's control
         // Pass null for server since summarization doesn't need server context
         val llmResponse = llmClient.chat(listOf(summarizeMessage), null)
-        return Message(llmResponse.content, "assistant")
+        return ConversationMessage(llmResponse.content, "assistant")
     }
 
     private fun setInitMessage(initMessage: String) {
         // Only add system message if it doesn't already exist (avoid duplicates when loading from DB)
         val hasSystemMessage = latestConversations.any { it.role == "system" }
         if (!hasSystemMessage) {
-            latestConversations.add(0, Message(initMessage, "system"))
+            latestConversations.add(0, ConversationMessage(initMessage, "system"))
         }
     }
 
@@ -87,10 +87,10 @@ class ConversationHistory(
         // Find and update the system message (should be at index 0)
         val systemIndex = latestConversations.indexOfFirst { it.role == "system" }
         if (systemIndex >= 0) {
-            latestConversations[systemIndex] = Message(newSystemPrompt, "system")
+            latestConversations[systemIndex] = ConversationMessage(newSystemPrompt, "system")
         } else {
             // If no system message exists, add it at the beginning
-            latestConversations.add(0, Message(newSystemPrompt, "system"))
+            latestConversations.add(0, ConversationMessage(newSystemPrompt, "system"))
         }
     }
 

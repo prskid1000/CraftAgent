@@ -8,9 +8,9 @@ import me.prskid1000.craftagent.database.repositories.PrivateBookPageRepository
 import me.prskid1000.craftagent.database.repositories.MessageRepository
 import me.prskid1000.craftagent.database.repositories.SharebookRepository
 import me.prskid1000.craftagent.event.NPCEventHandler
-import me.prskid1000.craftagent.exception.NPCCreationException
+import me.prskid1000.craftagent.exception.CraftAgentException
 import me.prskid1000.craftagent.history.ConversationHistory
-import me.prskid1000.craftagent.history.Message
+import me.prskid1000.craftagent.history.ConversationMessage
 import me.prskid1000.craftagent.llm.LLMClient
 import me.prskid1000.craftagent.llm.LLMType
 import me.prskid1000.craftagent.llm.ollama.OllamaClient
@@ -53,7 +53,7 @@ class NPCFactory(
         )
 
         val messages = loadedConversation
-            ?.map { Message(it.message, it.role, it.timestamp) }
+            ?.map { ConversationMessage(it.message, it.role, it.timestamp) }
             ?.toMutableList() ?: mutableListOf()
         val history = ConversationHistory(llmClient, defaultPrompt, messages, baseConfig.conversationHistoryLength)
         val eventHandler = NPCEventHandler(llmClient, history, contextProvider, config, messageRepository, sharebookRepository)
@@ -72,7 +72,7 @@ class NPCFactory(
                 me.prskid1000.craftagent.util.LogUtil.info("Creating LMStudioClient for NPC: ${config.npcName}")
                 LMStudioClient(config.llmModel, config.lmStudioUrl, baseConfig.llmTimeout)
             }
-            else -> throw NPCCreationException("Invalid LLM type: ${config.llmType}")
+            else -> throw CraftAgentException.npcCreation("Invalid LLM type: ${config.llmType}")
         }
         // Note: Health check is done in NPCService.createNpc() before spawning to avoid blocking server thread
         return llmClient
@@ -94,7 +94,7 @@ class NPCFactory(
                 me.prskid1000.craftagent.util.LogUtil.info("Creating LMStudioClient for NPC: ${config.npcName}")
                 LMStudioClient(config.llmModel, config.lmStudioUrl, baseConfig.llmTimeout)
             }
-            else -> throw NPCCreationException("Invalid LLM type: ${config.llmType}")
+            else -> throw CraftAgentException.npcCreation("Invalid LLM type: ${config.llmType}")
         }
         llmClient.checkServiceIsReachable()
     }

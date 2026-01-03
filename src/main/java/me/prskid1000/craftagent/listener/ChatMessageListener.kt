@@ -5,7 +5,7 @@ import net.fabricmc.fabric.api.message.v1.ServerMessageEvents
 
 class ChatMessageListener(
     private val npcService: NPCService
-) : AEventListener() {
+) : BaseEventListener() {
 
     override fun register() {
         ServerMessageEvents.CHAT_MESSAGE.register { message, sender, _ ->

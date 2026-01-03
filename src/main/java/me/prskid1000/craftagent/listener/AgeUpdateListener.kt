@@ -10,7 +10,7 @@ import net.minecraft.server.MinecraftServer
  */
 class AgeUpdateListener(
     private val npcService: NPCService
-) : AEventListener() {
+) : BaseEventListener() {
 
     companion object {
         private const val TICKS_PER_YEAR = 24000L // 20 minutes = 1 year

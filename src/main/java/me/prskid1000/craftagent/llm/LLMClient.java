@@ -1,6 +1,6 @@
 package me.prskid1000.craftagent.llm;
 
-import me.prskid1000.craftagent.history.Message;
+import me.prskid1000.craftagent.history.ConversationMessage;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.List;
@@ -15,7 +15,7 @@ public interface LLMClient {
      * @param server The Minecraft server instance
      * @return LLMResponse containing content
      */
-    LLMResponse chat(List<Message> messages, MinecraftServer server);
+    LLMResponse chat(List<ConversationMessage> messages, MinecraftServer server);
     
     /**
      * Lets the LLM generate a response (without server - fallback).
@@ -23,7 +23,7 @@ public interface LLMClient {
      * @param messages conversationHistory
      * @return LLMResponse containing content
      */
-    default LLMResponse chat(List<Message> messages) {
+    default LLMResponse chat(List<ConversationMessage> messages) {
         return chat(messages, null);
     }
 

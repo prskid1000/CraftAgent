@@ -8,7 +8,7 @@ import me.prskid1000.craftagent.config.NPCConfig
 import me.prskid1000.craftagent.constant.Instructions
 import me.prskid1000.craftagent.coordination.CoordinationService
 import me.prskid1000.craftagent.database.resources.ResourceProvider
-import me.prskid1000.craftagent.exception.NPCCreationException
+import me.prskid1000.craftagent.exception.CraftAgentException
 import me.prskid1000.craftagent.model.NPC
 import me.prskid1000.craftagent.util.LogUtil
 import net.minecraft.entity.player.PlayerEntity
@@ -370,9 +370,9 @@ class NPCService(
 
     private fun checkNpcName(npcName: String) {
         if (!UsernameValidator.isValid(npcName)) {
-            throw NPCCreationException("NPC name is not valid. Use 3–16 characters: letters, numbers, or underscores only.")
+            throw CraftAgentException.npcCreation("NPC name is not valid. Use 3–16 characters: letters, numbers, or underscores only.")
         } else if (uuidToNpc.values.any { it.entity.name.string == npcName }) {
-            throw NPCCreationException("A NPC with the name '$npcName' already exists.")
+            throw CraftAgentException.npcCreation("A NPC with the name '$npcName' already exists.")
         }
     }
 

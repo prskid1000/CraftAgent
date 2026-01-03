@@ -2,7 +2,7 @@ package me.prskid1000.craftagent.context;
 
 import lombok.Getter;
 import me.prskid1000.craftagent.config.BaseConfig;
-import me.prskid1000.craftagent.model.context.BlockData;
+import me.prskid1000.craftagent.model.context.ContextData;
 import me.prskid1000.craftagent.util.LogUtil;
 import net.minecraft.block.BlockState;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -25,12 +25,12 @@ public class ChunkManager {
 
     private final ServerPlayerEntity npcEntity;
     private final ScheduledExecutorService threadPool;
-    private final List<BlockData> currentLoadedBlocks;
+    private final List<ContextData.BlockData> currentLoadedBlocks;
     private java.util.concurrent.ScheduledFuture<?> refreshTask;
 
-    private final List<BlockData> nearbyBlocks = new ArrayList<>();
+    private final List<ContextData.BlockData> nearbyBlocks = new ArrayList<>();
     
-    public List<BlockData> getNearbyBlocks() {
+    public List<ContextData.BlockData> getNearbyBlocks() {
         // Return limited list (keep most recent/nearest)
         return nearbyBlocks.size() > maxNearbyBlocks 
             ? nearbyBlocks.subList(0, maxNearbyBlocks)
@@ -75,10 +75,10 @@ public class ChunkManager {
         }, 0, chunkExpiryTime, TimeUnit.SECONDS);
     }
 
-    public List<BlockData> getBlocksOfType(String type, int numberOfBlocks) {
-        List<BlockData> blocksFound = new ArrayList<>();
+    public List<ContextData.BlockData> getBlocksOfType(String type, int numberOfBlocks) {
+        List<ContextData.BlockData> blocksFound = new ArrayList<>();
 
-        for (BlockData block : currentLoadedBlocks) {
+        for (ContextData.BlockData block : currentLoadedBlocks) {
             if (blocksFound.size() >= numberOfBlocks) {
                 break;
             } else if (type.equals(block.type())) {
@@ -96,9 +96,9 @@ public class ChunkManager {
      * Updates block data of every block type nearest block to the npc
      */
     private void updateNearbyBlocks() {
-        Map<String, BlockData> nearestBlocks = new HashMap<>();
+        Map<String, ContextData.BlockData> nearestBlocks = new HashMap<>();
 
-        for (BlockData block : currentLoadedBlocks) {
+        for (ContextData.BlockData block : currentLoadedBlocks) {
             String blockType = block.type();
             if (!nearestBlocks.containsKey(blockType) ||
                     isCloser(block.position(), nearestBlocks.get(blockType).position())) {
@@ -108,7 +108,7 @@ public class ChunkManager {
         
         // Clear and add limited blocks (keep only nearest of each type, limit total)
         this.nearbyBlocks.clear();
-        List<BlockData> sortedBlocks = new ArrayList<>(nearestBlocks.values());
+        List<ContextData.BlockData> sortedBlocks = new ArrayList<>(nearestBlocks.values());
         sortedBlocks.sort((a, b) -> {
             double distA = npcEntity.getBlockPos().getSquaredDistance(a.position());
             double distB = npcEntity.getBlockPos().getSquaredDistance(b.position());
@@ -143,13 +143,13 @@ public class ChunkManager {
         }
     }
 
-    private List<BlockData> scanChunk(ChunkPos chunk) {
+    private List<ContextData.BlockData> scanChunk(ChunkPos chunk) {
         World world = npcEntity.getWorld();
         BlockPos.Mutable pos = new BlockPos.Mutable();
         int baseY = Math.max(0, npcEntity.getBlockPos().getY() - verticalScanRange);
         int maxY = Math.min(world.getHeight(), npcEntity.getBlockPos().getY() + verticalScanRange);
 
-        List<BlockData> blocks = new ArrayList<>();
+        List<ContextData.BlockData> blocks = new ArrayList<>();
 
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
@@ -165,7 +165,7 @@ public class ChunkManager {
                     if (blockType.contains("air")) continue;
 
                     if (isAccessible(pos, currentChunk)) {
-                        blocks.add(new BlockData(blockType, pos.toImmutable(),
+                        blocks.add(new ContextData.BlockData(blockType, pos.toImmutable(),
                                 getMiningLevel(blockState), getToolNeeded(blockState)));
                     }
                 }

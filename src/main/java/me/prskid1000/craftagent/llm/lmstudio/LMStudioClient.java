@@ -1,9 +1,9 @@
 package me.prskid1000.craftagent.llm.lmstudio;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import me.prskid1000.craftagent.exception.LLMServiceException;
+import me.prskid1000.craftagent.exception.CraftAgentException;
 import me.prskid1000.craftagent.util.LogUtil;
-import me.prskid1000.craftagent.history.Message;
+import me.prskid1000.craftagent.history.ConversationMessage;
 import me.prskid1000.craftagent.llm.LLMClient;
 import me.prskid1000.craftagent.llm.LLMResponse;
 import me.prskid1000.craftagent.llm.LLMSchema;
@@ -63,7 +63,7 @@ public class LMStudioClient implements LLMClient {
 	public void checkServiceIsReachable() {
 		try {
 			if (baseUrl == null || baseUrl.isEmpty()) {
-				throw new LLMServiceException("LM Studio base URL is not set");
+				throw CraftAgentException.llmService("LM Studio base URL is not set");
 			}
 			
 			HttpRequest request = HttpRequest.newBuilder()
@@ -85,23 +85,23 @@ public class LMStudioClient implements LLMClient {
 				return;
 			} else {
 				// Unexpected status code
-				throw new LLMServiceException("LM Studio server returned status code: " + statusCode + ", response: " + response.body());
+				throw CraftAgentException.llmService("LM Studio server returned status code: " + statusCode + ", response: " + response.body());
 			}
-		} catch (LLMServiceException e) {
+		} catch (CraftAgentException e) {
 			// Re-throw our own exceptions
 			throw e;
 		} catch (Exception e) {
 			LogUtil.error("LM Studio connection error", e);
-			throw new LLMServiceException("LM Studio server is not reachable at: " + baseUrl + ". Error: " + e.getMessage(), e);
+			throw CraftAgentException.llmService("LM Studio server is not reachable at: " + baseUrl + ". Error: " + e.getMessage(), e);
 		}
 	}
 
 	@Override
-	public LLMResponse chat(List<Message> messages, net.minecraft.server.MinecraftServer server) {
+	public LLMResponse chat(List<ConversationMessage> messages, net.minecraft.server.MinecraftServer server) {
 		try {
 			// Convert messages to OpenAI-compatible format (same as Ollama format)
 			List<Map<String, String>> openaiMessages = new ArrayList<>();
-			for (Message msg : messages) {
+			for (ConversationMessage msg : messages) {
 				Map<String, String> openaiMsg = new HashMap<>();
 				openaiMsg.put("role", msg.getRole());
 				openaiMsg.put("content", msg.getMessage());
@@ -146,7 +146,7 @@ public class LMStudioClient implements LLMClient {
 			LogUtil.debugInChat("LLM Response received from LM Studio");
 
 			if (response.statusCode() != 200) {
-				throw new LLMServiceException("LM Studio API returned status code: " + response.statusCode() + 
+				throw CraftAgentException.llmService("LM Studio API returned status code: " + response.statusCode() + 
 						", response: " + response.body());
 			}
 
@@ -154,7 +154,7 @@ public class LMStudioClient implements LLMClient {
 			Map<String, Object> responseMap = objectMapper.readValue(response.body(), Map.class);
 			List<Map<String, Object>> choices = (List<Map<String, Object>>) responseMap.get("choices");
 			if (choices == null || choices.isEmpty()) {
-				throw new LLMServiceException("LM Studio API returned no choices in response");
+				throw CraftAgentException.llmService("LM Studio API returned no choices in response");
 			}
 
 			Map<String, Object> firstChoice = choices.get(0);
@@ -162,10 +162,10 @@ public class LMStudioClient implements LLMClient {
 			String content = (String) messageMap.get("content");
 			
 			return new LLMResponse(content != null ? content : "");
-		} catch (LLMServiceException e) {
+		} catch (CraftAgentException e) {
 			throw e;
 		} catch (Exception e) {
-			throw new LLMServiceException("Could not generate Response for prompt: " + messages.get(messages.size() - 1).getMessage(), e);
+			throw CraftAgentException.llmService("Could not generate Response for prompt: " + messages.get(messages.size() - 1).getMessage(), e);
 		}
 	}
 
