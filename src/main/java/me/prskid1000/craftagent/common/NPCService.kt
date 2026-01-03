@@ -95,14 +95,6 @@ class NPCService(
             NPCEvents.ON_DEATH.register { entity ->
                 val configUuid = entityUuidToConfigUuid[entity.uuid]
                 val deadNpc = uuidToNpc.values.firstOrNull { it.entity.uuid == entity.uuid }
-                val deadNpcName = deadNpc?.config?.npcName ?: "Unknown"
-                val deadUuid = configUuid ?: deadNpc?.config?.uuid
-                
-                // Notify all NPCs about the death
-                if (deadUuid != null) {
-                    coordinationService.notifyNpcDeath(deadNpcName, deadUuid)
-                }
-                
                 if (configUuid != null) {
                     val server = entity.getWorld().server
                     removeNpc(configUuid, server.playerManager)
@@ -171,9 +163,6 @@ class NPCService(
 
                         LogUtil.infoInChat("Added NPC with name: $name")
                         
-                        // Notify all other NPCs about the new NPC
-                        coordinationService.notifyNpcAdded(npc)
-                        
                         // Store initial prompt in state (will be processed by scheduler)
                         npc.eventHandler.updateState(Instructions.getInitialPromptWithContext(config.npcName, config.age, config.gender))
                     } catch (e: Exception) {
@@ -214,9 +203,6 @@ class NPCService(
 
                     val config = configProvider.getNpcConfig(uuid)
                     val npcName = if (config.isPresent) config.get().npcName else "Unknown"
-                    
-                    // Notify all other NPCs about the removal
-                    coordinationService.notifyNpcRemoved(npcName, uuid)
                     
                     if (config.isPresent) {
                         config.get().isActive = false

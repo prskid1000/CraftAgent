@@ -12,55 +12,6 @@ class CoordinationService(
     private val npcService: NPCService
 ) {
     /**
-     * Broadcast a message to all NPCs and optionally to a specific player.
-     * Updates state only (no LLM trigger).
-     */
-    fun broadcastMessage(message: String, excludeUuid: UUID? = null, targetPlayer: String? = null) {
-        npcService.uuidToNpc.forEach { (uuid, npc) ->
-            if (excludeUuid != null && uuid == excludeUuid) {
-                return@forEach
-            }
-            try {
-                // Just update state, no LLM trigger
-                npc.eventHandler.updateState(message)
-            } catch (e: Exception) {
-                LogUtil.error("Error broadcasting message to NPC: ${npc.config.npcName}", e)
-            }
-        }
-        
-        // If target player specified, send to them via chat
-        if (targetPlayer != null) {
-            // This would need to be implemented via server player manager
-            LogUtil.info("Broadcast to player $targetPlayer: $message")
-        }
-    }
-
-    /**
-     * Notify all NPCs about a new NPC being added
-     */
-    fun notifyNpcAdded(newNpc: NPC) {
-        val message = "NPC '${newNpc.config.npcName}' (${newNpc.entity.uuid}) has joined the world. " +
-                "You can now interact with them."
-        broadcastMessage(message, excludeUuid = newNpc.config.uuid)
-    }
-
-    /**
-     * Notify all NPCs about an NPC being removed
-     */
-    fun notifyNpcRemoved(removedNpcName: String, removedUuid: UUID) {
-        val message = "NPC '$removedNpcName' (${removedUuid}) has left the world."
-        broadcastMessage(message, excludeUuid = removedUuid)
-    }
-
-    /**
-     * Notify all NPCs about an NPC death
-     */
-    fun notifyNpcDeath(deadNpcName: String, deadUuid: UUID) {
-        val message = "NPC '$deadNpcName' (${deadUuid}) has died and will respawn."
-        broadcastMessage(message, excludeUuid = deadUuid)
-    }
-
-    /**
      * Send a direct message from one NPC to another.
      * Stores in database, displays in chat, and updates state (no LLM trigger).
      */
