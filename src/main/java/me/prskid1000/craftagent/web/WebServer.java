@@ -180,7 +180,7 @@ public class WebServer {
                 Map<String, Object> messageMap = new HashMap<>();
                 messageMap.put("role", msg.getRole());
                 messageMap.put("content", msg.getMessage());
-                messageMap.put("timestamp", System.currentTimeMillis());
+                messageMap.put("timestamp", msg.getTimestamp());
                 messages.add(messageMap);
             }
             sendJsonResponse(exchange, 200, messages);
@@ -955,6 +955,71 @@ public class WebServer {
         .message-toggle:active {
             transform: translateY(0);
         }
+        
+        /* Structured Output Styling */
+        .structured-output {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .output-section {
+            border-radius: 8px;
+            padding: 12px;
+            margin: 4px 0;
+        }
+        
+        .thought-section {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-left: 3px solid #667eea;
+        }
+        
+        .actions-section {
+            background: linear-gradient(135deg, #f093fb15 0%, #f5576c15 100%);
+            border-left: 3px solid #f5576c;
+        }
+        
+        .message-section {
+            background: linear-gradient(135deg, #4facfe15 0%, #00f2fe15 100%);
+            border-left: 3px solid #4facfe;
+        }
+        
+        .section-header {
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #333;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .section-content {
+            color: #555;
+            line-height: 1.6;
+        }
+        
+        .actions-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .actions-list li {
+            margin: 6px 0;
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 4px;
+        }
+        
+        .action-item {
+            background: #f5f5f5;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #333;
+        }
+        
         .stat-card {
             background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
             padding: 20px;
@@ -1322,8 +1387,15 @@ public class WebServer {
                     const roleIcon = role === 'user' ? '👤' : role === 'assistant' ? '🤖' : role === 'system' ? '⚙️' : '❓';
                     const roleBadge = role === 'user' ? 'badge-info' : role === 'assistant' ? 'badge-success' : 'badge-warning';
                     
-                    // Format system messages with proper HTML rendering
-                    const formattedContent = role === 'system' ? formatSystemMessage(content) : escapeHtml(content);
+                    // Format messages based on role
+                    let formattedContent;
+                    if (role === 'assistant') {
+                        formattedContent = formatStructuredOutput(content);
+                    } else if (role === 'system') {
+                        formattedContent = formatSystemMessage(content);
+                    } else {
+                        formattedContent = escapeHtml(content);
+                    }
                     
                     // Determine if message is long (more than 500 characters)
                     // This covers both long text and multi-line system messages
@@ -1612,6 +1684,108 @@ public class WebServer {
                     btn.textContent = 'Show less';
                 }
             }
+        }
+        
+        /**
+         * Formats structured output (thought, action, message) for assistant messages.
+         * Parses and displays in a nice visual format.
+         */
+        function formatStructuredOutput(text) {
+            if (!text) return '';
+            
+            // Parse structured format by splitting into sections
+            // Format: "💭 Thought\n\n**Actions:**\n• action1\n• action2\n\n💬 Message"
+            let thought = null;
+            let actions = [];
+            let message = null;
+            
+            // Split by newlines (handle both \n and \r\n)
+            const lines = text.split(/\\n|\\r\\n/);
+            let inActions = false;
+            let thoughtEnded = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                
+                // Check for thought
+                if (line.startsWith('💭')) {
+                    thought = line.substring(1).trim();
+                    thoughtEnded = false;
+                } else if (thought && !thoughtEnded && line.length > 0 && !line.startsWith('**') && !line.startsWith('💬')) {
+                    // Continue thought if next line is not actions or message
+                    if (i + 1 < lines.length) {
+                        const nextLine = lines[i + 1].trim();
+                        if (!nextLine.startsWith('**Actions') && !nextLine.startsWith('💬')) {
+                            thought += ' ' + line;
+                            continue;
+                        }
+                    }
+                    thoughtEnded = true;
+                }
+                
+                // Check for actions section
+                if (line.startsWith('**Actions:**')) {
+                    inActions = true;
+                } else if (inActions && (line.startsWith('•') || line.startsWith('-'))) {
+                    const action = line.substring(1).trim();
+                    if (action.length > 0) {
+                        actions.push(action);
+                    }
+                } else if (inActions && line.length === 0) {
+                    // Empty line might end actions section
+                    inActions = false;
+                } else if (inActions && !line.startsWith('💬')) {
+                    // Action without bullet (continuation)
+                    if (actions.length > 0) {
+                        actions[actions.length - 1] += ' ' + line;
+                    }
+                }
+                
+                // Check for message
+                if (line.startsWith('💬')) {
+                    message = line.substring(1).trim();
+                    inActions = false;
+                } else if (message === null && !thought && !inActions && line.length > 0 && !line.startsWith('**')) {
+                    // Plain message without 💬 prefix
+                    message = line;
+                }
+            }
+            
+            // Build HTML if we found structured content
+            if (thought || actions.length > 0 || message) {
+                let html = '<div class="structured-output">';
+                
+                if (thought) {
+                    html += `<div class="output-section thought-section">
+                        <div class="section-header">💭 Thought</div>
+                        <div class="section-content">${escapeHtml(thought)}</div>
+                    </div>`;
+                }
+                
+                if (actions.length > 0) {
+                    html += `<div class="output-section actions-section">
+                        <div class="section-header">⚡ Actions</div>
+                        <div class="section-content">
+                            <ul class="actions-list">`;
+                    actions.forEach(action => {
+                        html += `<li><code class="action-item">${escapeHtml(action)}</code></li>`;
+                    });
+                    html += `</ul></div></div>`;
+                }
+                
+                if (message) {
+                    html += `<div class="output-section message-section">
+                        <div class="section-header">💬 Message</div>
+                        <div class="section-content">${escapeHtml(message)}</div>
+                    </div>`;
+                }
+                
+                html += '</div>';
+                return html;
+            }
+            
+            // Fallback to plain text
+            return escapeHtml(text);
         }
         
         /**

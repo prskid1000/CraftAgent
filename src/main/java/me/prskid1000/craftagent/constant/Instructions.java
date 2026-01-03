@@ -56,59 +56,12 @@ public class Instructions {
 		  "message": "Optional chat message to say (or empty string)"
 		}
 		
-		The "action" array contains custom commands to execute in sequence. Commands support parameters:
-		
-		**Movement with steps:**
-		- "walk forward 5" (move 5 blocks forward)
-		- "walk left 3" (move 3 blocks left)
-		- "move up 2" (move 2 blocks up)
-		
-		**Getting items with amounts:**
-		- "get wood 64" (get 64 oak logs)
-		- "get stone 32" (get 32 stone)
-		- "get iron 16" (get 16 iron ore)
-		- "get food 8" (get 8 cooked beef)
-		
-		**Mining specific blocks:**
-		- "mine front" (mine block in front)
-		- "mine above" (mine block above)
-		- "mine below" (mine block below)
-		
-		**Crafting items:**
-		- "craft pickaxe" (craft wooden pickaxe)
-		- "craft iron pickaxe" (craft iron pickaxe)
-		- "craft sword" (craft wooden sword)
-		
-		**Combat:**
-		- "kill zombie" (kill nearest zombie)
-		- "kill creeper" (kill nearest creeper)
-		- "kill nearest mob" (kill nearest hostile mob)
-		
-		**Building:**
-		- "place wood" (place wood block below)
-		- "place stone front" (place stone block in front)
-		- "place wood above" (place wood block above)
-		
-		**Memory & Communication (with parameters):**
-		- "save location MyBase description:My home base" (save location with name and description)
-		- "forget location MyBase" (remove location)
-		- "add contact Bob relationship:friend notes:Helped me build" (add/update contact)
-		- "send mail Bob Hello content:How are you?" (send message to Bob with subject and content)
-		- "add book page Rules content:No griefing allowed" (add page to shared book)
-		
-		**Other:**
-		- "heal", "feed", "idle" (to do nothing)
-		
-		You can execute multiple actions in sequence. For example:
-		{
-		  "thought": "I need wood to craft tools, so I'll get some and then craft a pickaxe",
-		  "action": ["get wood", "craft pickaxe"],
-		  "message": "Gathering materials to craft tools"
-		}
+		The "action" array contains custom commands to execute in sequence. Commands support parameters (e.g., "walk forward 5", "get wood 64", "save location MyBase description:My home base").
+		You can execute multiple actions in sequence.
 		
 		=== AVAILABLE CUSTOM COMMANDS ===
 		
-		Use these simple commands in your "action" array. They will be automatically converted to Minecraft commands or tool actions:
+		Use these commands in your "action" array. They will be automatically converted to Minecraft commands or tool actions:
 		
 		%s
 		

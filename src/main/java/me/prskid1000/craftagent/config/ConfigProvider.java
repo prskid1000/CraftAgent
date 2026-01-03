@@ -148,4 +148,13 @@ public class ConfigProvider {
     public synchronized void setBaseConfig(BaseConfig baseConfig) {
         this.baseConfig = baseConfig;
     }
+    
+    /**
+     * Saves the base config to disk immediately.
+     * Used when updating base config to ensure persistence.
+     */
+    public synchronized void saveBaseConfig() {
+        save(BASE_CONFIG_DIR, baseConfig);
+        LogUtil.info("Saved base config");
+    }
 }

@@ -36,15 +36,14 @@ public class BuildingCommandParser implements CommandParser {
         
         // Use generic utilities to extract block and direction
         String lastPart = parts.size() > 2 ? parts.get(parts.size() - 1).toLowerCase() : null;
-        String direction = DIRECTION_MAP.containsKey(lastPart) ? lastPart : "below";
+        boolean lastPartIsDirection = lastPart != null && DIRECTION_MAP.containsKey(lastPart);
+        String direction = lastPartIsDirection ? lastPart : "below";
         
         // Reconstruct block name (everything except first and last if last is direction)
-        String block = DIRECTION_MAP.containsKey(lastPart) 
-            ? ParameterParser.reconstructName(parts, 1)
-            : ParameterParser.reconstructName(parts, 1);
+        String block = ParameterParser.reconstructName(parts, 1);
         
         // Remove direction from block name if it was included
-        if (DIRECTION_MAP.containsKey(lastPart) && block.endsWith(" " + lastPart)) {
+        if (lastPartIsDirection && block != null && block.endsWith(" " + lastPart)) {
             block = block.substring(0, block.length() - lastPart.length() - 1);
         }
         

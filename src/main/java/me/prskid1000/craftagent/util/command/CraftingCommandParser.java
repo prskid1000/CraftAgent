@@ -26,11 +26,11 @@ public class CraftingCommandParser implements CommandParser {
         String item = ParameterParser.reconstructName(parts, 1);
         
         // If last part is a number, item is everything before it
-        if (amount != null && parts.size() > 2) {
-            item = ParameterParser.reconstructName(parts, 1);
-            // Remove the number from item name
-            if (item.endsWith(" " + parts.get(parts.size() - 1))) {
-                item = item.substring(0, item.length() - parts.get(parts.size() - 1).length() - 1);
+        if (amount != null && parts.size() > 2 && item != null) {
+            // Remove the number from item name if it was included
+            String lastPartStr = parts.get(parts.size() - 1);
+            if (item.endsWith(" " + lastPartStr)) {
+                item = item.substring(0, item.length() - lastPartStr.length() - 1);
             }
         }
         

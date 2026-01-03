@@ -156,49 +156,71 @@ public class CommandMapper {
     
     /**
      * Gets formatted list of all custom commands for system prompt.
-     * Shows parameter examples.
+     * Shows command format with parameters and one simple example per command type.
      */
     public static String getFormattedCommandList() {
         Map<String, List<String>> commands = getAllCustomCommands();
         StringBuilder sb = new StringBuilder();
         
+        // Track which command types we've shown examples for
+        Set<String> exampleShown = new HashSet<>();
+        
         for (Map.Entry<String, List<String>> entry : commands.entrySet()) {
             sb.append(entry.getKey()).append(":\n");
             for (String cmd : entry.getValue()) {
-                // Show example mappings for parameterized commands
-                if (cmd.contains("[") || cmd.contains("<")) {
-                    sb.append("  - ").append(cmd).append("\n");
-                    // Add example based on command type
-                    if (cmd.startsWith("walk") || cmd.startsWith("move")) {
-                        sb.append("    Example: 'walk forward 5' → 'tp @s ~5 ~ ~'\n");
-                    } else if (cmd.startsWith("get")) {
-                        sb.append("    Example: 'get wood 64' → 'give @s minecraft:oak_log 64'\n");
-                    } else if (cmd.startsWith("mine")) {
-                        sb.append("    Example: 'mine front' → 'setblock ~1 ~ ~ minecraft:air'\n");
-                    } else if (cmd.startsWith("craft")) {
-                        sb.append("    Example: 'craft pickaxe' → 'give @s minecraft:wooden_pickaxe'\n");
-                    } else if (cmd.startsWith("place")) {
-                        sb.append("    Example: 'place wood front' → 'setblock ~1 ~ ~ minecraft:oak_planks'\n");
-                    } else if (cmd.startsWith("kill")) {
-                        sb.append("    Example: 'kill zombie' → 'kill @e[type=minecraft:zombie,limit=1,sort=nearest]'\n");
-                    } else if (cmd.startsWith("spawn")) {
-                        sb.append("    Example: 'spawn cow' → 'summon minecraft:cow ~ ~ ~'\n");
-                    } else if (cmd.startsWith("save") || cmd.startsWith("remember")) {
-                        sb.append("    Example: 'save location MyBase description:My home' → 'manageMemory:add:location|name:MyBase|description:My home'\n");
-                    } else if (cmd.startsWith("send")) {
-                        sb.append("    Example: 'send mail Bob Hello content:How are you?' → 'sendMessage|recipient:Bob|subject:Hello|content:How are you?'\n");
-                    } else if (cmd.startsWith("add book") || cmd.startsWith("update book")) {
-                        sb.append("    Example: 'add book page Rules content:No griefing' → 'manageBook:add|title:Rules|content:No griefing'\n");
+                // Show command format
+                sb.append("  - ").append(cmd).append("\n");
+                
+                // Add one example per command type (only once per type)
+                String cmdType = getCommandType(cmd);
+                if ((cmd.contains("[") || cmd.contains("<")) && !exampleShown.contains(cmdType)) {
+                    String example = getExampleForCommandType(cmdType);
+                    if (example != null) {
+                        sb.append("    Example: ").append(example).append("\n");
+                        exampleShown.add(cmdType);
                     }
-                } else {
-                    String mapping = getMapping(cmd);
-                    sb.append("  - ").append(cmd).append(" → ").append(mapping).append("\n");
                 }
             }
             sb.append("\n");
         }
         
         return sb.toString();
+    }
+    
+    /**
+     * Gets the command type for grouping examples.
+     */
+    private static String getCommandType(String cmd) {
+        if (cmd.startsWith("walk") || cmd.startsWith("move")) return "movement";
+        if (cmd.startsWith("get")) return "get";
+        if (cmd.startsWith("mine")) return "mine";
+        if (cmd.startsWith("craft")) return "craft";
+        if (cmd.startsWith("place")) return "place";
+        if (cmd.startsWith("kill")) return "kill";
+        if (cmd.startsWith("spawn")) return "spawn";
+        if (cmd.startsWith("save") || cmd.startsWith("remember")) return "save_location";
+        if (cmd.startsWith("send")) return "send";
+        if (cmd.startsWith("add book") || cmd.startsWith("update book")) return "book";
+        return "other";
+    }
+    
+    /**
+     * Gets a simple example for a command type (without showing internal transformation).
+     */
+    private static String getExampleForCommandType(String cmdType) {
+        return switch (cmdType) {
+            case "movement" -> "'walk forward 5'";
+            case "get" -> "'get wood 64'";
+            case "mine" -> "'mine front'";
+            case "craft" -> "'craft pickaxe'";
+            case "place" -> "'place stone front'";
+            case "kill" -> "'kill zombie'";
+            case "spawn" -> "'spawn cow'";
+            case "save_location" -> "'save location MyBase description:My home'";
+            case "send" -> "'send mail Bob Hello content:How are you?'";
+            case "book" -> "'add book page Rules content:No griefing'";
+            default -> null;
+        };
     }
     
     /**

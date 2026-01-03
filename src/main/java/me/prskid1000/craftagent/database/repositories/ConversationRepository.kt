@@ -17,20 +17,31 @@ class ConversationRepository(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 uuid CHARACTER(36) NOT NULL,
                 role CHARACTER(9) NOT NULL,
-                message TEXT NOT NULL
+                message TEXT NOT NULL,
+                timestamp INTEGER NOT NULL DEFAULT 0
             );
         """
         sqliteClient.update(sql)
+        
+        // Migration: Add timestamp column if it doesn't exist (for existing databases)
+        try {
+            sqliteClient.update("ALTER TABLE conversations ADD COLUMN timestamp INTEGER DEFAULT 0")
+            // Update existing rows to have current timestamp
+            sqliteClient.update("UPDATE conversations SET timestamp = ${System.currentTimeMillis()} WHERE timestamp = 0 OR timestamp IS NULL")
+        } catch (e: Exception) {
+            // Column already exists, ignore
+        }
     }
 
     fun insert(conversation: Conversation) {
         val statement =
             sqliteClient.buildPreparedStatement(
-                "INSERT INTO conversations (uuid, role, message) VALUES (?, ?, ?)",
+                "INSERT INTO conversations (uuid, role, message, timestamp) VALUES (?, ?, ?, ?)",
             )
         statement?.setString(1, conversation.uuid.toString())
         statement?.setString(2, conversation.role)
         statement?.setString(3, conversation.message)
+        statement?.setLong(4, conversation.timestamp)
         sqliteClient.update(statement)
     }
 
@@ -61,7 +72,12 @@ class ConversationRepository(
                 Conversation(
                     UUID.fromString(result.getString("uuid")),
                     result.getString("role"),
-                    result.getString("message")
+                    result.getString("message"),
+                    try {
+                        result.getLong("timestamp")
+                    } catch (e: Exception) {
+                        System.currentTimeMillis() // Fallback for old records without timestamp
+                    }
                 )
             conversations.add(conversation)
         }
