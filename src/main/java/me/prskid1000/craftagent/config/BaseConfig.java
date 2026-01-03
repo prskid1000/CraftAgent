@@ -21,8 +21,6 @@ public class BaseConfig implements Configurable {
     private int maxNearbyBlocks = 30;
     private int maxNearbyEntities = 15;
     private boolean verbose = false;
-    private boolean disableDirectVanillaCommands = false;
-    private boolean disableUtilityCommands = false;
     private int llmProcessingInterval = 5;
     private int llmMinInterval = 10;
 
@@ -64,22 +62,6 @@ public class BaseConfig implements Configurable {
 
     public void setVerbose(boolean verbose) {
         this.verbose = verbose;
-    }
-
-    public boolean isDisableDirectVanillaCommands() {
-        return disableDirectVanillaCommands;
-    }
-
-    public void setDisableDirectVanillaCommands(boolean disableDirectVanillaCommands) {
-        this.disableDirectVanillaCommands = disableDirectVanillaCommands;
-    }
-
-    public boolean isDisableUtilityCommands() {
-        return disableUtilityCommands;
-    }
-
-    public void setDisableUtilityCommands(boolean disableUtilityCommands) {
-        this.disableUtilityCommands = disableUtilityCommands;
     }
 
     public int getConversationHistoryLength() {
@@ -172,8 +154,6 @@ public class BaseConfig implements Configurable {
             Endec.INT.fieldOf("maxNearbyBlocks", BaseConfig::getMaxNearbyBlocks),
             Endec.INT.fieldOf("maxNearbyEntities", BaseConfig::getMaxNearbyEntities),
             Endec.BOOLEAN.fieldOf("verbose", BaseConfig::isVerbose),
-            Endec.BOOLEAN.fieldOf("disableDirectVanillaCommands", BaseConfig::isDisableDirectVanillaCommands),
-            Endec.BOOLEAN.fieldOf("disableUtilityCommands", BaseConfig::isDisableUtilityCommands),
             Endec.INT.fieldOf("llmProcessingInterval", BaseConfig::getLlmProcessingInterval),
             Endec.INT.fieldOf("llmMinInterval", BaseConfig::getLlmMinInterval),
             BaseConfig::new
@@ -194,8 +174,6 @@ public class BaseConfig implements Configurable {
                 ",maxNearbyBlocks=" + maxNearbyBlocks +
                 ",maxNearbyEntities=" + maxNearbyEntities +
                 ",verbose=" + verbose +
-                ",disableDirectVanillaCommands=" + disableDirectVanillaCommands +
-                ",disableUtilityCommands=" + disableUtilityCommands +
                 ",llmProcessingInterval=" + llmProcessingInterval +
                 ",llmMinInterval=" + llmMinInterval +"}";
     }
@@ -212,8 +190,6 @@ public class BaseConfig implements Configurable {
     public static final String MAX_NEARBY_BLOCKS_KEY = "Max Nearby Blocks";
     public static final String MAX_NEARBY_ENTITIES_KEY = "Max Nearby Entities";
     public static final String VERBOSE_KEY = "Debug Mode";
-    public static final String DISABLE_DIRECT_VANILLA_COMMANDS_KEY = "Disable Direct Vanilla Commands";
-    public static final String DISABLE_UTILITY_COMMANDS_KEY = "Disable Utility Commands";
     public static final String LLM_PROCESSING_INTERVAL_KEY = "LLM Processing Interval (seconds)";
     public static final String LLM_MIN_INTERVAL_KEY = "LLM Min Interval Between Success (seconds)";
 }

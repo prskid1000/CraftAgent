@@ -131,9 +131,6 @@ public class WebServer {
                 case "memory":
                     handleGetNPCMemory(npc, exchange);
                     break;
-                case "tools":
-                    handleGetNPCTools(npc, exchange);
-                    break;
                 default:
                     sendError(exchange, 404, "Unknown endpoint: " + endpoint);
             }
@@ -262,59 +259,6 @@ public class WebServer {
         }
     }
     
-    private void handleGetNPCTools(NPC npc, HttpExchange exchange) throws IOException {
-        try {
-            Map<String, Object> toolsData = new HashMap<>();
-            
-            // Get predefined tools
-            List<Map<String, Object>> predefinedTools = new ArrayList<>();
-            
-            // manageMemory tool
-            Map<String, Object> manageMemory = new HashMap<>();
-            manageMemory.put("name", "manageMemory");
-            manageMemory.put("description", "Manage information in memory (contacts or locations). Use 'add' or 'update' to add new contacts or save locations, or 'remove' to forget information.");
-            manageMemory.put("type", "predefined");
-            manageMemory.put("parameters", List.of(
-                "action: string (add/update/remove)",
-                "infoType: string (contact/location)",
-                "name: string",
-                "relationship: string (optional, for contacts)",
-                "notes: string (optional, for contacts)",
-                "description: string (optional, for locations)"
-            ));
-            predefinedTools.add(manageMemory);
-            
-            // sendMessage tool
-            Map<String, Object> sendMessage = new HashMap<>();
-            sendMessage.put("name", "sendMessage");
-            sendMessage.put("description", "Send a message to another NPC or player. Messages are stored in a mail system and can be read by the recipient later.");
-            sendMessage.put("type", "predefined");
-            sendMessage.put("parameters", List.of(
-                "recipientName: string",
-                "subject: string",
-                "content: string"
-            ));
-            predefinedTools.add(sendMessage);
-            
-            // manageBook tool
-            Map<String, Object> manageBook = new HashMap<>();
-            manageBook.put("name", "manageBook");
-            manageBook.put("description", "Manage pages in the shared book. The shared book is accessible to all NPCs and contains common information.");
-            manageBook.put("type", "predefined");
-            manageBook.put("parameters", List.of(
-                "action: string (add/update/remove)",
-                "pageTitle: string",
-                "content: string (required for add/update)"
-            ));
-            predefinedTools.add(manageBook);
-            
-            toolsData.put("predefinedTools", predefinedTools);
-            sendJsonResponse(exchange, 200, toolsData);
-        } catch (Exception e) {
-            LogUtil.error("Error getting NPC tools", e);
-            sendError(exchange, 500, "Error getting tools: " + e.getMessage());
-        }
-    }
     
     
     private void handleStatic(HttpExchange exchange) throws IOException {
@@ -918,70 +862,6 @@ public class WebServer {
             transform: translateY(0);
         }
         
-        /* Structured Output Styling */
-        .structured-output {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .output-section {
-            border-radius: 8px;
-            padding: 12px;
-            margin: 4px 0;
-        }
-        
-        .thought-section {
-            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-            border-left: 3px solid #667eea;
-        }
-        
-        .actions-section {
-            background: linear-gradient(135deg, #f093fb15 0%, #f5576c15 100%);
-            border-left: 3px solid #f5576c;
-        }
-        
-        .message-section {
-            background: linear-gradient(135deg, #4facfe15 0%, #00f2fe15 100%);
-            border-left: 3px solid #4facfe;
-        }
-        
-        .section-header {
-            font-weight: bold;
-            font-size: 0.9em;
-            color: #333;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .section-content {
-            color: #555;
-            line-height: 1.6;
-        }
-        
-        .actions-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .actions-list li {
-            margin: 6px 0;
-            padding: 6px 10px;
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 4px;
-        }
-        
-        .action-item {
-            background: #f5f5f5;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-            color: #333;
-        }
-        
         .stat-card {
             background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
             padding: 20px;
@@ -1045,7 +925,6 @@ public class WebServer {
                 <button class="tab" onclick="switchTab('messages')">Messages</button>
                 <button class="tab" onclick="switchTab('mail')">Mail</button>
                 <button class="tab" onclick="switchTab('memory')">Memory</button>
-                <button class="tab" onclick="switchTab('tools')">Tools</button>
             </div>
             
             <div id="overview" class="tab-content active">
@@ -1073,10 +952,6 @@ public class WebServer {
             
             <div id="memory" class="tab-content">
                 <div class="loading">Loading memory...</div>
-            </div>
-            
-            <div id="tools" class="tab-content">
-                <div class="loading">Loading tools...</div>
             </div>
         </div>
     </div>
@@ -1148,7 +1023,6 @@ public class WebServer {
                 loadNPCMessages(uuid),
                 loadNPCMail(uuid),
                 loadNPCMemory(uuid),
-                loadNPCTools(uuid)
             ]);
         }
         
@@ -1493,45 +1367,6 @@ public class WebServer {
             }
         }
         
-        async function loadNPCTools(uuid) {
-            try {
-                const response = await fetch(`/api/npc/${uuid}/tools`);
-                const tools = await response.json();
-                
-                let html = '';
-                
-                // Predefined Tools Section
-                if (tools.predefinedTools && tools.predefinedTools.length > 0) {
-                    html += '<div class="data-section"><h3>🔧 Available Tools</h3>';
-                    html += '<p style="margin-bottom: 15px; color: #666;">Tools available to the NPC:</p>';
-                    html += '<div style="max-height: 600px; overflow-y: auto;">';
-                    html += '<table><thead><tr><th style="width: 200px;">Tool Name</th><th>Description</th><th>Parameters</th></tr></thead><tbody>';
-                    
-                    tools.predefinedTools.forEach(tool => {
-                        const params = Array.isArray(tool.parameters) 
-                            ? tool.parameters.map(p => `<code style="background-color: #e8f4f8; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; display: block; margin: 2px 0; font-family: monospace;">${escapeHtml(p)}</code>`).join('')
-                            : '<span style="color: #999;">No parameters</span>';
-                        
-                        html += `<tr>
-                            <td><strong style="color: #667eea; font-family: monospace;">${escapeHtml(tool.name || 'Unknown')}</strong></td>
-                            <td style="max-width: 400px; word-wrap: break-word;">${escapeHtml(tool.description || 'No description')}</td>
-                            <td style="max-width: 300px;">${params}</td>
-                        </tr>`;
-                    });
-                    
-                    html += '</tbody></table></div></div>';
-                } else {
-                    html += '<div class="data-section"><h3>🔧 Available Tools</h3>';
-                    html += '<p>No tools available</p></div>';
-                }
-                
-                document.getElementById('tools').innerHTML = html || '<div class="loading">No tools data available</div>';
-            } catch (error) {
-                document.getElementById('tools').innerHTML = 
-                    '<div class="loading">Error: ' + error.message + '</div>';
-            }
-        }
-        
         function switchTab(tabName) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -1545,13 +1380,6 @@ public class WebServer {
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
             
-            // Load tools if switching to tools tab and not already loaded
-            if (tabName === 'tools' && currentNPCUuid) {
-                const toolsContent = document.getElementById('tools');
-                if (toolsContent.innerHTML.includes('Loading tools') || toolsContent.innerHTML.trim() === '') {
-                    loadNPCTools(currentNPCUuid);
-                }
-            }
         }
         
         function closeModal() {
@@ -1592,105 +1420,11 @@ public class WebServer {
         }
         
         /**
-         * Formats structured output (thought, action, message) for assistant messages.
-         * Parses and displays in a nice visual format.
+         * Formats message output for assistant messages.
          */
         function formatStructuredOutput(text) {
             if (!text) return '';
-            
-            // Parse structured format by splitting into sections
-            // Expected format: Thought section, Actions section with bullet points, Message section
-            let thought = null;
-            let actions = [];
-            let message = null;
-            
-            // Split by newlines (handle both \\n and \\r\\n)
-            const lines = text.split(/\\n|\\r\\n/);
-            let inActions = false;
-            let thoughtEnded = false;
-            
-            for (let i = 0; i < lines.length; i++) {
-                let line = lines[i].trim();
-                
-                // Check for thought
-                if (line.startsWith('💭')) {
-                    thought = line.substring(1).trim();
-                    thoughtEnded = false;
-                } else if (thought && !thoughtEnded && line.length > 0 && !line.startsWith('**') && !line.startsWith('💬')) {
-                    // Continue thought if next line is not actions or message
-                    if (i + 1 < lines.length) {
-                        const nextLine = lines[i + 1].trim();
-                        if (!nextLine.startsWith('**Actions') && !nextLine.startsWith('💬')) {
-                            thought += ' ' + line;
-                            continue;
-                        }
-                    }
-                    thoughtEnded = true;
-                }
-                
-                // Check for actions section
-                const actionsMarker = '**Actions:**';
-                if (line.startsWith(actionsMarker)) {
-                    inActions = true;
-                } else if (inActions && (line.startsWith('•') || line.startsWith('-'))) {
-                    const action = line.substring(1).trim();
-                    if (action.length > 0) {
-                        actions.push(action);
-                    }
-                } else if (inActions && line.length === 0) {
-                    // Empty line might end actions section
-                    inActions = false;
-                } else if (inActions && !line.startsWith('💬')) {
-                    // Action without bullet (continuation)
-                    if (actions.length > 0) {
-                        actions[actions.length - 1] += ' ' + line;
-                    }
-                }
-                
-                // Check for message
-                if (line.startsWith('💬')) {
-                    message = line.substring(1).trim();
-                    inActions = false;
-                } else if (message === null && !thought && !inActions && line.length > 0 && !line.startsWith('**')) {
-                    // Plain message without 💬 prefix
-                    message = line;
-                }
-            }
-            
-            // Build HTML if we found structured content
-            if (thought || actions.length > 0 || message) {
-                let html = '<div class="structured-output">';
-                
-                if (thought) {
-                    html += `<div class="output-section thought-section">
-                        <div class="section-header">💭 Thought</div>
-                        <div class="section-content">${escapeHtml(thought)}</div>
-                    </div>`;
-                }
-                
-                if (actions.length > 0) {
-                    html += `<div class="output-section actions-section">
-                        <div class="section-header">⚡ Actions</div>
-                        <div class="section-content">
-                            <ul class="actions-list">`;
-                    actions.forEach(action => {
-                        html += `<li><code class="action-item">${escapeHtml(action)}</code></li>`;
-                    });
-                    html += `</ul></div></div>`;
-                }
-                
-                if (message) {
-                    html += `<div class="output-section message-section">
-                        <div class="section-header">💬 Message</div>
-                        <div class="section-content">${escapeHtml(message)}</div>
-                    </div>`;
-                }
-                
-                html += '</div>';
-                return html;
-            }
-            
-            // Fallback to plain text
+            // Simple message display - just escape and return
             return escapeHtml(text);
         }
         
