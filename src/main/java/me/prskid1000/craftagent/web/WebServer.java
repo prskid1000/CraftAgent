@@ -264,60 +264,10 @@ public class WebServer {
     
     private void handleGetNPCTools(NPC npc, HttpExchange exchange) throws IOException {
         try {
-            MinecraftServer server = npc.getContextProvider().getNpcEntity().getServer();
             Map<String, Object> toolsData = new HashMap<>();
-            
-            // Get mapping of vanilla commands to custom commands
-            Map<String, List<String>> vanillaMappings = me.prskid1000.craftagent.util.CommandMapper.getVanillaCommandMappings();
-            
-            // Check if vanilla commands should be disabled
-            me.prskid1000.craftagent.config.BaseConfig baseConfig = configProvider.getBaseConfig();
-            boolean disableVanillaCommands = baseConfig != null && baseConfig.isDisableDirectVanillaCommands();
-            
-            // Get Minecraft commands with mapping status
-            List<Map<String, Object>> minecraftCommands = new ArrayList<>();
-            if (server != null && !disableVanillaCommands) {
-                var commandsWithUsage = me.prskid1000.craftagent.util.MinecraftCommandUtil.getAllCommandsWithUsage(server);
-                for (var entry : commandsWithUsage.entrySet()) {
-                    String cmdName = entry.getKey();
-                    
-                    // Skip craftagent command - don't show it in UI
-                    if (cmdName.toLowerCase().trim().equals("craftagent")) {
-                        continue;
-                    }
-                    
-                    Map<String, Object> cmd = new HashMap<>();
-                    cmd.put("name", cmdName);
-                    cmd.put("usage", entry.getValue());
-                    cmd.put("type", "minecraft");
-                    
-                    // Check if this command is mapped to any custom command
-                    List<String> mappedCustomCommands = vanillaMappings.get(cmdName);
-                    if (mappedCustomCommands != null && !mappedCustomCommands.isEmpty()) {
-                        cmd.put("mapped", true);
-                        cmd.put("customCommands", mappedCustomCommands);
-                        cmd.put("availableToLLM", true);
-                    } else {
-                        cmd.put("mapped", false);
-                        cmd.put("customCommands", Collections.emptyList());
-                        cmd.put("availableToLLM", false);
-                    }
-                    
-                    minecraftCommands.add(cmd);
-                }
-            }
-            toolsData.put("minecraftCommands", minecraftCommands);
             
             // Get predefined tools
             List<Map<String, Object>> predefinedTools = new ArrayList<>();
-            
-            // execute_command tool
-            Map<String, Object> executeCmd = new HashMap<>();
-            executeCmd.put("name", "execute_command");
-            executeCmd.put("description", "Execute a Minecraft command. Use this when you want to perform an action in the game.");
-            executeCmd.put("type", "predefined");
-            executeCmd.put("parameters", List.of("command: string (The complete Minecraft command string to execute)"));
-            predefinedTools.add(executeCmd);
             
             // manageMemory tool
             Map<String, Object> manageMemory = new HashMap<>();
@@ -359,57 +309,6 @@ public class WebServer {
             predefinedTools.add(manageBook);
             
             toolsData.put("predefinedTools", predefinedTools);
-            
-            // Get custom command mappings
-            Map<String, List<String>> customCommands = me.prskid1000.craftagent.util.CommandMapper.getAllCustomCommands();
-            List<Map<String, Object>> customCommandMappings = new ArrayList<>();
-            
-            // Check if utility commands should be disabled
-            boolean disableUtilityCommands = baseConfig != null && baseConfig.isDisableUtilityCommands();
-            
-            for (Map.Entry<String, List<String>> category : customCommands.entrySet()) {
-                // Skip Utility category if disabled
-                if (disableUtilityCommands && "Utility".equals(category.getKey())) {
-                    continue;
-                }
-                
-                for (String customCmd : category.getValue()) {
-                    // Skip craftagent command - don't show it in UI
-                    if (customCmd.toLowerCase().trim().equals("craftagent")) {
-                        continue;
-                    }
-                    
-                    Map<String, Object> mapping = new HashMap<>();
-                    mapping.put("customCommand", customCmd);
-                    mapping.put("category", category.getKey());
-                    String mapped = me.prskid1000.craftagent.util.CommandMapper.mapCommand(customCmd);
-                    
-                    // Properly identify tool actions: they contain "|" (parameter delimiter) 
-                    // or start with known tool prefixes (manageMemory:, sendMessage, manageBook:)
-                    boolean isToolAction = false;
-                    if (mapped != null) {
-                        // Tool actions use "|" as parameter delimiter
-                        if (mapped.contains("|")) {
-                            isToolAction = true;
-                        } else {
-                            // Check for known tool action prefixes (without parameters)
-                            String lowerMapped = mapped.toLowerCase();
-                            if (lowerMapped.startsWith("managememory:") || 
-                                lowerMapped.startsWith("sendmessage") ||
-                                lowerMapped.startsWith("managebook:")) {
-                                isToolAction = true;
-                            }
-                        }
-                    }
-                    
-                    String mappingType = isToolAction ? "Tool" : "Minecraft";
-                    mapping.put("mappedTo", mapped != null ? mapped : customCmd);
-                    mapping.put("type", mappingType);
-                    customCommandMappings.add(mapping);
-                }
-            }
-            
-            toolsData.put("customCommands", customCommandMappings);
             sendJsonResponse(exchange, 200, toolsData);
         } catch (Exception e) {
             LogUtil.error("Error getting NPC tools", e);
@@ -1601,139 +1500,29 @@ public class WebServer {
                 
                 let html = '';
                 
-                // Summary Statistics Section
-                if (tools.customCommands && tools.customCommands.length > 0 || tools.minecraftCommands && tools.minecraftCommands.length > 0) {
-                    const totalCustomCommands = tools.customCommands ? tools.customCommands.length : 0;
-                    const minecraftMapped = tools.customCommands ? tools.customCommands.filter(cmd => cmd.type === 'Minecraft').length : 0;
-                    const toolMapped = tools.customCommands ? tools.customCommands.filter(cmd => cmd.type === 'Tool').length : 0;
-                    const totalVanillaCommands = tools.minecraftCommands ? tools.minecraftCommands.length : 0;
-                    
-                    html += '<div class="data-section"><h3>📊 Command Mapping Summary</h3>';
-                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">';
-                    html += `<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${totalCustomCommands}</div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">Total Custom Commands</div>
-                    </div>`;
-                    html += `<div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${minecraftMapped}</div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">Mapped to Vanilla Commands</div>
-                    </div>`;
-                    html += `<div style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${toolMapped}</div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">Mapped to Tool Actions</div>
-                    </div>`;
-                    html += `<div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <div style="font-size: 2em; font-weight: bold; margin-bottom: 5px;">${totalVanillaCommands}</div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">Total Vanilla Commands</div>
-                    </div>`;
-                    html += '</div></div>';
-                }
-                
-                // Unified Commands & Tools Table
-                if ((tools.customCommands && tools.customCommands.length > 0) || (tools.minecraftCommands && tools.minecraftCommands.length > 0)) {
-                    html += '<div class="data-section"><h3>📋 All Commands & Tools</h3>';
-                    html += '<p style="margin-bottom: 15px; color: #666;">Unified view of all custom commands, vanilla Minecraft commands, and tool actions:</p>';
+                // Predefined Tools Section
+                if (tools.predefinedTools && tools.predefinedTools.length > 0) {
+                    html += '<div class="data-section"><h3>🔧 Available Tools</h3>';
+                    html += '<p style="margin-bottom: 15px; color: #666;">Tools available to the NPC:</p>';
                     html += '<div style="max-height: 600px; overflow-y: auto;">';
-                    html += '<table><thead><tr><th style="width: 200px;">Command/Name</th><th style="width: 120px;">Type</th><th style="width: 120px;">Category</th><th style="width: 120px;">Status</th><th>Maps To / Mapped Via</th></tr></thead><tbody>';
+                    html += '<table><thead><tr><th style="width: 200px;">Tool Name</th><th>Description</th><th>Parameters</th></tr></thead><tbody>';
                     
-                    // Collect all entries
-                    const allEntries = [];
-                    
-                    // Add custom commands
-                    if (tools.customCommands && tools.customCommands.length > 0) {
-                        tools.customCommands.forEach(cmd => {
-                            allEntries.push({
-                                name: cmd.customCommand || 'Unknown',
-                                type: 'Custom Command',
-                                category: cmd.category || 'Other',
-                                status: 'Mapped',
-                                mappedTo: cmd.mappedTo || cmd.customCommand,
-                                targetType: cmd.type === 'Minecraft' ? 'Vanilla' : 'Tool Action',
-                                // Green background for Minecraft mappings, blue-tinted for Tool Actions (not red/yellow)
-                                rowStyle: cmd.type === 'Minecraft' ? 'background-color: #f0f9f0;' : 'background-color: #f0f4ff;'
-                            });
-                        });
-                    }
-                    
-                    // Add vanilla Minecraft commands (mapped)
-                    if (tools.minecraftCommands && tools.minecraftCommands.length > 0) {
-                        const mappedCommands = tools.minecraftCommands.filter(cmd => cmd.mapped === true);
-                        mappedCommands.forEach(cmd => {
-                            const customCmds = (cmd.customCommands || []).join(', ');
-                            // Combine command name with usage to show full syntax
-                            const fullSyntax = cmd.usage && cmd.usage.trim() 
-                                ? `${cmd.name} ${cmd.usage}` 
-                                : cmd.name || 'Unknown';
-                            allEntries.push({
-                                name: fullSyntax,
-                                type: 'Vanilla Command',
-                                category: '-',
-                                status: 'Mapped',
-                                mappedTo: customCmds || 'N/A',
-                                targetType: 'Custom Commands',
-                                rowStyle: 'background-color: #f0f9f0;'
-                            });
-                        });
+                    tools.predefinedTools.forEach(tool => {
+                        const params = Array.isArray(tool.parameters) 
+                            ? tool.parameters.map(p => `<code style="background-color: #e8f4f8; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; display: block; margin: 2px 0; font-family: monospace;">${escapeHtml(p)}</code>`).join('')
+                            : '<span style="color: #999;">No parameters</span>';
                         
-                        // Add vanilla Minecraft commands (unmapped)
-                        const unmappedCommands = tools.minecraftCommands.filter(cmd => cmd.mapped === false);
-                        unmappedCommands.forEach(cmd => {
-                            // Combine command name with usage to show full syntax
-                            const fullSyntax = cmd.usage && cmd.usage.trim() 
-                                ? `${cmd.name} ${cmd.usage}` 
-                                : cmd.name || 'Unknown';
-                            allEntries.push({
-                                name: fullSyntax,
-                                type: 'Vanilla Command',
-                                category: '-',
-                                status: 'Unmapped',
-                                mappedTo: '-',
-                                targetType: '-',
-                                rowStyle: 'background-color: #fff5f5;'
-                            });
-                        });
-                    }
-                    
-                    // Sort entries: Custom Commands first, then Vanilla (mapped), then Vanilla (unmapped)
-                    allEntries.sort((a, b) => {
-                        if (a.type === 'Custom Command' && b.type !== 'Custom Command') return -1;
-                        if (a.type !== 'Custom Command' && b.type === 'Custom Command') return 1;
-                        if (a.status === 'Mapped' && b.status === 'Unmapped') return -1;
-                        if (a.status === 'Unmapped' && b.status === 'Mapped') return 1;
-                        return (a.name || '').localeCompare(b.name || '');
-                    });
-                    
-                    // Display all entries
-                    allEntries.forEach(entry => {
-                        const statusBadge = entry.status === 'Mapped' 
-                            ? '<span class="badge badge-success">✅ Mapped</span>'
-                            : '<span class="badge badge-error">❌ Unmapped</span>';
-                        
-                        const mappedToDisplay = entry.targetType === 'Vanilla' 
-                            ? `<code style="background-color: #e8f4f8; padding: 3px 6px; border-radius: 3px; font-size: 0.9em; font-family: monospace;">${escapeHtml(entry.mappedTo)}</code>`
-                            : entry.targetType === 'Tool Action'
-                            ? `<code style="background-color: #fff3cd; padding: 3px 6px; border-radius: 3px; font-size: 0.9em; font-family: monospace;">${escapeHtml(entry.mappedTo)}</code>`
-                            : entry.targetType === 'Custom Commands'
-                            ? entry.mappedTo !== 'N/A' 
-                                ? entry.mappedTo.split(', ').map(c => `<code style="background-color: #e8f4f8; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; display: inline-block; margin: 2px 4px 2px 0; font-family: monospace;">${escapeHtml(c)}</code>`).join('')
-                                : '<span style="color: #999;">N/A</span>'
-                            : '<span style="color: #999;">-</span>';
-                        
-                        // Color logic: Mapped commands are green, unmapped are red, custom commands are blue when mapped
-                        const nameColor = entry.status === 'Mapped' 
-                            ? (entry.type === 'Custom Command' ? '#667eea' : '#4CAF50')  // Custom: blue, Vanilla: green
-                            : '#f44336';  // Unmapped: red
-                        
-                        html += `<tr style="${entry.rowStyle}">
-                            <td><strong style="color: ${nameColor}; font-family: monospace;">${escapeHtml(entry.name)}</strong></td>
-                            <td>${escapeHtml(entry.type)}</td>
-                            <td>${escapeHtml(entry.category)}</td>
-                            <td>${statusBadge}</td>
-                            <td style="max-width: 400px; word-wrap: break-word;">${mappedToDisplay}</td>
+                        html += `<tr>
+                            <td><strong style="color: #667eea; font-family: monospace;">${escapeHtml(tool.name || 'Unknown')}</strong></td>
+                            <td style="max-width: 400px; word-wrap: break-word;">${escapeHtml(tool.description || 'No description')}</td>
+                            <td style="max-width: 300px;">${params}</td>
                         </tr>`;
                     });
                     
                     html += '</tbody></table></div></div>';
+                } else {
+                    html += '<div class="data-section"><h3>🔧 Available Tools</h3>';
+                    html += '<p>No tools available</p></div>';
                 }
                 
                 document.getElementById('tools').innerHTML = html || '<div class="loading">No tools data available</div>';

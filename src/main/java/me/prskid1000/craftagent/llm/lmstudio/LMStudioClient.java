@@ -5,8 +5,8 @@ import me.prskid1000.craftagent.exception.LLMServiceException;
 import me.prskid1000.craftagent.util.LogUtil;
 import me.prskid1000.craftagent.history.Message;
 import me.prskid1000.craftagent.llm.LLMClient;
-import me.prskid1000.craftagent.llm.ToolCallResponse;
-import me.prskid1000.craftagent.llm.ToolDefinitions;
+import me.prskid1000.craftagent.llm.LLMResponse;
+import me.prskid1000.craftagent.llm.LLMSchema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -97,7 +97,7 @@ public class LMStudioClient implements LLMClient {
 	}
 
 	@Override
-	public ToolCallResponse chatWithTools(List<Message> messages, net.minecraft.server.MinecraftServer server) {
+	public LLMResponse chat(List<Message> messages, net.minecraft.server.MinecraftServer server) {
 		try {
 			// Convert messages to OpenAI-compatible format (same as Ollama format)
 			List<Map<String, String>> openaiMessages = new ArrayList<>();
@@ -108,20 +108,18 @@ public class LMStudioClient implements LLMClient {
 				openaiMessages.add(openaiMsg);
 			}
 			
-			// Build request body manually (like OllamaClient)
+			// Build request body
 			Map<String, Object> requestBody = new HashMap<>();
 			requestBody.put("model", model);
 			requestBody.put("messages", openaiMessages);
 			requestBody.put("stream", false);
-			// Note: Tools are not needed when using structured output (json_schema)
-			// The LLM uses custom commands from the system prompt instead
-			// Add response_format for message output (structured output for simple data)
+			// Add response_format for structured output
 			// Use json_schema type (not json_object) - LM Studio only accepts "json_schema" or "text"
 			Map<String, Object> responseFormat = new HashMap<>();
 			responseFormat.put("type", "json_schema");
 			Map<String, Object> jsonSchema = new HashMap<>();
 			jsonSchema.put("name", "message_schema");
-			jsonSchema.put("schema", ToolDefinitions.getMessageSchema());
+			jsonSchema.put("schema", LLMSchema.getMessageSchema());
 			jsonSchema.put("strict", true);
 			responseFormat.put("json_schema", jsonSchema);
 			requestBody.put("response_format", responseFormat);
@@ -163,55 +161,7 @@ public class LMStudioClient implements LLMClient {
 			Map<String, Object> messageMap = (Map<String, Object>) firstChoice.get("message");
 			String content = (String) messageMap.get("content");
 			
-			// Parse tool calls if present
-			List<ToolCallResponse.ToolCall> toolCalls = new ArrayList<>();
-			Object toolCallsObj = messageMap.get("tool_calls");
-			if (toolCallsObj != null && toolCallsObj instanceof List) {
-				@SuppressWarnings("unchecked")
-				List<Map<String, Object>> toolCallsList = (List<Map<String, Object>>) toolCallsObj;
-				for (Map<String, Object> toolCallMap : toolCallsList) {
-					String id = (String) toolCallMap.get("id");
-					Map<String, Object> functionMap = (Map<String, Object>) toolCallMap.get("function");
-					if (functionMap != null) {
-						String name = (String) functionMap.get("name");
-						Object argumentsObj = functionMap.get("arguments");
-						Map<String, Object> arguments = new HashMap<>();
-						if (argumentsObj != null) {
-							// Handle both cases: arguments can be a Map (already parsed) or a String (JSON to parse)
-							if (argumentsObj instanceof Map) {
-								// Already a Map, use it directly
-								@SuppressWarnings("unchecked")
-								Map<String, Object> parsedArgs = (Map<String, Object>) argumentsObj;
-								arguments = parsedArgs;
-							} else if (argumentsObj instanceof String) {
-								// It's a JSON string, parse it
-								String argumentsStr = (String) argumentsObj;
-								try {
-									@SuppressWarnings("unchecked")
-								Map<String, Object> parsedArgs = objectMapper.readValue(argumentsStr, Map.class);
-								arguments = parsedArgs;
-							} catch (Exception e) {
-								// If parsing fails, try to extract command directly
-								if (argumentsStr.contains("\"command\"")) {
-									int start = argumentsStr.indexOf("\"command\"");
-									if (start >= 0) {
-										start = argumentsStr.indexOf("\"", start + 9) + 1;
-										int end = argumentsStr.indexOf("\"", start);
-										if (end > start) {
-											String cmd = argumentsStr.substring(start, end);
-											arguments.put("command", cmd);
-											}
-										}
-									}
-								}
-							}
-						}
-						toolCalls.add(new ToolCallResponse.ToolCall(id, name, arguments));
-					}
-				}
-			}
-			
-			return new ToolCallResponse(content != null ? content : "", toolCalls);
+			return new LLMResponse(content != null ? content : "");
 		} catch (LLMServiceException e) {
 			throw e;
 		} catch (Exception e) {

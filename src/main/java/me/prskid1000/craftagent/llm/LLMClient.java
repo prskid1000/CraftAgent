@@ -8,25 +8,23 @@ import java.util.List;
 public interface LLMClient {
 
     /**
-     * Lets the LLM generate a response with tool calling support.
-     * Commands are executed via tool calls, messages use structured output.
-     * Uses tools with command information from the server.
+     * Lets the LLM generate a response.
+     * Uses structured output for messages.
      * 
      * @param messages conversationHistory
-     * @param server The Minecraft server instance (for getting command information)
-     * @return ToolCallResponse containing tool calls and/or content
+     * @param server The Minecraft server instance
+     * @return LLMResponse containing content
      */
-    ToolCallResponse chatWithTools(List<Message> messages, MinecraftServer server);
+    LLMResponse chat(List<Message> messages, MinecraftServer server);
     
     /**
-     * Lets the LLM generate a response with tool calling support (without server - fallback).
-     * Uses generic tool definitions without command information.
+     * Lets the LLM generate a response (without server - fallback).
      * 
      * @param messages conversationHistory
-     * @return ToolCallResponse containing tool calls and/or content
+     * @return LLMResponse containing content
      */
-    default ToolCallResponse chatWithTools(List<Message> messages) {
-        return chatWithTools(messages, null);
+    default LLMResponse chat(List<Message> messages) {
+        return chat(messages, null);
     }
 
     /**
