@@ -45,6 +45,7 @@ public class CraftAgent implements ModInitializer {
 
         NPCFactory npcFactory = new NPCFactory(
             configProvider,
+            repositoryFactory.getConversationRepository(),
             repositoryFactory.getPrivateBookPageRepository(),
             repositoryFactory.getMessageRepository(),
             repositoryFactory.getSharebookRepository()

@@ -153,7 +153,7 @@ class NPCService(
                         // Save config to disk immediately so it persists across restarts
                         configProvider.saveNpcConfig(config)
                         
-                        val npc = factory.createNpc(npcEntity, config, resourceProvider.loadedConversations[config.uuid])
+                        val npc = factory.createNpc(npcEntity, config)
                         // Owner is now stored in config, no need to set on controller
                         uuidToNpc[config.uuid] = npc
                         entityUuidToConfigUuid[npcEntity.uuid] = config.uuid
@@ -192,7 +192,7 @@ class NPCService(
                     npcToRemove.llmClient.stopService()
                     npcToRemove.eventHandler.stopService()
                     npcToRemove.contextProvider.chunkManager.stopService()
-                    resourceProvider.addConversations(uuid, npcToRemove.history.latestConversations)
+                    // Conversations are already saved in database, no need to save again
                     uuidToNpc.remove(uuid)
                     entityUuidToConfigUuid.remove(entityUuid)
 
@@ -215,12 +215,25 @@ class NPCService(
             }
             
             // Database operations on background thread (blocking I/O)
-            // Delete messages where NPC is sender or recipient
+            // Delete all associated data for removed NPC
             CompletableFuture.runAsync({
                 try {
+                    // Delete conversations
+                    resourceProvider.conversationRepository.deleteByUuid(uuid)
+                    // Delete private book pages
+                    resourceProvider.privateBookPageRepository?.deleteByNpcUuid(uuid)
+                    // Delete messages where NPC is sender or recipient
                     resourceProvider.messageRepository?.deleteByNpcUuid(uuid)
+                    // Note: Sharebook is global/shared knowledge - don't delete when removing individual NPC
+                    
+                    // Check if this was the last NPC - if so, clear shared knowledge
+                    val remainingNpcCount = uuidToNpc.size - 1 // -1 because we haven't removed from map yet
+                    if (remainingNpcCount == 0) {
+                        // Last NPC being removed - clear all shared knowledge
+                        resourceProvider.sharebookRepository?.deleteAll()
+                    }
                 } catch (e: Exception) {
-                    LogUtil.error("Error deleting messages for removed NPC: $uuid", e)
+                    LogUtil.error("Error deleting data for removed NPC: $uuid", e)
                 }
             }, executorService)
         }
@@ -239,9 +252,9 @@ class NPCService(
                     npcToDelete.llmClient.stopService()
                     npcToDelete.eventHandler.stopService()
                     npcToDelete.contextProvider.chunkManager.stopService()
-                    npcToDelete.contextProvider.memoryManager?.cleanup()
+                    // Memory is stored directly in database, no cleanup needed
                     
-                    resourceProvider.loadedConversations.remove(uuid)
+                    // Conversations are stored in database, no need to remove from memory
                     uuidToNpc.remove(uuid)
                     entityUuidToConfigUuid.remove(entityUuid)
                     
@@ -261,8 +274,15 @@ class NPCService(
                     resourceProvider.privateBookPageRepository?.deleteByNpcUuid(uuid)
                     // Delete messages where NPC is sender or recipient
                     resourceProvider.messageRepository?.deleteByNpcUuid(uuid)
-                    // Delete sharebook pages authored by this NPC
-                    resourceProvider.sharebookRepository?.deleteByAuthorUuid(uuid.toString())
+                    // Note: Sharebook is global/shared knowledge - don't delete when deleting individual NPC
+                    
+                    // Check if this was the last NPC - if so, clear shared knowledge
+                    val remainingNpcCount = uuidToNpc.size - 1 // -1 because we haven't removed from map yet
+                    if (remainingNpcCount == 0) {
+                        // Last NPC being deleted - clear all shared knowledge
+                        resourceProvider.sharebookRepository?.deleteAll()
+                    }
+                    
                     configProvider.deleteNpcConfig(uuid)
                 } catch (e: Exception) {
                     LogUtil.error("Error deleting NPC data from database: $uuid", e)
@@ -272,14 +292,20 @@ class NPCService(
             // NPC not in map, clean up data on background thread
             CompletableFuture.runAsync({
                 try {
-                    resourceProvider.loadedConversations.remove(uuid)
+                    // Conversations are stored in database, no need to remove from memory
                     resourceProvider.conversationRepository.deleteByUuid(uuid)
                     // Delete private book pages for this NPC
                     resourceProvider.privateBookPageRepository?.deleteByNpcUuid(uuid)
                     // Delete messages where NPC is sender or recipient
                     resourceProvider.messageRepository?.deleteByNpcUuid(uuid)
-                    // Delete sharebook pages authored by this NPC
-                    resourceProvider.sharebookRepository?.deleteByAuthorUuid(uuid.toString())
+                    // Note: Sharebook is global/shared knowledge - don't delete when deleting individual NPC
+                    
+                    // Check if there are any remaining NPCs - if not, clear shared knowledge
+                    if (uuidToNpc.isEmpty()) {
+                        // No NPCs left - clear all shared knowledge
+                        resourceProvider.sharebookRepository?.deleteAll()
+                    }
+                    
                     configProvider.deleteNpcConfig(uuid)
                 } catch (e: Exception) {
                     LogUtil.error("Error cleaning up NPC data: $uuid", e)
@@ -322,8 +348,7 @@ class NPCService(
                     npcToShutdown.eventHandler.stopService()
                     npcToShutdown.contextProvider.chunkManager.stopService()
                     
-                    // Save conversations before shutdown
-                    resourceProvider.addConversations(uuid, npcToShutdown.history.latestConversations)
+                    // Conversations are already saved in database, no need to save again
                     
                     // Remove from maps
                     uuidToNpc.remove(uuid)

@@ -46,10 +46,11 @@ class ConversationRepository(
     }
 
     /**
-     * Selects latest one hundred conversations of an NPC
+     * Selects latest conversations of an NPC, ordered by timestamp (oldest first)
+     * @param limit Maximum number of conversations to return (default 100)
      */
-    fun selectByUuid(uuid: UUID): List<Conversation> {
-        val sql = "SELECT * FROM conversations WHERE uuid = '%s' ORDER BY id DESC LIMIT 100".format(uuid.toString())
+    fun selectByUuid(uuid: UUID, limit: Int = 100): List<Conversation> {
+        val sql = "SELECT * FROM conversations WHERE uuid = '%s' ORDER BY timestamp ASC LIMIT %d".format(uuid.toString(), limit)
         return executeAndProcessConversations(sql)
     }
 
@@ -61,6 +62,32 @@ class ConversationRepository(
         sqliteClient.update(sql)
     }
 
+    /**
+     * Deletes conversations by their database IDs
+     */
+    fun deleteByIds(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        val idsString = ids.joinToString(",")
+        val sql = "DELETE FROM conversations WHERE id IN ($idsString)"
+        sqliteClient.update(sql)
+    }
+
+    /**
+     * Updates a conversation message by finding the system message and updating it
+     */
+    fun updateSystemMessage(uuid: UUID, newMessage: String) {
+        // Delete old system message
+        val deleteSql = "DELETE FROM conversations WHERE uuid = '%s' AND role = 'system'".format(uuid.toString())
+        sqliteClient.update(deleteSql)
+        // Insert new system message with earliest timestamp
+        val statement = sqliteClient.buildPreparedStatement(
+            "INSERT INTO conversations (uuid, role, message, timestamp) VALUES (?, 'system', ?, 0)"
+        )
+        statement?.setString(1, uuid.toString())
+        statement?.setString(2, newMessage)
+        sqliteClient.update(statement)
+    }
+
     private fun executeAndProcessConversations(sql: String): List<Conversation> {
         val result = sqliteClient.query(sql)
         val conversations = arrayListOf<Conversation>()
@@ -70,6 +97,7 @@ class ConversationRepository(
         while (result.next()) {
             val conversation =
                 Conversation(
+                    result.getLong("id"),
                     UUID.fromString(result.getString("uuid")),
                     result.getString("role"),
                     result.getString("message"),

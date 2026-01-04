@@ -79,6 +79,15 @@ class SharebookRepository(
         sqliteClient.update(sql)
     }
 
+    /**
+     * Deletes all sharebook pages.
+     * Used when the last NPC is removed to clear shared knowledge.
+     */
+    fun deleteAll() {
+        val sql = "DELETE FROM sharebook"
+        sqliteClient.update(sql)
+    }
+
     private fun executeAndProcessPages(sql: String): List<SharebookPage> {
         val result = sqliteClient.query(sql)
         val pages = arrayListOf<SharebookPage>()

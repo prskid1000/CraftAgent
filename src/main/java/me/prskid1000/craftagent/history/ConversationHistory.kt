@@ -2,12 +2,20 @@ package me.prskid1000.craftagent.history
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import me.prskid1000.craftagent.constant.Instructions
+import me.prskid1000.craftagent.database.repositories.ConversationRepository
 import me.prskid1000.craftagent.llm.LLMClient
+import me.prskid1000.craftagent.model.database.Conversation
+import java.util.UUID
 
+/**
+ * ConversationHistory that uses direct database calls instead of in-memory storage.
+ * All conversations are persisted immediately to the database.
+ */
 class ConversationHistory(
     private val llmClient: LLMClient,
+    private val conversationRepository: ConversationRepository,
+    private val npcUuid: UUID,
     initMessage: String,
-    val latestConversations: MutableList<ConversationMessage>,
     private val maxHistoryLength: Int = 5
 ) {
     companion object {
@@ -18,16 +26,30 @@ class ConversationHistory(
         setInitMessage(initMessage)
     }
 
-    private var needsSummarization = false
+    /**
+     * Gets the latest conversations from database, ordered by timestamp (oldest first)
+     */
+    val latestConversations: List<ConversationMessage>
+        get() = synchronized(this) {
+            conversationRepository.selectByUuid(npcUuid, maxHistoryLength * 2)
+                .map { ConversationMessage(it.message, it.role, it.timestamp) }
+        }
 
     @Synchronized
     fun add(message: ConversationMessage) {
-        latestConversations.add(message)
+        // Insert directly to database
+        val conversation = Conversation(
+            uuid = npcUuid,
+            role = message.role,
+            message = message.message,
+            timestamp = message.timestamp
+        )
+        conversationRepository.insert(conversation)
 
-        if (latestConversations.size >= maxHistoryLength) {
-            // Mark that summarization is needed, but don't do it immediately
-            // The scheduler will handle it during the next processLLM() call
-            needsSummarization = true
+        // Check if summarization is needed
+        val currentCount = conversationRepository.selectByUuid(npcUuid, maxHistoryLength + 1).size
+        if (currentCount > maxHistoryLength) {
+            // Summarization will be handled in performSummarizationIfNeeded()
         }
     }
 
@@ -38,35 +60,53 @@ class ConversationHistory(
      */
     @Synchronized
     fun performSummarizationIfNeeded(): Boolean {
-        if (!needsSummarization || latestConversations.size < maxHistoryLength) {
-            needsSummarization = false
+        val allConversations = conversationRepository.selectByUuid(npcUuid, maxHistoryLength * 2)
+        
+        // Filter out system message for counting
+        val nonSystemConversations = allConversations.filter { it.role != "system" }
+        
+        if (nonSystemConversations.size < maxHistoryLength) {
             return false
         }
 
         val removeCount = maxHistoryLength / 3
-        if (latestConversations.size < removeCount + 1) {
-            needsSummarization = false
+        if (nonSystemConversations.size < removeCount + 1) {
             return false
         }
 
-        val toSummarize = latestConversations.subList(1, removeCount + 1).toList()
-        val message = summarize(toSummarize)
-        latestConversations.removeAll(toSummarize)
-        latestConversations.add(1, message)
-        needsSummarization = false
-        return true
-    }
+        // Get conversations to summarize (skip system message, take next removeCount)
+        val systemMessage = allConversations.firstOrNull { it.role == "system" }
+        val toSummarize = nonSystemConversations.take(removeCount)
+        
+        if (toSummarize.isEmpty()) {
+            return false
+        }
 
-    private fun updateConversations() {
-        // This method is now deprecated - use performSummarizationIfNeeded() instead
-        // Kept for backward compatibility but should not be called directly
-        performSummarizationIfNeeded()
+        // Convert to ConversationMessage for summarization
+        val messagesToSummarize = toSummarize.map { ConversationMessage(it.message, it.role, it.timestamp) }
+        val summaryMessage = summarize(messagesToSummarize)
+        
+        // Delete old conversations from database
+        val idsToDelete = toSummarize.map { it.id }
+        conversationRepository.deleteByIds(idsToDelete)
+        
+        // Insert summary message
+        val summaryConversation = Conversation(
+            uuid = npcUuid,
+            role = summaryMessage.role,
+            message = summaryMessage.message,
+            timestamp = summaryMessage.timestamp
+        )
+        conversationRepository.insert(summaryConversation)
+        
+        return true
     }
 
     private fun summarize(conversations: List<ConversationMessage>): ConversationMessage {
         val summarizeMessage = ConversationMessage(
-            Instructions.SUMMARY_PROMPT.format( objectMapper.writeValueAsString(conversations)),
-            "user")
+            Instructions.SUMMARY_PROMPT.format(objectMapper.writeValueAsString(conversations)),
+            "user"
+        )
         // Use chat and extract content
         // NOTE: This is called during processLLM(), so it's within the scheduler's control
         // Pass null for server since summarization doesn't need server context
@@ -75,26 +115,30 @@ class ConversationHistory(
     }
 
     private fun setInitMessage(initMessage: String) {
-        // Only add system message if it doesn't already exist (avoid duplicates when loading from DB)
-        val hasSystemMessage = latestConversations.any { it.role == "system" }
+        // Check if system message already exists in database
+        val existing = conversationRepository.selectByUuid(npcUuid, 100)
+        val hasSystemMessage = existing.any { it.role == "system" }
+        
         if (!hasSystemMessage) {
-            latestConversations.add(0, ConversationMessage(initMessage, "system"))
+            // Insert system message with timestamp 0 (earliest)
+            val systemConversation = Conversation(
+                uuid = npcUuid,
+                role = "system",
+                message = initMessage,
+                timestamp = 0
+            )
+            conversationRepository.insert(systemConversation)
         }
     }
 
     @Synchronized
     fun updateSystemPrompt(newSystemPrompt: String) {
-        // Find and update the system message (should be at index 0)
-        val systemIndex = latestConversations.indexOfFirst { it.role == "system" }
-        if (systemIndex >= 0) {
-            latestConversations[systemIndex] = ConversationMessage(newSystemPrompt, "system")
-        } else {
-            // If no system message exists, add it at the beginning
-            latestConversations.add(0, ConversationMessage(newSystemPrompt, "system"))
-        }
+        // Update system message in database
+        conversationRepository.updateSystemMessage(npcUuid, newSystemPrompt)
     }
 
     fun getLastMessage(): String {
-        return latestConversations.lastOrNull()?.message ?: ""
+        val conversations = latestConversations
+        return conversations.lastOrNull()?.message ?: ""
     }
 }

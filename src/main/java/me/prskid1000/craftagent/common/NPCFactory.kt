@@ -4,6 +4,7 @@ import me.prskid1000.craftagent.config.ConfigProvider
 import me.prskid1000.craftagent.config.NPCConfig
 import me.prskid1000.craftagent.constant.Instructions
 import me.prskid1000.craftagent.context.ContextProvider
+import me.prskid1000.craftagent.database.repositories.ConversationRepository
 import me.prskid1000.craftagent.database.repositories.PrivateBookPageRepository
 import me.prskid1000.craftagent.database.repositories.MessageRepository
 import me.prskid1000.craftagent.database.repositories.SharebookRepository
@@ -17,16 +18,16 @@ import me.prskid1000.craftagent.llm.ollama.OllamaClient
 import me.prskid1000.craftagent.llm.lmstudio.LMStudioClient
 import me.prskid1000.craftagent.memory.MemoryManager
 import me.prskid1000.craftagent.model.NPC
-import me.prskid1000.craftagent.model.database.Conversation
 import net.minecraft.server.network.ServerPlayerEntity
 
 class NPCFactory(
     private val configProvider: ConfigProvider,
+    private val conversationRepository: ConversationRepository,
     private val privateBookPageRepository: PrivateBookPageRepository,
     private val messageRepository: MessageRepository,
     private val sharebookRepository: SharebookRepository
 ) {
-     fun createNpc(npcEntity: ServerPlayerEntity, config: NPCConfig, loadedConversation: List<Conversation>?): NPC {
+     fun createNpc(npcEntity: ServerPlayerEntity, config: NPCConfig): NPC {
         val baseConfig = configProvider.baseConfig
         val contextProvider = ContextProvider(npcEntity, baseConfig)
         
@@ -52,10 +53,13 @@ class NPCFactory(
             baseConfig
         )
 
-        val messages = loadedConversation
-            ?.map { ConversationMessage(it.message, it.role, it.timestamp) }
-            ?.toMutableList() ?: mutableListOf()
-        val history = ConversationHistory(llmClient, defaultPrompt, messages, baseConfig.conversationHistoryLength)
+        val history = ConversationHistory(
+            llmClient,
+            conversationRepository,
+            config.uuid,
+            defaultPrompt,
+            baseConfig.conversationHistoryLength
+        )
         val eventHandler = NPCEventHandler(llmClient, history, contextProvider, config, messageRepository, sharebookRepository)
         return NPC(npcEntity, llmClient, history, eventHandler, contextProvider, config)
     }
