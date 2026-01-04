@@ -42,19 +42,26 @@ public class MemoryActionHandler {
         }
         
         String trimmed = action.trim();
-        String[] parts = trimmed.split("\\s+", 4);
-        if (parts.length < 3) {
+        
+        // Parse with quote awareness
+        String[] parsed = parseQuotedArguments(trimmed);
+        if (parsed.length < 3) {
             LogUtil.error("MemoryActionHandler: Invalid action format (need at least 3 parts): " + action);
             return false;
         }
         
-        String bookType = parts[0].toLowerCase();
-        String operation = parts[1].toLowerCase();
-        String pageTitle = parts[2];
-        String content = parts.length > 3 ? parts[3] : "";
+        String bookType = parsed[0].toLowerCase();
+        String operation = parsed[1].toLowerCase();
+        String pageTitle = parsed[2];
+        String content = parsed.length > 3 ? parsed[3] : "";
         
         // For "add" operations, content MUST be in single or double quotes
-        if ("add".equals(operation) && !content.isEmpty()) {
+        if ("add".equals(operation)) {
+            if (content.isEmpty()) {
+                LogUtil.error("MemoryActionHandler: Content is required for 'add' operation. Action: " + action);
+                return false;
+            }
+            
             boolean singleQuoted = content.startsWith("'") && content.endsWith("'");
             boolean doubleQuoted = content.startsWith("\"") && content.endsWith("\"");
             
@@ -67,8 +74,15 @@ public class MemoryActionHandler {
             content = content.substring(1, content.length() - 1);
         }
         
+        // Strip quotes from title if present
+        if ((pageTitle.startsWith("'") && pageTitle.endsWith("'")) || 
+            (pageTitle.startsWith("\"") && pageTitle.endsWith("\""))) {
+            pageTitle = pageTitle.substring(1, pageTitle.length() - 1);
+        }
+        
         // Replace newlines and normalize whitespace
         content = content.replaceAll("\\r\\n|\\r|\\n", " ").replaceAll("\\s+", " ").trim();
+        pageTitle = pageTitle.trim();
         
         LogUtil.info("MemoryActionHandler: Processing action - type: " + bookType + ", op: " + operation + ", title: " + pageTitle + ", content length: " + content.length());
         
@@ -80,6 +94,49 @@ public class MemoryActionHandler {
                 yield false;
             }
         };
+    }
+    
+    /**
+     * Parses a string into arguments, respecting quoted strings (both single and double quotes).
+     * Handles cases like: sharedbook add "Title" "Content with spaces"
+     */
+    private String[] parseQuotedArguments(String input) {
+        java.util.List<String> args = new java.util.ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        char quoteChar = 0;
+        boolean inQuotes = false;
+        
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            
+            if (!inQuotes && (c == '\'' || c == '"')) {
+                // Start of quoted string
+                inQuotes = true;
+                quoteChar = c;
+                current.append(c);
+            } else if (inQuotes && c == quoteChar) {
+                // End of quoted string
+                current.append(c);
+                inQuotes = false;
+                quoteChar = 0;
+            } else if (!inQuotes && Character.isWhitespace(c)) {
+                // Whitespace outside quotes - end of argument
+                if (current.length() > 0) {
+                    args.add(current.toString());
+                    current.setLength(0);
+                }
+            } else {
+                // Regular character
+                current.append(c);
+            }
+        }
+        
+        // Add last argument if any
+        if (current.length() > 0) {
+            args.add(current.toString());
+        }
+        
+        return args.toArray(new String[0]);
     }
     
     private boolean handleSharedBook(String op, String title, String content) {
@@ -164,8 +221,8 @@ public class MemoryActionHandler {
         if (action == null || action.trim().isEmpty()) return false;
         
         // Normalize newlines and extra whitespace
-        String normalized = action.replaceAll("\\r\\n|\\r|\\n", " ").replaceAll("\\s+", " ").trim();
-        String[] parts = normalized.split("\\s+", 4);
+        String normalized = action.replaceAll("\\r\\n|\\r|\\n", " ").trim();
+        String[] parts = parseQuotedArguments(normalized);
         if (parts.length < 3) return false;
         
         String bookType = parts[0].toLowerCase();

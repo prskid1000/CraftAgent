@@ -12,16 +12,6 @@ public class Instructions {
 
 	private Instructions() {}
 
-    public static final String INITIAL_PROMPT = """
-        You have spawned into the world. Greet your owner warmly and introduce yourself (name: %s, age: %d, gender: %s). 
-        
-        IMPORTANT: You are part of a community of NPCs. Before starting tasks:
-        1. Check nearbyEntities in context to see if other NPCs or players are nearby
-        2. Consider forming teams for complex tasks (mining, building, farming)
-        3. Share your intentions with nearby agents through chat
-        
-        Begin with a simple task like gathering wood, but stay open to collaboration and player requests.
-        """;
 
 	/**
 	 * System prompt for NPC behavior
@@ -155,10 +145,4 @@ public class Instructions {
         return getLlmSystemPrompt(npcName, age, gender, commands, customSystemPrompt, llmType, null, null);
 	}
 
-	/**
-	 * Generate personalized initial greeting that considers nearby NPCs
-	 */
-	public static String getInitialPromptWithContext(String npcName, int age, String gender) {
-	    return String.format(INITIAL_PROMPT, npcName, age, gender);
-	}
 }

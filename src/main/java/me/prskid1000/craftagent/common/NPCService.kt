@@ -161,9 +161,6 @@ class NPCService(
                         entityUuidToConfigUuid[npcEntity.uuid] = config.uuid
 
                         LogUtil.infoInChat("Added NPC with name: $name")
-                        
-                        // Store initial prompt in state (will be processed by scheduler)
-                        npc.eventHandler.updateState(Instructions.getInitialPromptWithContext(config.npcName, config.age, config.gender))
                     } catch (e: Exception) {
                         LogUtil.error("Error creating NPC: $name", e)
                         LogUtil.errorInChat("Failed to initialize NPC: ${e.message}")
