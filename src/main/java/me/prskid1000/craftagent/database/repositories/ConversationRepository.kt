@@ -13,7 +13,7 @@ class ConversationRepository(
 
     fun createTable() {
         val sql = """
-            CREATE TABLE IF NOT EXISTS conversations (
+            CREATE TABLE conversations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 uuid CHARACTER(36) NOT NULL,
                 role CHARACTER(9) NOT NULL,
@@ -21,20 +21,21 @@ class ConversationRepository(
                 timestamp INTEGER NOT NULL DEFAULT 0
             );
         """
-        sqliteClient.update(sql)
         
-        val indexSql = "CREATE INDEX IF NOT EXISTS idx_conversations_uuid ON conversations(uuid, timestamp);"
-        sqliteClient.update(indexSql)
-        
-        // Migration: Add timestamp column if it doesn't exist (for existing databases)
-        // If this fails, RepositoryFactory will handle it by resetting the database
-        try {
-            sqliteClient.update("ALTER TABLE conversations ADD COLUMN timestamp INTEGER DEFAULT 0")
-            // Update existing rows to have current timestamp
-            sqliteClient.update("UPDATE conversations SET timestamp = ${System.currentTimeMillis()} WHERE timestamp = 0 OR timestamp IS NULL")
-        } catch (e: Exception) {
-            // Re-throw to let RepositoryFactory handle migration errors
-            throw e
+        // Only recreate table if schema has changed
+        if (sqliteClient.needsSchemaUpdate("conversations", sql)) {
+            // Drop table if it exists (this also drops indexes)
+            sqliteClient.dropTable("conversations")
+            
+            // Create table from scratch
+            sqliteClient.update(sql)
+            
+            // Create index
+            val indexSql = "CREATE INDEX idx_conversations_uuid ON conversations(uuid, timestamp);"
+            sqliteClient.update(indexSql)
+            
+            // Store schema version
+            sqliteClient.setSchemaVersion("conversations", sqliteClient.calculateSchemaHash(sql))
         }
     }
 

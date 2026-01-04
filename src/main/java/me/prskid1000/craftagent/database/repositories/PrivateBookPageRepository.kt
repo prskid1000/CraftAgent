@@ -14,7 +14,7 @@ class PrivateBookPageRepository(
 
     fun createTable() {
         val sql = """
-            CREATE TABLE IF NOT EXISTS private_book (
+            CREATE TABLE private_book (
                 npc_uuid TEXT NOT NULL,
                 page_title TEXT NOT NULL,
                 content TEXT NOT NULL,
@@ -22,7 +22,18 @@ class PrivateBookPageRepository(
                 PRIMARY KEY(npc_uuid, page_title)
             );
         """
-        sqliteClient.update(sql)
+        
+        // Only recreate table if schema has changed
+        if (sqliteClient.needsSchemaUpdate("private_book", sql)) {
+            // Drop table if it exists (this also drops indexes)
+            sqliteClient.dropTable("private_book")
+            
+            // Create table from scratch
+            sqliteClient.update(sql)
+            
+            // Store schema version
+            sqliteClient.setSchemaVersion("private_book", sqliteClient.calculateSchemaHash(sql))
+        }
     }
 
     fun insertOrUpdate(page: PrivateBookPage, maxPages: Int) {

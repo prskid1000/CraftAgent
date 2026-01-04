@@ -14,7 +14,7 @@ class MessageRepository(
 
     fun createTable() {
         val sql = """
-            CREATE TABLE IF NOT EXISTS messages (
+            CREATE TABLE messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 recipient_uuid TEXT NOT NULL,
                 sender_uuid TEXT NOT NULL,
@@ -25,20 +25,22 @@ class MessageRepository(
                 read INTEGER NOT NULL DEFAULT 0
             );
         """
-        sqliteClient.update(sql)
         
-        // Add sender_type column if it doesn't exist (for existing databases)
-        // If this fails, RepositoryFactory will handle it by resetting the database
-        try {
-            val alterSql = "ALTER TABLE messages ADD COLUMN sender_type TEXT NOT NULL DEFAULT 'NPC';"
-            sqliteClient.update(alterSql)
-        } catch (e: Exception) {
-            // Re-throw to let RepositoryFactory handle migration errors
-            throw e
+        // Only recreate table if schema has changed
+        if (sqliteClient.needsSchemaUpdate("messages", sql)) {
+            // Drop table if it exists (this also drops indexes)
+            sqliteClient.dropTable("messages")
+            
+            // Create table from scratch
+            sqliteClient.update(sql)
+            
+            // Create index
+            val indexSql = "CREATE INDEX idx_message_recipient ON messages(recipient_uuid, read);"
+            sqliteClient.update(indexSql)
+            
+            // Store schema version
+            sqliteClient.setSchemaVersion("messages", sqliteClient.calculateSchemaHash(sql))
         }
-        
-        val indexSql = "CREATE INDEX IF NOT EXISTS idx_message_recipient ON messages(recipient_uuid, read);"
-        sqliteClient.update(indexSql)
     }
 
     fun insert(message: Message, maxMessages: Int) {

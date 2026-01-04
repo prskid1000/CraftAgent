@@ -13,7 +13,7 @@ class SharebookRepository(
 
     fun createTable() {
         val sql = """
-            CREATE TABLE IF NOT EXISTS sharebook (
+            CREATE TABLE sharebook (
                 page_title TEXT NOT NULL,
                 author_uuid TEXT NOT NULL,
                 content TEXT NOT NULL,
@@ -21,7 +21,18 @@ class SharebookRepository(
                 PRIMARY KEY(page_title, author_uuid)
             );
         """
-        sqliteClient.update(sql)
+        
+        // Only recreate table if schema has changed
+        if (sqliteClient.needsSchemaUpdate("sharebook", sql)) {
+            // Drop table if it exists (this also drops indexes)
+            sqliteClient.dropTable("sharebook")
+            
+            // Create table from scratch
+            sqliteClient.update(sql)
+            
+            // Store schema version
+            sqliteClient.setSchemaVersion("sharebook", sqliteClient.calculateSchemaHash(sql))
+        }
     }
 
     fun insertOrUpdate(page: SharebookPage, maxPages: Int) {
