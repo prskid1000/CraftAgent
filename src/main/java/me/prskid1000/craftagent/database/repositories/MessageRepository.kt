@@ -21,8 +21,7 @@ class MessageRepository(
                 sender_name TEXT NOT NULL,
                 sender_type TEXT NOT NULL,
                 content TEXT NOT NULL,
-                timestamp INTEGER NOT NULL,
-                read INTEGER NOT NULL DEFAULT 0
+                timestamp INTEGER NOT NULL
             );
         """
         
@@ -39,8 +38,8 @@ class MessageRepository(
             // Create table from scratch
             sqliteClient.update(sql)
             
-            // Create index
-            val indexSql = "CREATE INDEX idx_message_recipient ON messages(recipient_uuid, read);"
+            // Create index (simplified - no read column)
+            val indexSql = "CREATE INDEX idx_message_recipient ON messages(recipient_uuid);"
             sqliteClient.update(indexSql)
             
             // Store schema version
@@ -50,17 +49,16 @@ class MessageRepository(
 
     fun insert(message: Message, maxMessages: Int) {
         // Check if we need to delete oldest message if at limit
-        val existing = selectByRecipient(message.recipientUuid, maxMessages + 1, false)
+        val existing = selectByRecipient(message.recipientUuid, maxMessages + 1)
         if (existing.size >= maxMessages) {
-            // Delete oldest message (prioritize read messages for deletion)
-            val oldestRead = existing.filter { it.read }.minByOrNull { it.timestamp }
-            val oldest = oldestRead ?: existing.minByOrNull { it.timestamp }
+            // Delete oldest message by timestamp
+            val oldest = existing.minByOrNull { it.timestamp }
             oldest?.let { delete(it.id) }
         }
         
         val statement = sqliteClient.buildPreparedStatement(
-            """INSERT INTO messages (recipient_uuid, sender_uuid, sender_name, sender_type, content, timestamp, read)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO messages (recipient_uuid, sender_uuid, sender_name, sender_type, content, timestamp)
+               VALUES (?, ?, ?, ?, ?, ?)""",
         )
         if (statement == null) {
             throw RuntimeException("Failed to create prepared statement for message insert")
@@ -72,24 +70,17 @@ class MessageRepository(
         statement.setString(4, message.senderType)
         statement.setString(5, message.content)
         statement.setLong(6, message.timestamp)
-        statement.setInt(7, if (message.read) 1 else 0)
         sqliteClient.update(statement)
         
         // Note: sqliteClient.update() swallows exceptions, so verification should be done
         // by checking if the message exists after the insert
     }
 
-    fun selectByRecipient(recipientUuid: UUID, limit: Int = 50, unreadOnly: Boolean = false): List<Message> {
-        val unreadFilter = if (unreadOnly) " AND read = 0" else ""
-        val sql = "SELECT * FROM messages WHERE recipient_uuid = '%s'$unreadFilter ORDER BY timestamp DESC LIMIT %d".format(
+    fun selectByRecipient(recipientUuid: UUID, limit: Int = 50): List<Message> {
+        val sql = "SELECT * FROM messages WHERE recipient_uuid = '%s' ORDER BY timestamp DESC LIMIT %d".format(
             recipientUuid.toString(), limit
         )
         return executeAndProcessMessages(sql)
-    }
-
-    fun markAsRead(messageId: Long) {
-        val sql = "UPDATE messages SET read = 1 WHERE id = %d".format(messageId)
-        sqliteClient.update(sql)
     }
 
     fun delete(messageId: Long) {
@@ -119,8 +110,7 @@ class MessageRepository(
                 result.getString("sender_name"),
                 result.getString("sender_type") ?: "NPC", // Default to "NPC" for backward compatibility
                 result.getString("content"),
-                result.getLong("timestamp"),
-                result.getInt("read") == 1
+                result.getLong("timestamp")
             )
             messages.add(message)
         }

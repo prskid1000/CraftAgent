@@ -240,7 +240,7 @@ public class WebServer {
                 return;
             }
             
-            var messages = messageRepo.selectByRecipient(uuid, 100, false);
+            var messages = messageRepo.selectByRecipient(uuid, 100);
             List<Map<String, Object>> mailList = new ArrayList<>();
             for (var msg : messages) {
                 Map<String, Object> mailMap = new HashMap<>();
@@ -248,7 +248,7 @@ public class WebServer {
                 mailMap.put("senderName", msg.getSenderName());
                 mailMap.put("content", msg.getContent());
                 mailMap.put("timestamp", msg.getTimestamp());
-                mailMap.put("read", msg.getRead());
+                // No read/unread concept - all mail shown is "new" until processed by LLM
                 mailList.add(mailMap);
             }
             sendJsonResponse(exchange, 200, mailList);

@@ -130,33 +130,40 @@ public class ContextProvider {
 		});
 		memory.put("privateBook", privatePages);
 		
-		// Add mail (messages) - only unread messages to avoid overwhelming context
-		// Delete messages after including in context (they've been sent to LLM, considered as read)
+		// Add mail (messages) - get ALL messages, delete ALL immediately, send first 10 to LLM
+		// No read/unread concept - any mail found is automatically "new" and will be processed
 		if (messageRepository != null && npcUuid != null) {
 			java.util.List<java.util.Map<String, Object>> messages = new java.util.ArrayList<>();
-			java.util.List<Long> messageIdsToDelete = new java.util.ArrayList<>();
+			java.util.List<Long> allMessageIds = new java.util.ArrayList<>();
 			
-			messageRepository.selectByRecipient(npcUuid, 10, true).forEach(msg -> {
-				// Add message to context
-				java.util.Map<String, Object> msgMap = new java.util.HashMap<>();
-				msgMap.put("id", msg.getId());
-				msgMap.put("senderName", msg.getSenderName());
-				msgMap.put("content", msg.getContent());
-				msgMap.put("timestamp", msg.getTimestamp());
-				msgMap.put("read", true); // Mark as read in context
-				messages.add(msgMap);
-				
-				// Mark message for deletion after it's been sent to LLM
-				messageIdsToDelete.add(msg.getId());
-			});
+			// Get ALL messages for this NPC (up to 100 to ensure we get everything)
+			java.util.List<me.prskid1000.craftagent.model.database.Message> allMessages = 
+				messageRepository.selectByRecipient(npcUuid, 100);
 			
-			// Delete messages after they've been included in context
-			// This happens after the context is built and sent to LLM
-			for (Long messageId : messageIdsToDelete) {
+			// Take first 10 for context (to avoid overwhelming LLM)
+			int count = 0;
+			for (var msg : allMessages) {
+				if (count < 10) {
+					// Add message to context
+					java.util.Map<String, Object> msgMap = new java.util.HashMap<>();
+					msgMap.put("id", msg.getId());
+					msgMap.put("senderName", msg.getSenderName());
+					msgMap.put("content", msg.getContent());
+					msgMap.put("timestamp", msg.getTimestamp());
+					messages.add(msgMap);
+					count++;
+				}
+				// Collect all message IDs for deletion
+				allMessageIds.add(msg.getId());
+			}
+			
+			// Delete ALL messages for this NPC immediately (before LLM call)
+			// This ensures mail is cleared and any new mail after LLM call is automatically "new"
+			for (Long messageId : allMessageIds) {
 				try {
 					messageRepository.delete(messageId);
 				} catch (Exception e) {
-					LogUtil.error("Error deleting message after sending to LLM: " + messageId, e);
+					LogUtil.error("Error deleting message before sending to LLM: " + messageId, e);
 				}
 			}
 			
@@ -347,3 +354,4 @@ public class ContextProvider {
 		);
 	}
 }
+

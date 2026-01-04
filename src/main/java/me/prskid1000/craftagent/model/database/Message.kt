@@ -9,7 +9,6 @@ data class Message(
     val senderName: String,
     val senderType: String, // "PLAYER" or "NPC"
     val content: String,
-    val timestamp: Long = System.currentTimeMillis(),
-    val read: Boolean = false
+    val timestamp: Long = System.currentTimeMillis()
 )
 

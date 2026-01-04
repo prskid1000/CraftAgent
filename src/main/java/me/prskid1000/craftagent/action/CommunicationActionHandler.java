@@ -129,14 +129,13 @@ public class CommunicationActionHandler implements ActionSyntaxProvider {
                 npcName,
                 "NPC",
                 trimmedContent,
-                timestamp,
-                false
+                timestamp
             );
             
             messageRepository.insert(message, baseConfig.getMaxMessages());
             
             // Verify the message was actually added by checking recent messages
-            var recentMessages = messageRepository.selectByRecipient(recipientNpc.getConfig().getUuid(), 10, false);
+            var recentMessages = messageRepository.selectByRecipient(recipientNpc.getConfig().getUuid(), 10);
             boolean verified = recentMessages.stream()
                 .anyMatch(msg -> msg.getSenderUuid().equals(npcUuid) 
                     && msg.getContent().equals(trimmedContent)
