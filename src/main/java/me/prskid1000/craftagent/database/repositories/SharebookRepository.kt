@@ -59,11 +59,18 @@ class SharebookRepository(
                content = excluded.content,
                timestamp = excluded.timestamp""",
         )
-        statement?.setString(1, page.pageTitle)
-        statement?.setString(2, page.authorUuid)
-        statement?.setString(3, page.content)
-        statement?.setLong(4, page.timestamp)
+        if (statement == null) {
+            throw RuntimeException("Failed to create prepared statement for sharebook insert/update")
+        }
+        
+        statement.setString(1, page.pageTitle)
+        statement.setString(2, page.authorUuid)
+        statement.setString(3, page.content)
+        statement.setLong(4, page.timestamp)
         sqliteClient.update(statement)
+        
+        // Note: sqliteClient.update() swallows exceptions, so we verify the insert worked
+        // by checking if the page exists after the update
     }
 
     fun selectAll(): List<SharebookPage> {

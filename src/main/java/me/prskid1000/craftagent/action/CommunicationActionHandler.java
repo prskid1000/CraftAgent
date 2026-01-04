@@ -86,7 +86,17 @@ public class CommunicationActionHandler implements ActionSyntaxProvider {
     
     private boolean sendMessage(String recipientName, String content) {
         if (messageRepository == null) {
-            LogUtil.error("CommunicationActionHandler: MessageRepository is null");
+            LogUtil.error("CommunicationActionHandler: MessageRepository is null for NPC: " + npcName + " (" + npcUuid + ")");
+            return false;
+        }
+        
+        if (npcService == null) {
+            LogUtil.error("CommunicationActionHandler: NPCService is null for NPC: " + npcName + " (" + npcUuid + ")");
+            return false;
+        }
+        
+        if (baseConfig == null) {
+            LogUtil.error("CommunicationActionHandler: BaseConfig is null for NPC: " + npcName + " (" + npcUuid + ")");
             return false;
         }
         
@@ -110,6 +120,11 @@ public class CommunicationActionHandler implements ActionSyntaxProvider {
         }
         
         try {
+            long timestamp = System.currentTimeMillis();
+            String trimmedContent = content.trim();
+            
+            LogUtil.info("CommunicationActionHandler: Sending mail - from: " + npcName + " (" + npcUuid + "), to: " + recipientName + " (" + recipientNpc.getConfig().getUuid() + "), content length: " + trimmedContent.length());
+            
             // Create and send message
             Message message = new Message(
                 0,
@@ -117,17 +132,30 @@ public class CommunicationActionHandler implements ActionSyntaxProvider {
                 npcUuid,
                 npcName,
                 "NPC",
-                content.trim(),
-                System.currentTimeMillis(),
+                trimmedContent,
+                timestamp,
                 false
             );
             
             messageRepository.insert(message, baseConfig.getMaxMessages());
-            LogUtil.info("CommunicationActionHandler: Successfully sent mail from " + npcName + " to " + recipientName + ": " + content);
             
-            return true;
+            // Verify the message was actually added by checking recent messages
+            var recentMessages = messageRepository.selectByRecipient(recipientNpc.getConfig().getUuid(), 10, false);
+            boolean verified = recentMessages.stream()
+                .anyMatch(msg -> msg.getSenderUuid().equals(npcUuid) 
+                    && msg.getContent().equals(trimmedContent)
+                    && Math.abs(msg.getTimestamp() - timestamp) < 1000); // Within 1 second
+            
+            if (verified) {
+                LogUtil.info("CommunicationActionHandler: Successfully sent mail from " + npcName + " to " + recipientName + " (verified in database)");
+                return true;
+            } else {
+                LogUtil.error("CommunicationActionHandler: Failed to verify mail after insert - from: " + npcName + ", to: " + recipientName);
+                return false;
+            }
         } catch (Exception e) {
-            LogUtil.error("CommunicationActionHandler: Error sending mail to " + recipientName, e);
+            LogUtil.error("CommunicationActionHandler: Error sending mail to " + recipientName + " from " + npcName, e);
+            e.printStackTrace();
             return false;
         }
     }

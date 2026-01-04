@@ -82,7 +82,12 @@ public class MemoryActionHandler implements ActionSyntaxProvider {
     
     private boolean handleSharedBook(String op, String title, String content) {
         if (sharebookRepository == null) {
-            LogUtil.error("MemoryActionHandler: SharebookRepository is null");
+            LogUtil.error("MemoryActionHandler: SharebookRepository is null for NPC: " + npcName + " (" + npcUuid + ")");
+            return false;
+        }
+        
+        if (baseConfig == null) {
+            LogUtil.error("MemoryActionHandler: BaseConfig is null for NPC: " + npcName + " (" + npcUuid + ")");
             return false;
         }
         
@@ -93,13 +98,25 @@ public class MemoryActionHandler implements ActionSyntaxProvider {
                     yield false;
                 }
                 try {
+                    int maxPages = baseConfig.getMaxSharebookPages();
+                    LogUtil.info("MemoryActionHandler: Adding sharedbook page - title: '" + title + "', content length: " + content.length() + ", maxPages: " + maxPages);
+                    
                     SharebookPage page = new SharebookPage(title, content.trim(), 
                         npcUuid.toString(), System.currentTimeMillis());
-                    sharebookRepository.insertOrUpdate(page, baseConfig.getMaxSharebookPages());
-                    LogUtil.info("MemoryActionHandler: Successfully added sharedbook page: " + title);
-                    yield true;
+                    sharebookRepository.insertOrUpdate(page, maxPages);
+                    
+                    // Verify the page was actually added
+                    SharebookPage verifyPage = sharebookRepository.selectByTitleAndAuthor(title, npcUuid.toString());
+                    if (verifyPage != null) {
+                        LogUtil.info("MemoryActionHandler: Successfully added sharedbook page: '" + title + "' (verified in database)");
+                        yield true;
+                    } else {
+                        LogUtil.error("MemoryActionHandler: Failed to verify sharedbook page after insert: '" + title + "'");
+                        yield false;
+                    }
                 } catch (Exception e) {
-                    LogUtil.error("MemoryActionHandler: Error adding sharedbook page: " + title, e);
+                    LogUtil.error("MemoryActionHandler: Error adding sharedbook page: '" + title + "' for NPC: " + npcName, e);
+                    e.printStackTrace();
                     yield false;
                 }
             }
@@ -122,7 +139,12 @@ public class MemoryActionHandler implements ActionSyntaxProvider {
     
     private boolean handlePrivateBook(String op, String title, String content) {
         if (memoryManager == null) {
-            LogUtil.error("MemoryActionHandler: MemoryManager is null");
+            LogUtil.error("MemoryActionHandler: MemoryManager is null for NPC: " + npcName + " (" + npcUuid + ")");
+            return false;
+        }
+        
+        if (baseConfig == null) {
+            LogUtil.error("MemoryActionHandler: BaseConfig is null for NPC: " + npcName + " (" + npcUuid + ")");
             return false;
         }
         
@@ -133,11 +155,22 @@ public class MemoryActionHandler implements ActionSyntaxProvider {
                     yield false;
                 }
                 try {
+                    LogUtil.info("MemoryActionHandler: Adding privatebook page - title: '" + title + "', content length: " + content.length());
+                    
                     memoryManager.savePage(title, content.trim());
-                    LogUtil.info("MemoryActionHandler: Successfully added privatebook page: " + title);
-                    yield true;
+                    
+                    // Verify the page was actually added
+                    var verifyPage = memoryManager.getPage(title);
+                    if (verifyPage != null && verifyPage.getContent().equals(content.trim())) {
+                        LogUtil.info("MemoryActionHandler: Successfully added privatebook page: '" + title + "' (verified in database)");
+                        yield true;
+                    } else {
+                        LogUtil.error("MemoryActionHandler: Failed to verify privatebook page after insert: '" + title + "'");
+                        yield false;
+                    }
                 } catch (Exception e) {
-                    LogUtil.error("MemoryActionHandler: Error adding privatebook page: " + title, e);
+                    LogUtil.error("MemoryActionHandler: Error adding privatebook page: '" + title + "' for NPC: " + npcName, e);
+                    e.printStackTrace();
                     yield false;
                 }
             }

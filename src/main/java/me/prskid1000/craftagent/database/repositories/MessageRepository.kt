@@ -62,14 +62,21 @@ class MessageRepository(
             """INSERT INTO messages (recipient_uuid, sender_uuid, sender_name, sender_type, content, timestamp, read)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
         )
-        statement?.setString(1, message.recipientUuid.toString())
-        statement?.setString(2, message.senderUuid.toString())
-        statement?.setString(3, message.senderName)
-        statement?.setString(4, message.senderType)
-        statement?.setString(5, message.content)
-        statement?.setLong(6, message.timestamp)
-        statement?.setInt(7, if (message.read) 1 else 0)
+        if (statement == null) {
+            throw RuntimeException("Failed to create prepared statement for message insert")
+        }
+        
+        statement.setString(1, message.recipientUuid.toString())
+        statement.setString(2, message.senderUuid.toString())
+        statement.setString(3, message.senderName)
+        statement.setString(4, message.senderType)
+        statement.setString(5, message.content)
+        statement.setLong(6, message.timestamp)
+        statement.setInt(7, if (message.read) 1 else 0)
         sqliteClient.update(statement)
+        
+        // Note: sqliteClient.update() swallows exceptions, so verification should be done
+        // by checking if the message exists after the insert
     }
 
     fun selectByRecipient(recipientUuid: UUID, limit: Int = 50, unreadOnly: Boolean = false): List<Message> {

@@ -47,6 +47,7 @@ public class Instructions {
 		=== GUIDELINES ===
 		**Survival & Interaction:** Monitor health/food, be aware of surroundings, use actions for tasks, chat via "message" field, be social.
 		**Memory Management:** ALWAYS check memory.privateBook and memory.sharebook before decisions. Decide: private (personal) or shared (community benefit)? Update memory when learning important information. Use sharebook to coordinate with NPCs.
+		**Book Page Titles:** When adding or updating book pages (sharedbook/privatebook), ALWAYS use the EXACT same title if updating an existing page. DO NOT create new versions with different titles (e.g., "forest resource map" -> "forest_resource_map_v2" -> "forest_resource_map_v3"). Instead, update the existing page with the same title. Only create new pages with different titles if the information is completely different and unrelated.
 		**Action Planning:** Check memory first for existing knowledge. Break complex tasks into steps. Use multiple actions in sequence. Be specific and clear.
 		
 		Remember: Always respond with valid JSON containing BOTH "message" and "actions" fields.
