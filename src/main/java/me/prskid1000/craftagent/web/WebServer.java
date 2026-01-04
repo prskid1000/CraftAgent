@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import me.prskid1000.craftagent.common.NPCService;
 import me.prskid1000.craftagent.config.ConfigProvider;
+import me.prskid1000.craftagent.llm.StructuredLLMResponse;
 import me.prskid1000.craftagent.model.NPC;
 import me.prskid1000.craftagent.util.LogUtil;
 import net.minecraft.server.MinecraftServer;
@@ -176,8 +177,25 @@ public class WebServer {
             for (var msg : history) {
                 Map<String, Object> messageMap = new HashMap<>();
                 messageMap.put("role", msg.getRole());
-                messageMap.put("content", msg.getMessage());
                 messageMap.put("timestamp", msg.getTimestamp());
+                
+                // For assistant messages, parse structured output (message + actions)
+                if ("assistant".equals(msg.getRole())) {
+                    String content = msg.getMessage();
+                    StructuredLLMResponse structured = StructuredLLMResponse.parse(content);
+                    
+                    // Store the parsed message and actions separately
+                    messageMap.put("content", structured.getMessage());
+                    messageMap.put("message", structured.getMessage()); // For backward compatibility
+                    messageMap.put("actions", structured.getActions());
+                    messageMap.put("rawContent", content); // Store raw JSON for debugging
+                } else {
+                    // For user/system messages, use content as-is
+                    messageMap.put("content", msg.getMessage());
+                    messageMap.put("message", msg.getMessage()); // For backward compatibility
+                    messageMap.put("actions", Collections.emptyList());
+                }
+                
                 messages.add(messageMap);
             }
             sendJsonResponse(exchange, 200, messages);
@@ -1232,6 +1250,7 @@ public class WebServer {
                 messages.forEach((msg, index) => {
                     const role = msg.role || 'unknown';
                     const content = msg.content || msg.message || '';
+                    const actions = msg.actions || [];
                     const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'N/A';
                     const roleIcon = role === 'user' ? '👤' : role === 'assistant' ? '🤖' : role === 'system' ? '⚙️' : '❓';
                     const roleBadge = role === 'user' ? 'badge-info' : role === 'assistant' ? 'badge-success' : 'badge-warning';
@@ -1239,16 +1258,16 @@ public class WebServer {
                     // Format messages based on role
                     let formattedContent;
                     if (role === 'assistant') {
-                        formattedContent = formatStructuredOutput(content);
+                        formattedContent = formatStructuredOutput(content, actions);
                     } else if (role === 'system') {
                         formattedContent = formatSystemMessage(content);
                     } else {
                         formattedContent = escapeHtml(content);
                     }
                     
-                    // Determine if message is long (more than 500 characters)
+                    // Determine if message is long (more than 500 characters) or has actions
                     // This covers both long text and multi-line system messages
-                    const isLong = content.length > 500;
+                    const isLong = content.length > 500 || actions.length > 0;
                     const messageId = `msg-${index}`;
                     
                     if (isLong) {
@@ -1413,12 +1432,36 @@ public class WebServer {
         }
         
         /**
-         * Formats message output for assistant messages.
+         * Formats message output for assistant messages with actions.
          */
-        function formatStructuredOutput(text) {
-            if (!text) return '';
-            // Simple message display - just escape and return
-            return escapeHtml(text);
+        function formatStructuredOutput(text, actions) {
+            if (!text && (!actions || actions.length === 0)) return '';
+            
+            let html = '';
+            
+            // Display message if present
+            if (text && text.trim() !== '') {
+                html += '<div class="message-text" style="margin-bottom: 10px;">';
+                html += escapeHtml(text);
+                html += '</div>';
+            }
+            
+            // Display actions if present
+            if (actions && actions.length > 0) {
+                html += '<div class="actions-section" style="margin-top: 10px; padding: 8px; background-color: #2d2d2d; border-radius: 4px; border-left: 3px solid #4CAF50;">';
+                html += '<div style="font-weight: bold; color: #4CAF50; margin-bottom: 5px;">⚡ Actions:</div>';
+                html += '<ul style="margin: 0; padding-left: 20px; list-style-type: none;">';
+                actions.forEach((action, idx) => {
+                    html += `<li style="margin: 3px 0; color: #E0E0E0;">
+                        <span style="color: #FFC107;">${idx + 1}.</span> 
+                        <code style="background-color: #1a1a1a; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; color: #81C784;">${escapeHtml(action)}</code>
+                    </li>`;
+                });
+                html += '</ul>';
+                html += '</div>';
+            }
+            
+            return html || escapeHtml(text || '');
         }
         
         /**

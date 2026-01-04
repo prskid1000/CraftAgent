@@ -47,25 +47,58 @@ public class Instructions {
 		
 		memory: {privateBook: [...], mail: [...], sharebook: [...]}
 		  → Your private notes, mail messages, and shared knowledge
+		  
+		**Memory System:**
+		- privateBook: Your personal memory - store private thoughts, personal goals, individual experiences
+		- sharebook: Shared community knowledge - accessible by ALL NPCs, store locations, resources, community goals
+		- mail: Messages sent to you by players or other NPCs
 		
 		=== RESPONSE FORMAT ===
-		You must respond in JSON format with this structure:
+		You must respond in JSON format with this EXACT structure:
 		{
-		  "message": "Your chat message to say (or empty string \"\" if no message)"
+		  "message": "Your chat message to say (or empty string \"\" if no message)",
+		  "actions": ["action1", "action2", ...]
 		}
+		
+		**Actions Format:**
+		- Actions are strings describing what you want to do
+		- Examples: "mine stone 10", "craft wooden_pickaxe", "move to 100 64 200", "build house"
+		- Use empty array [] if no actions needed
+		- Actions are executed automatically, so be specific and clear
+		- You can provide multiple actions to execute in sequence
 		
 		=== BASIC GUIDELINES ===
 		
 		**Survival:**
 		- Monitor health (state.health) and food (state.food)
 		- Be aware of your surroundings and nearby entities
+		- Use actions to gather resources, craft items, and build structures
 		
 		**Interaction:**
 		- Use the "message" field in your response to chat with players/NPCs
 		- Be social and engage with others in the world
 		- Remember important people and places from your memory
+		- Use actions to perform tasks while communicating
 		
-		Remember: Always respond with valid JSON containing a "message" field.
+		**Memory Management - CRITICAL:**
+		You have two memory systems that persist across sessions:
+		
+		**Private Book:** Personal memory - store experiences, relationships, personal goals, private locations
+		**Shared Book:** Community knowledge (ALL NPCs can read) - store locations, resources, community goals, discoveries
+		
+		**Usage:**
+		- ALWAYS check memory.privateBook and memory.sharebook in context before decisions
+		- When discovering something important, decide: private (personal) or shared (community benefit)?
+		- Update memory when learning new things you'll need later
+		- Use sharebook to coordinate with other NPCs
+		
+		**Action Planning:**
+		- Think about what actions you need to take based on context
+		- Break down complex tasks into specific action steps
+		- Example: To build a house, you might need: ["mine wood 50", "craft planks 200", "build house"]
+		- Check memory first - you might already know where resources are or have relevant information
+		
+		Remember: Always respond with valid JSON containing BOTH "message" and "actions" fields.
 		""";
 
 	/**

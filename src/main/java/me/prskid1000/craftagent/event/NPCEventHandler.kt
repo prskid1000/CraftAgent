@@ -1,5 +1,6 @@
 package me.prskid1000.craftagent.event
 
+import me.prskid1000.craftagent.action.ActionExecutor
 import me.prskid1000.craftagent.config.NPCConfig
 import me.prskid1000.craftagent.context.ContextProvider
 import me.prskid1000.craftagent.database.repositories.MessageRepository
@@ -85,17 +86,28 @@ class NPCEventHandler(
             val server = contextProvider.getNpcEntity().server
             val llmResponse = llmClient.chat(messagesForLLM, server)
             
-            // Get response content
-            val content = llmResponse.content.trim()
+            // Parse structured response (message + actions)
+            val structuredResponse = llmResponse.structuredResponse
+            val message = structuredResponse.message
+            val actions = structuredResponse.actions
             
-            // Send message if present and different from last
-            if (content.isNotEmpty() && content != history.getLastMessage()) {
+            // Execute actions if present
+            if (actions.isNotEmpty()) {
                 val npcEntity = contextProvider.getNpcEntity()
-                me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(npcEntity, content)
+                val actionExecutor = ActionExecutor(npcEntity)
+                actionExecutor.executeActions(actions)
             }
             
-            // Add response to history
-            history.add(ConversationMessage(content, "assistant"))
+            // Send message if present and different from last
+            if (message.isNotEmpty() && message != history.getLastMessage()) {
+                val npcEntity = contextProvider.getNpcEntity()
+                me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(npcEntity, message)
+            }
+            
+            // Store structured response in history (store the full JSON for web UI display)
+            // The web UI will parse and display both message and actions
+            val responseContent = llmResponse.content.trim()
+            history.add(ConversationMessage(responseContent, "assistant"))
             
             true
         } catch (e: Exception) {

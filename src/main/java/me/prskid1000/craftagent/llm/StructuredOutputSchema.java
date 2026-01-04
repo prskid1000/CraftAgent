@@ -12,7 +12,7 @@ public class StructuredOutputSchema {
 
     /**
      * Returns the JSON schema for message output.
-     * Simple format: just a message string.
+     * Structured format: message string and actions array.
      */
     public static Map<String, Object> getMessageSchema() {
         return Map.of(
@@ -21,9 +21,17 @@ public class StructuredOutputSchema {
                 "message", Map.of(
                     "type", "string",
                     "description", "Chat message to say (under 500 characters). Use empty string \"\" if no message."
+                ),
+                "actions", Map.of(
+                    "type", "array",
+                    "items", Map.of(
+                        "type", "string",
+                        "description", "Action to perform (e.g., 'mine stone 10', 'craft wooden_pickaxe', 'move to 100 64 200')"
+                    ),
+                    "description", "List of actions to execute. Can be empty array [] if no actions."
                 )
             ),
-            "required", new String[]{"message"}
+            "required", new String[]{"message", "actions"}
         );
     }
 }
