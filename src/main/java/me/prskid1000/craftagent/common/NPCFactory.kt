@@ -44,24 +44,26 @@ class NPCFactory(
 
         val llmClient = initLLMClient(config)
 
-        // Always use default prompt, append custom prompt if provided
-        // Commands are now included in tool definitions, not in system prompt (avoids duplication)
-        val defaultPrompt = Instructions.getLlmSystemPrompt(
-            config.npcName,
-            config.age,
-            config.gender,
-            "", // Commands are in tool definition now, not in prompt
-            config.customSystemPrompt,
-            config.llmType,
-            npcEntity.server,
-            baseConfig
-        )
+        // System prompt is generated fresh, never stored in database
+        // Create a function that generates the system prompt on demand
+        val systemPromptGenerator: () -> String = {
+            Instructions.getLlmSystemPrompt(
+                config.npcName,
+                config.age,
+                config.gender,
+                "", // Commands are in tool definition now, not in prompt
+                config.customSystemPrompt,
+                config.llmType,
+                npcEntity.server,
+                baseConfig
+            )
+        }
 
         val history = ConversationHistory(
             llmClient,
             conversationRepository,
             config.uuid,
-            defaultPrompt,
+            systemPromptGenerator,
             baseConfig.conversationHistoryLength
         )
         val eventHandler = NPCEventHandler(llmClient, history, contextProvider, config, messageRepository, sharebookRepository, npcService!!)

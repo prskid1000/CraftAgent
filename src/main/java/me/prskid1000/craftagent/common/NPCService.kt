@@ -416,36 +416,27 @@ class NPCService(
      * Uses custom system prompt if provided, otherwise rebuilds from config.
      */
     fun updateNpcSystemPrompt(npcUuid: UUID) {
+        // System prompt is generated fresh from Instructions.java, no need to update
+        // The prompt will be regenerated on next LLM call
         val npc = uuidToNpc[npcUuid]
         if (npc != null) {
-            val config = npc.config
-            // Always use default prompt, append custom prompt if provided
-            // Commands are now included in tool definitions, not in system prompt (avoids duplication)
-            val newSystemPrompt = Instructions.getLlmSystemPrompt(
-                config.npcName,
-                config.age,
-                config.gender,
-                "", // Commands are in tool definition now, not in prompt
-                config.customSystemPrompt,
-                config.llmType,
-                npc.entity.server,
-                configProvider.getBaseConfig()
-            )
-            // Update system prompt in conversation history
-            npc.history.updateSystemPrompt(newSystemPrompt)
-            LogUtil.info("Updated system prompt for NPC: ${config.npcName}")
+            LogUtil.info("System prompt for NPC: ${npc.config.npcName} will be regenerated fresh on next LLM call")
         }
     }
 
     /**
      * Updates the system prompt for an NPC with a custom prompt string.
      * This allows runtime modification of the system prompt.
+     * Note: System prompts are now generated fresh, not stored.
      */
     fun updateNpcSystemPrompt(npcUuid: UUID, customSystemPrompt: String) {
+        // System prompt is generated fresh, not stored
+        // Custom prompts are stored in NPC config and will be included when generating fresh prompt
         val npc = uuidToNpc[npcUuid]
         if (npc != null) {
-            npc.history.updateSystemPrompt(customSystemPrompt)
-            LogUtil.info("Updated system prompt for NPC: ${npc.config.npcName} with custom prompt")
+            // Update the config's custom system prompt
+            npc.config.customSystemPrompt = customSystemPrompt
+            LogUtil.info("Updated custom system prompt in config for NPC: ${npc.config.npcName}")
         }
     }
 

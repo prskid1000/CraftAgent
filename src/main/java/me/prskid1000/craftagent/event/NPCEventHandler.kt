@@ -70,9 +70,11 @@ class NPCEventHandler(
             // Perform summarization if needed
             history.performSummarizationIfNeeded()
 
-            // Build messages for LLM: history + current state with context
+            // Build messages for LLM: system prompt (fresh) + history + current state with context
             val messagesForLLM = mutableListOf<ConversationMessage>()
-            // Add all history messages (without context)
+            // Add system prompt first (generated fresh, never stored)
+            messagesForLLM.add(ConversationMessage(history.getSystemPrompt(), "system"))
+            // Add all history messages (without context) - these are only user/assistant, no system
             messagesForLLM.addAll(history.latestConversations)
             
             // If there's a last user message, replace it with formatted version that includes context

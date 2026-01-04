@@ -191,6 +191,17 @@ public class WebServer {
         try {
             var history = npc.getHistory().getLatestConversations();
             List<Map<String, Object>> messages = new ArrayList<>();
+            
+            // Add system prompt first (generated fresh, never stored)
+            Map<String, Object> systemMessageMap = new HashMap<>();
+            systemMessageMap.put("role", "system");
+            systemMessageMap.put("timestamp", 0L);
+            systemMessageMap.put("content", npc.getHistory().getSystemPrompt());
+            systemMessageMap.put("message", npc.getHistory().getSystemPrompt());
+            systemMessageMap.put("actions", Collections.emptyList());
+            messages.add(systemMessageMap);
+            
+            // Add all other messages (user/assistant only)
             for (var msg : history) {
                 Map<String, Object> messageMap = new HashMap<>();
                 messageMap.put("role", msg.getRole());

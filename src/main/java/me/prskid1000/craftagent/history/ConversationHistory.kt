@@ -15,29 +15,37 @@ class ConversationHistory(
     private val llmClient: LLMClient,
     private val conversationRepository: ConversationRepository,
     private val npcUuid: UUID,
-    initMessage: String,
+    private val systemPrompt: () -> String, // Function to generate system prompt fresh
     private val maxHistoryLength: Int = 5
 ) {
     companion object {
         private val objectMapper = ObjectMapper()
     }
 
-    init {
-        setInitMessage(initMessage)
-    }
-
     /**
      * Gets the latest conversations from database, ordered by timestamp (oldest first)
+     * Filters out system messages - system prompt is generated fresh, not stored
      */
     val latestConversations: List<ConversationMessage>
         get() = synchronized(this) {
             conversationRepository.selectByUuid(npcUuid, maxHistoryLength * 2)
+                .filter { it.role != "system" } // Never return system messages from DB
                 .map { ConversationMessage(it.message, it.role, it.timestamp) }
         }
+    
+    /**
+     * Gets the current system prompt (generated fresh)
+     */
+    fun getSystemPrompt(): String = systemPrompt()
 
     @Synchronized
     fun add(message: ConversationMessage) {
-        // Insert directly to database
+        // Never store system messages in database
+        if (message.role == "system") {
+            return
+        }
+        
+        // Insert directly to database (only user/assistant messages)
         val conversation = Conversation(
             uuid = npcUuid,
             role = message.role,
@@ -62,7 +70,7 @@ class ConversationHistory(
     fun performSummarizationIfNeeded(): Boolean {
         val allConversations = conversationRepository.selectByUuid(npcUuid, maxHistoryLength * 2)
         
-        // Filter out system message for counting
+        // Filter out system messages (they're not stored anyway)
         val nonSystemConversations = allConversations.filter { it.role != "system" }
         
         if (nonSystemConversations.size < maxHistoryLength) {
@@ -74,8 +82,7 @@ class ConversationHistory(
             return false
         }
 
-        // Get conversations to summarize (skip system message, take next removeCount)
-        val systemMessage = allConversations.firstOrNull { it.role == "system" }
+        // Get conversations to summarize (system messages are never stored)
         val toSummarize = nonSystemConversations.take(removeCount)
         
         if (toSummarize.isEmpty()) {
@@ -114,27 +121,11 @@ class ConversationHistory(
         return ConversationMessage(llmResponse.content, "assistant")
     }
 
-    private fun setInitMessage(initMessage: String) {
-        // Check if system message already exists in database
-        val existing = conversationRepository.selectByUuid(npcUuid, 100)
-        val hasSystemMessage = existing.any { it.role == "system" }
-        
-        if (!hasSystemMessage) {
-            // Insert system message with timestamp 0 (earliest)
-            val systemConversation = Conversation(
-                uuid = npcUuid,
-                role = "system",
-                message = initMessage,
-                timestamp = 0
-            )
-            conversationRepository.insert(systemConversation)
-        }
-    }
-
     @Synchronized
     fun updateSystemPrompt(newSystemPrompt: String) {
-        // Update system message in database
-        conversationRepository.updateSystemMessage(npcUuid, newSystemPrompt)
+        // System prompt is generated fresh, not stored in database
+        // This method is kept for compatibility but does nothing
+        // The systemPrompt function will be called when needed
     }
 
     fun getLastMessage(): String {
