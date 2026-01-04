@@ -209,6 +209,21 @@ class NPCService(
                     } else {
                         LogUtil.infoInChat("Removed NPC with uuid $uuid")
                     }
+                    
+                    // Check if this was the last NPC - if so, clear shared knowledge
+                    // Check after removing from map to get accurate count
+                    val remainingNpcCount = uuidToNpc.size
+                    if (remainingNpcCount == 0) {
+                        // Last NPC being removed - clear all shared knowledge on background thread
+                        CompletableFuture.runAsync({
+                            try {
+                                resourceProvider.sharebookRepository?.deleteAll()
+                                LogUtil.info("Cleared shared knowledge - no NPCs remaining")
+                            } catch (e: Exception) {
+                                LogUtil.error("Error clearing shared knowledge", e)
+                            }
+                        }, executorService)
+                    }
                 } catch (e: Exception) {
                     LogUtil.error("Error removing NPC: $uuid", e)
                 }
@@ -224,14 +239,7 @@ class NPCService(
                     resourceProvider.privateBookPageRepository?.deleteByNpcUuid(uuid)
                     // Delete messages where NPC is sender or recipient
                     resourceProvider.messageRepository?.deleteByNpcUuid(uuid)
-                    // Note: Sharebook is global/shared knowledge - don't delete when removing individual NPC
-                    
-                    // Check if this was the last NPC - if so, clear shared knowledge
-                    val remainingNpcCount = uuidToNpc.size - 1 // -1 because we haven't removed from map yet
-                    if (remainingNpcCount == 0) {
-                        // Last NPC being removed - clear all shared knowledge
-                        resourceProvider.sharebookRepository?.deleteAll()
-                    }
+                    // Note: Sharebook is global/shared knowledge - cleared only when NPC count becomes 0
                 } catch (e: Exception) {
                     LogUtil.error("Error deleting data for removed NPC: $uuid", e)
                 }
@@ -261,6 +269,21 @@ class NPCService(
                     NPCSpawner.remove(entityUuid, playerManager)
                     
                     LogUtil.infoInChat("Deleted NPC with uuid $uuid")
+                    
+                    // Check if this was the last NPC - if so, clear shared knowledge
+                    // Check after removing from map to get accurate count
+                    val remainingNpcCount = uuidToNpc.size
+                    if (remainingNpcCount == 0) {
+                        // Last NPC being deleted - clear all shared knowledge on background thread
+                        CompletableFuture.runAsync({
+                            try {
+                                resourceProvider.sharebookRepository?.deleteAll()
+                                LogUtil.info("Cleared shared knowledge - no NPCs remaining")
+                            } catch (e: Exception) {
+                                LogUtil.error("Error clearing shared knowledge", e)
+                            }
+                        }, executorService)
+                    }
                 } catch (e: Exception) {
                     LogUtil.error("Error deleting NPC: $uuid", e)
                 }
@@ -274,14 +297,7 @@ class NPCService(
                     resourceProvider.privateBookPageRepository?.deleteByNpcUuid(uuid)
                     // Delete messages where NPC is sender or recipient
                     resourceProvider.messageRepository?.deleteByNpcUuid(uuid)
-                    // Note: Sharebook is global/shared knowledge - don't delete when deleting individual NPC
-                    
-                    // Check if this was the last NPC - if so, clear shared knowledge
-                    val remainingNpcCount = uuidToNpc.size - 1 // -1 because we haven't removed from map yet
-                    if (remainingNpcCount == 0) {
-                        // Last NPC being deleted - clear all shared knowledge
-                        resourceProvider.sharebookRepository?.deleteAll()
-                    }
+                    // Note: Sharebook is global/shared knowledge - cleared only when NPC count becomes 0
                     
                     configProvider.deleteNpcConfig(uuid)
                 } catch (e: Exception) {
@@ -298,13 +314,8 @@ class NPCService(
                     resourceProvider.privateBookPageRepository?.deleteByNpcUuid(uuid)
                     // Delete messages where NPC is sender or recipient
                     resourceProvider.messageRepository?.deleteByNpcUuid(uuid)
-                    // Note: Sharebook is global/shared knowledge - don't delete when deleting individual NPC
-                    
-                    // Check if there are any remaining NPCs - if not, clear shared knowledge
-                    if (uuidToNpc.isEmpty()) {
-                        // No NPCs left - clear all shared knowledge
-                        resourceProvider.sharebookRepository?.deleteAll()
-                    }
+                    // Note: Sharebook is global/shared knowledge - cleared only when NPC count becomes 0
+                    // Check is done in server.execute block above
                     
                     configProvider.deleteNpcConfig(uuid)
                 } catch (e: Exception) {
