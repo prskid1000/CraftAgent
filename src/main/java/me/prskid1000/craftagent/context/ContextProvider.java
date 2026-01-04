@@ -126,7 +126,7 @@ public class ContextProvider {
 				java.util.Map<String, Object> pageMap = new java.util.HashMap<>();
 				pageMap.put("pageTitle", page.getPageTitle());
 				pageMap.put("content", page.getContent());
-				pageMap.put("authorName", page.getAuthorName());
+				pageMap.put("authorUuid", page.getAuthorUuid());
 				pageMap.put("timestamp", page.getTimestamp());
 				sharebookPages.add(pageMap);
 			});

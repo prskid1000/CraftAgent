@@ -26,8 +26,6 @@ class CoordinationService(
             recipientUuid = toNpcUuid,
             senderUuid = fromNpc.config.uuid,
             senderName = fromNpc.config.npcName,
-            senderType = "npc",
-            subject = "Direct message from ${fromNpc.config.npcName}",
             content = message
         )
         

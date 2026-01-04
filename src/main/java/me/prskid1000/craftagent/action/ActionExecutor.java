@@ -62,7 +62,7 @@ public class ActionExecutor {
         if (success) {
             LogUtil.info("Action executed successfully: " + action);
         } else {
-            LogUtil.debug("Action execution failed or not implemented: " + action);
+            LogUtil.info("Action execution failed or not implemented: " + action);
         }
     }
     

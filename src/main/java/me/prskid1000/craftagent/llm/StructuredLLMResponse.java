@@ -99,7 +99,7 @@ public class StructuredLLMResponse {
             return new StructuredLLMResponse(message, actions);
         } catch (Exception e) {
             // Fallback: treat as plain text message
-            LogUtil.debug("Failed to parse structured response, treating as plain text: " + e.getMessage());
+                    LogUtil.info("Failed to parse structured response, treating as plain text: " + e.getMessage());
             return new StructuredLLMResponse(trimmed, new ArrayList<>());
         }
     }

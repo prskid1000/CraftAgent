@@ -55,7 +55,7 @@ public class MemoryActionHandler {
                 if (content.isEmpty()) yield false;
                 SharebookPage page = new SharebookPage(title, content.trim(), 
                     npcUuid.toString(), System.currentTimeMillis());
-                sharebookRepository.insertOrUpdate(page, baseConfig.maxSharebookPages);
+                sharebookRepository.insertOrUpdate(page, baseConfig.getMaxSharebookPages());
                 yield true;
             }
             case "remove" -> {

@@ -56,21 +56,21 @@ public class CommunicationActionHandler {
         // Find recipient NPC by name
         NPC recipientNpc = null;
         for (NPC npc : npcService.getAllNPCs()) {
-            if (npc.config.npcName.equalsIgnoreCase(recipientName)) {
+            if (npc.getConfig().getNpcName().equalsIgnoreCase(recipientName)) {
                 recipientNpc = npc;
                 break;
             }
         }
         
         if (recipientNpc == null) {
-            LogUtil.debug("Recipient NPC not found: " + recipientName);
+            LogUtil.info("Recipient NPC not found: " + recipientName);
             return false;
         }
         
         // Create and send message
         Message message = new Message(
             0,
-            recipientNpc.config.uuid,
+            recipientNpc.getConfig().getUuid(),
             npcUuid,
             npcName,
             content.trim(),
@@ -78,7 +78,7 @@ public class CommunicationActionHandler {
             false
         );
         
-        messageRepository.insert(message, baseConfig.maxMessages);
+        messageRepository.insert(message, baseConfig.getMaxMessages());
         LogUtil.info("NPC " + npcName + " sent message to " + recipientName + ": " + content);
         return true;
     }
