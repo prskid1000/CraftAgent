@@ -507,6 +507,18 @@ public class WebServer {
             map.put("lineOfSight", lineOfSight);
         }
         
+        // Add action state data
+        if (context.actionState() != null) {
+            Map<String, Object> actionState = new HashMap<>();
+            actionState.put("actionType", context.actionState().actionType());
+            actionState.put("actionDescription", context.actionState().actionDescription());
+            actionState.put("timeInCurrentAction", context.actionState().timeInCurrentAction());
+            if (context.actionState().actionData() != null) {
+                actionState.put("actionData", context.actionState().actionData());
+            }
+            map.put("actionState", actionState);
+        }
+        
         return map;
     }
     
@@ -1254,10 +1266,60 @@ public class WebServer {
         
         async function loadNPCOverview(uuid) {
             try {
-                const response = await fetch(`/api/npc/${uuid}`);
-                const npc = await response.json();
+                const [npcResponse, contextResponse] = await Promise.all([
+                    fetch(`/api/npc/${uuid}`),
+                    fetch(`/api/npc/${uuid}/context`).catch(() => null)
+                ]);
+                const npc = await npcResponse.json();
+                const context = contextResponse ? await contextResponse.json() : null;
                 
                 document.getElementById('modalTitle').textContent = npc.name + ' - Details';
+                
+                let actionStateHtml = '';
+                let navigationStateHtml = '';
+                
+                if (context) {
+                    // Add action state card
+                    if (context.actionState) {
+                        const actionType = context.actionState.actionType || 'idle';
+                        const actionBadge = actionType === 'idle' ? 'badge-warning' : 'badge-success';
+                        actionStateHtml = `
+                            <div class="data-card">
+                                <div class="data-card-label">⚡ Current Action</div>
+                                <div class="data-card-value">
+                                    <span class="badge ${actionBadge}">${escapeHtml(actionType.toUpperCase())}</span>
+                                    <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                                        ${escapeHtml(context.actionState.actionDescription || 'N/A')}
+                                    </div>
+                                    <div style="margin-top: 5px; font-size: 0.85em; color: #999;">
+                                        Duration: ${(context.actionState.timeInCurrentAction / 1000).toFixed(1)}s
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Add navigation state card
+                    if (context.navigation) {
+                        navigationStateHtml = `
+                            <div class="data-card">
+                                <div class="data-card-label">🧭 Navigation</div>
+                                <div class="data-card-value">
+                                    <span class="badge badge-info">${escapeHtml(context.navigation.state || 'idle')}</span>
+                                    <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                                        ${escapeHtml(context.navigation.stateDescription || 'N/A')}
+                                    </div>
+                                    ${context.navigation.destination ? `
+                                        <div style="margin-top: 5px; font-size: 0.85em; color: #999;">
+                                            Destination: <span class="coords">${context.navigation.destination.x}, ${context.navigation.destination.y}, ${context.navigation.destination.z}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
                 document.getElementById('overviewGrid').innerHTML = `
                     <div class="data-card">
                         <div class="data-card-label">Name</div>
@@ -1301,6 +1363,8 @@ public class WebServer {
                         <div class="data-card-label">Food</div>
                         <div class="data-card-value">${npc.food} / 20</div>
                     </div>
+                    ${actionStateHtml}
+                    ${navigationStateHtml}
                     <div class="data-card">
                         <div class="data-card-label">LLM Type</div>
                         <div class="data-card-value">${escapeHtml(npc.llmType)}</div>
@@ -1449,6 +1513,119 @@ public class WebServer {
                 } else {
                     html += '<div class="data-section"><h3>👥 Nearby Entities</h3>';
                     html += '<p>No entities detected nearby</p></div>';
+                }
+                
+                // Add navigation state
+                if (context.navigation) {
+                    html += '<div class="data-section"><h3>🧭 Navigation State</h3>';
+                    html += '<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>';
+                    html += `<tr><td><span class="icon">📍</span> State</td><td><span class="badge badge-info">${escapeHtml(context.navigation.state || 'idle')}</span></td></tr>`;
+                    html += `<tr><td><span class="icon">📝</span> Description</td><td>${escapeHtml(context.navigation.stateDescription || 'N/A')}</td></tr>`;
+                    html += `<tr><td><span class="icon">⏱️</span> Time in State</td><td>${(context.navigation.timeInCurrentState / 1000).toFixed(1)}s</td></tr>`;
+                    if (context.navigation.destination) {
+                        const dest = context.navigation.destination;
+                        html += `<tr><td><span class="icon">🎯</span> Destination</td><td><span class="coords">${dest.x}, ${dest.y}, ${dest.z}</span></td></tr>`;
+                    }
+                    html += '</tbody></table></div>';
+                }
+                
+                // Add action state
+                if (context.actionState) {
+                    html += '<div class="data-section"><h3>⚡ Current Action</h3>';
+                    html += '<table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>';
+                    const actionType = context.actionState.actionType || 'idle';
+                    const actionBadge = actionType === 'idle' ? 'badge-warning' : 'badge-success';
+                    html += `<tr><td><span class="icon">🎬</span> Action Type</td><td><span class="badge ${actionBadge}">${escapeHtml(actionType.toUpperCase())}</span></td></tr>`;
+                    html += `<tr><td><span class="icon">📝</span> Description</td><td>${escapeHtml(context.actionState.actionDescription || 'N/A')}</td></tr>`;
+                    html += `<tr><td><span class="icon">⏱️</span> Duration</td><td>${(context.actionState.timeInCurrentAction / 1000).toFixed(1)}s</td></tr>`;
+                    if (context.actionState.actionData && Object.keys(context.actionState.actionData).length > 0) {
+                        html += '<tr><td colspan="2"><strong>Action Details:</strong><br>';
+                        const actionData = context.actionState.actionData;
+                        for (const [key, value] of Object.entries(actionData)) {
+                            if (value && typeof value === 'object' && value.x !== undefined) {
+                                // Position object
+                                html += `<span class="coords" style="margin-right: 10px;">${key}: (${value.x}, ${value.y}, ${value.z})</span>`;
+                            } else {
+                                html += `<span style="margin-right: 10px;"><strong>${escapeHtml(String(key))}:</strong> ${escapeHtml(String(value))}</span>`;
+                            }
+                        }
+                        html += '</td></tr>';
+                    }
+                    html += '</tbody></table></div>';
+                }
+                
+                // Add line of sight data
+                if (context.lineOfSight) {
+                    html += '<div class="data-section"><h3>👁️ Line of Sight</h3>';
+                    
+                    // Items in line of sight
+                    if (context.lineOfSight.items && context.lineOfSight.items.length > 0) {
+                        html += '<h4 style="margin-top: 15px; color: #667eea;">📦 Items in Line of Sight</h4>';
+                        html += '<table><thead><tr><th>Item Type</th><th>Count</th><th>Position</th><th>Distance</th></tr></thead><tbody>';
+                        context.lineOfSight.items.forEach(item => {
+                            const pos = item.position || {};
+                            const positionStr = pos.x !== undefined ? `${pos.x}, ${pos.y}, ${pos.z}` : 'N/A';
+                            html += `<tr>
+                                <td><strong>${escapeHtml(item.type || 'Unknown')}</strong></td>
+                                <td>${item.count || 0}</td>
+                                <td><span class="coords">${positionStr}</span></td>
+                                <td>${item.distance ? item.distance.toFixed(2) : 'N/A'}</td>
+                            </tr>`;
+                        });
+                        html += '</tbody></table>';
+                    }
+                    
+                    // Entities in line of sight
+                    if (context.lineOfSight.entities && context.lineOfSight.entities.length > 0) {
+                        html += '<h4 style="margin-top: 15px; color: #667eea;">👥 Entities in Line of Sight</h4>';
+                        html += '<table><thead><tr><th>Name</th><th>Type</th><th>ID</th><th>Is Player</th></tr></thead><tbody>';
+                        context.lineOfSight.entities.forEach(entity => {
+                            const typeBadge = entity.isPlayer ? 'badge-info' : 'badge-warning';
+                            const typeText = entity.isPlayer ? 'Player' : 'Entity';
+                            html += `<tr>
+                                <td><strong>${escapeHtml(entity.name || 'Unknown')}</strong></td>
+                                <td><span class="badge ${typeBadge}">${typeText}</span></td>
+                                <td><span class="coords">${escapeHtml(String(entity.id || 'N/A'))}</span></td>
+                                <td>${entity.isPlayer ? '✅ Yes' : '❌ No'}</td>
+                            </tr>`;
+                        });
+                        html += '</tbody></table>';
+                    }
+                    
+                    // Target block (where NPC is looking)
+                    if (context.lineOfSight.targetBlock) {
+                        html += '<h4 style="margin-top: 15px; color: #667eea;">🎯 Target Block (Looking At)</h4>';
+                        html += '<table><thead><tr><th>Block Type</th><th>Position</th><th>Mine Level</th><th>Tool Needed</th></tr></thead><tbody>';
+                        const targetBlock = context.lineOfSight.targetBlock;
+                        const pos = targetBlock.position || {};
+                        const positionStr = pos.x !== undefined ? `${pos.x}, ${pos.y}, ${pos.z}` : 'N/A';
+                        html += `<tr>
+                            <td><strong>${escapeHtml(targetBlock.type || 'Unknown')}</strong></td>
+                            <td><span class="coords">${positionStr}</span></td>
+                            <td>${escapeHtml(String(targetBlock.mineLevel || 'N/A'))}</td>
+                            <td>${escapeHtml(targetBlock.toolNeeded || 'None')}</td>
+                        </tr>`;
+                        html += '</tbody></table>';
+                    }
+                    
+                    // Visible blocks
+                    if (context.lineOfSight.visibleBlocks && context.lineOfSight.visibleBlocks.length > 0) {
+                        html += '<h4 style="margin-top: 15px; color: #667eea;">🧱 Visible Blocks</h4>';
+                        html += '<table><thead><tr><th>Block Type</th><th>Position</th><th>Mine Level</th><th>Tool Needed</th></tr></thead><tbody>';
+                        context.lineOfSight.visibleBlocks.forEach(block => {
+                            const pos = block.position || {};
+                            const positionStr = pos.x !== undefined ? `${pos.x}, ${pos.y}, ${pos.z}` : 'N/A';
+                            html += `<tr>
+                                <td><strong>${escapeHtml(block.type || 'Unknown')}</strong></td>
+                                <td><span class="coords">${positionStr}</span></td>
+                                <td>${escapeHtml(String(block.mineLevel || 'N/A'))}</td>
+                                <td>${escapeHtml(block.toolNeeded || 'None')}</td>
+                            </tr>`;
+                        });
+                        html += '</tbody></table>';
+                    }
+                    
+                    html += '</div>';
                 }
                 
                 document.getElementById('context').innerHTML = html;

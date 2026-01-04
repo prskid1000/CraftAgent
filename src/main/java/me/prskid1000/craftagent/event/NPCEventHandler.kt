@@ -2,8 +2,15 @@ package me.prskid1000.craftagent.event
 
 import me.prskid1000.craftagent.action.ActionExecutor
 import me.prskid1000.craftagent.action.ActionProvider
+import me.prskid1000.craftagent.action.BuildingActionHandler
+import me.prskid1000.craftagent.action.CombatActionHandler
 import me.prskid1000.craftagent.action.CommunicationActionHandler
+import me.prskid1000.craftagent.action.CraftingActionHandler
+import me.prskid1000.craftagent.action.FarmingActionHandler
+import me.prskid1000.craftagent.action.FishingActionHandler
+import me.prskid1000.craftagent.action.HuntingActionHandler
 import me.prskid1000.craftagent.action.MemoryActionHandler
+import me.prskid1000.craftagent.action.MiningActionHandler
 import me.prskid1000.craftagent.action.NavigationActionHandler
 import me.prskid1000.craftagent.common.NPCService
 import me.prskid1000.craftagent.config.NPCConfig
@@ -112,7 +119,7 @@ class NPCEventHandler(
             if (actions.isNotEmpty()) {
                 val npcEntity = contextProvider.getNpcEntity()
                 
-                // Create action provider with memory, communication, and navigation handlers
+                // Create action provider with all handlers
                 val memoryHandler = MemoryActionHandler(
                     contextProvider.memoryManager,
                     sharebookRepository,
@@ -132,7 +139,53 @@ class NPCEventHandler(
                     contextProvider,
                     contextProvider.baseConfig
                 )
-                val actionProvider = ActionProvider(memoryHandler, communicationHandler, navigationHandler)
+                val miningHandler = MiningActionHandler(
+                    npcEntity,
+                    contextProvider,
+                    contextProvider.baseConfig
+                )
+                val buildingHandler = BuildingActionHandler(
+                    npcEntity,
+                    contextProvider,
+                    contextProvider.baseConfig
+                )
+                val craftingHandler = CraftingActionHandler(
+                    npcEntity,
+                    contextProvider,
+                    contextProvider.baseConfig
+                )
+                val huntingHandler = HuntingActionHandler(
+                    npcEntity,
+                    contextProvider,
+                    contextProvider.baseConfig
+                )
+                val farmingHandler = FarmingActionHandler(
+                    npcEntity,
+                    contextProvider,
+                    contextProvider.baseConfig
+                )
+                val fishingHandler = FishingActionHandler(
+                    npcEntity,
+                    contextProvider,
+                    contextProvider.baseConfig
+                )
+                val combatHandler = CombatActionHandler(
+                    npcEntity,
+                    contextProvider,
+                    contextProvider.baseConfig
+                )
+                val actionProvider = ActionProvider(
+                    memoryHandler,
+                    communicationHandler,
+                    navigationHandler,
+                    miningHandler,
+                    buildingHandler,
+                    craftingHandler,
+                    huntingHandler,
+                    farmingHandler,
+                    fishingHandler,
+                    combatHandler
+                )
                 val actionExecutor = ActionExecutor(npcEntity, actionProvider)
                 actionExecutor.executeActions(actions)
                 

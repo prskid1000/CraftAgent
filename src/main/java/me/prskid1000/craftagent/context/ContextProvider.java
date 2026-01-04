@@ -36,6 +36,9 @@ public class ContextProvider {
 	// Navigation and line of sight
 	private final NavigationState navigationState;
 	private final LineOfSightProvider lineOfSightProvider;
+	
+	// Action state management
+	private final ActionStateManager actionStateManager;
 
 	public ContextProvider(ServerPlayerEntity npcEntity, BaseConfig config) {
 		this.npcEntity = npcEntity;
@@ -49,6 +52,7 @@ public class ContextProvider {
 			(double) config.getLineOfSightMaxRange(), 
 			(double) config.getLineOfSightItemDetectionRange()
 		);
+		this.actionStateManager = new ActionStateManager();
 		buildContext();
 	}
 	
@@ -90,6 +94,9 @@ public class ContextProvider {
 			// Build line of sight data
 			ContextData.LineOfSightData lineOfSightData = buildLineOfSightData();
 			
+			// Build action state data
+			ContextData.ActionStateData actionStateData = buildActionStateData();
+			
 			WorldContext context = new WorldContext(
 					getNpcState(),
 					getInventoryState(),
@@ -97,7 +104,8 @@ public class ContextProvider {
 					getNearbyEntities(),
 					memoryData,
 					navigationData,
-					lineOfSightData
+					lineOfSightData,
+					actionStateData
 			);
 			this.cachedContext = context;
 			return context;
@@ -265,6 +273,13 @@ public class ContextProvider {
 	}
 	
 	/**
+	 * Gets the action state manager for this NPC.
+	 */
+	public ActionStateManager getActionStateManager() {
+		return actionStateManager;
+	}
+	
+	/**
 	 * Builds navigation data from the current navigation state.
 	 */
 	private ContextData.NavigationData buildNavigationData() {
@@ -291,6 +306,44 @@ public class ContextProvider {
 			entities,
 			targetBlock,
 			visibleBlocks
+		);
+	}
+	
+	/**
+	 * Builds action state data from the action state manager.
+	 */
+	private ContextData.ActionStateData buildActionStateData() {
+		Map<String, Object> actionDataMap = new HashMap<>(actionStateManager.getActionData());
+		
+		// Convert BlockPos to serializable format if present
+		if (actionDataMap.containsKey("position")) {
+			Object pos = actionDataMap.get("position");
+			if (pos instanceof BlockPos) {
+				BlockPos blockPos = (BlockPos) pos;
+				Map<String, Integer> posMap = new HashMap<>();
+				posMap.put("x", blockPos.getX());
+				posMap.put("y", blockPos.getY());
+				posMap.put("z", blockPos.getZ());
+				actionDataMap.put("position", posMap);
+			}
+		}
+		if (actionDataMap.containsKey("destination")) {
+			Object dest = actionDataMap.get("destination");
+			if (dest instanceof BlockPos) {
+				BlockPos blockPos = (BlockPos) dest;
+				Map<String, Integer> posMap = new HashMap<>();
+				posMap.put("x", blockPos.getX());
+				posMap.put("y", blockPos.getY());
+				posMap.put("z", blockPos.getZ());
+				actionDataMap.put("destination", posMap);
+			}
+		}
+		
+		return new ContextData.ActionStateData(
+			actionStateManager.getCurrentAction().name().toLowerCase(),
+			actionStateManager.getActionDescription(),
+			actionDataMap,
+			actionStateManager.getTimeInCurrentAction()
 		);
 	}
 }

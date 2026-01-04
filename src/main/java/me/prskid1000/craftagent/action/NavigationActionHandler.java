@@ -1,6 +1,7 @@
 package me.prskid1000.craftagent.action;
 
 import me.prskid1000.craftagent.config.BaseConfig;
+import me.prskid1000.craftagent.context.ActionStateManager;
 import me.prskid1000.craftagent.context.ContextProvider;
 import me.prskid1000.craftagent.context.NavigationState;
 import me.prskid1000.craftagent.util.LogUtil;
@@ -157,6 +158,12 @@ public class NavigationActionHandler implements ActionSyntaxProvider {
             // Set navigation state to traveling
             navState.setTravelingTo(destination);
             
+            // Set action state
+            var actionState = contextProvider.getActionStateManager();
+            var actionData = new java.util.HashMap<String, Object>();
+            actionData.put("destination", destination);
+            actionState.setAction(ActionStateManager.ActionType.TRAVELING, actionData);
+            
             // Use Minecraft's teleport command for movement
             // This is the simplest approach - NPCs can teleport to destinations
             // For more realistic pathfinding, we could implement step-by-step movement later
@@ -179,6 +186,11 @@ public class NavigationActionHandler implements ActionSyntaxProvider {
             // Update navigation state - check if we're close enough
             navState.update(npcEntity.getPos());
             
+            // Update action state if arrived
+            if (navState.hasArrived()) {
+                actionState.setIdle();
+            }
+            
             return true;
             
         } catch (Exception e) {
@@ -191,6 +203,10 @@ public class NavigationActionHandler implements ActionSyntaxProvider {
         try {
             NavigationState navState = contextProvider.getNavigationState();
             navState.setIdle();
+            
+            // Set action state to idle
+            contextProvider.getActionStateManager().setIdle();
+            
             return true;
         } catch (Exception e) {
             LogUtil.error("NavigationActionHandler: Error stopping travel", e);

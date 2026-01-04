@@ -111,5 +111,15 @@ public class ContextData {
         BlockData targetBlock, // Block directly in line of sight (where NPC is looking)
         List<BlockData> visibleBlocks // Additional blocks visible in line of sight
     ) {}
+    
+    /**
+     * Represents current action state data
+     */
+    public record ActionStateData(
+        String actionType, // "idle", "mining", "building", "crafting", "hunting", "farming", "fishing", "combat", "traveling"
+        String actionDescription, // Human-readable description
+        Map<String, Object> actionData, // Action-specific data (block type, position, target, etc.)
+        long timeInCurrentAction // Milliseconds spent in current action
+    ) {}
 }
 

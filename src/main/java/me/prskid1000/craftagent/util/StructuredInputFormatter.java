@@ -131,6 +131,18 @@ public class StructuredInputFormatter {
                 
                 context.put("lineOfSight", losMap);
             }
+            
+            // Add action state data if available
+            if (worldContext.actionState() != null) {
+                Map<String, Object> actionStateMap = new HashMap<>();
+                actionStateMap.put("actionType", worldContext.actionState().actionType());
+                actionStateMap.put("actionDescription", worldContext.actionState().actionDescription());
+                actionStateMap.put("timeInCurrentAction", worldContext.actionState().timeInCurrentAction());
+                if (worldContext.actionState().actionData() != null) {
+                    actionStateMap.put("actionData", worldContext.actionState().actionData());
+                }
+                context.put("actionState", actionStateMap);
+            }
 
             // Convert context to JSON string
             String contextJson = objectMapper.writeValueAsString(context);

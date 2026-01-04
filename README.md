@@ -7,7 +7,7 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 - 🤖 **AI-Powered NPCs**: Uses LLMs (Ollama, LM Studio) for intelligent decision-making
 - 🎮 **Autonomous Actions**: NPCs execute Minecraft commands to interact with the world
 - 💬 **Conversation Memory**: Persistent conversation history in SQLite
-- 🌍 **World Context Awareness**: NPCs understand surroundings (blocks, entities, inventory)
+- 🌍 **World Context Awareness**: NPCs understand surroundings (blocks, entities, inventory, navigation, line of sight)
 - 🔧 **Multi-LLM Support**: Ollama and LM Studio (OpenAI-compatible)
 - 🎨 **Client-Server Architecture**: GUI configuration on client, NPC logic on server
 - 🛠️ **Command System**: Uses Brigadier to discover and execute all Minecraft commands
@@ -16,6 +16,10 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 - 🧠 **Memory System**: Private and shared memory (privateBook, sharebook) for persistent knowledge
 - ⚡ **Structured Actions**: LLM returns structured output with messages and executable actions
 - 🔄 **Real-Time Updates**: Web UI automatically updates without manual refresh
+- 🧭 **Navigation System**: NPCs can travel to coordinates, entities, or blocks with state tracking
+- 👁️ **Line of Sight Detection**: NPCs detect items, entities, and blocks in their line of sight
+- ⚡ **Action State Management**: Track current actions (mining, building, crafting, hunting, farming, fishing, combat)
+- 🛠️ **Advanced Actions**: Mining, building, crafting, hunting, farming, fishing, and combat actions
 
 ## Requirements
 
@@ -86,13 +90,20 @@ CraftAgent includes a built-in web dashboard for monitoring NPCs in real-time. T
 3. The dashboard will display all active NPCs with their current status
 
 **Dashboard Features:**
-- **NPC Overview**: View all NPCs with their basic information (name, age, gender, health, food, position)
+- **NPC Overview**: View all NPCs with their basic information (name, age, gender, health, food, position, current action, navigation state)
 - **State Tab**: Real-time statistics with progress bars for health and food, position coordinates, and biome information
 - **Context Tab**: Detailed world context including:
   - State information (position, health, food, biome)
   - Inventory details (hotbar, main inventory, armor, off-hand)
   - Nearby blocks table (type, position, mine level, tool needed)
   - Nearby entities table (name, type, ID, player status)
+  - Navigation state (current state, destination, time in state)
+  - Current action (action type, description, duration, action-specific data)
+  - Line of sight data:
+    - Items in line of sight (type, count, position, distance)
+    - Entities in line of sight (name, type, ID, player status)
+    - Target block (where NPC is looking)
+    - Visible blocks (blocks visible in line of sight)
 - **Messages Tab**: Conversation history with role badges and timestamps
 - **Mail Tab**: Mail messages from other NPCs and players
 - **Memory Tab**: NPC's persistent memory including:
@@ -408,6 +419,17 @@ graph TD
 | **ActionParser** | `me.prskid1000.craftagent.action` | Generic command parser with quote support | `parseQuotedArguments()`, `wasArgumentQuoted()` |
 | **MemoryActionHandler** | `me.prskid1000.craftagent.action` | Handles memory actions | `handleAction()` (sharedbook/privatebook) |
 | **CommunicationActionHandler** | `me.prskid1000.craftagent.action` | Handles communication actions | `handleAction()` (mail send) |
+| **NavigationActionHandler** | `me.prskid1000.craftagent.action` | Handles navigation/travel actions | `handleAction()` (travel to coordinates/entity/block) |
+| **MiningActionHandler** | `me.prskid1000.craftagent.action` | Handles mining actions | `handleAction()` (mine blocks) |
+| **BuildingActionHandler** | `me.prskid1000.craftagent.action` | Handles building/placing actions | `handleAction()` (build/place blocks) |
+| **CraftingActionHandler** | `me.prskid1000.craftagent.action` | Handles crafting actions | `handleAction()` (craft items) |
+| **HuntingActionHandler** | `me.prskid1000.craftagent.action` | Handles hunting actions | `handleAction()` (hunt mobs) |
+| **FarmingActionHandler** | `me.prskid1000.craftagent.action` | Handles farming actions | `handleAction()` (plant/harvest crops) |
+| **FishingActionHandler** | `me.prskid1000.craftagent.action` | Handles fishing actions | `handleAction()` (fish/stop fishing) |
+| **CombatActionHandler** | `me.prskid1000.craftagent.action` | Handles combat actions | `handleAction()` (attack/defend) |
+| **ActionStateManager** | `me.prskid1000.craftagent.context` | Manages current action state | `setAction()`, `getActionDescription()` |
+| **NavigationState** | `me.prskid1000.craftagent.context` | Manages navigation state | `setTravelingTo()`, `update()`, `hasArrived()` |
+| **LineOfSightProvider** | `me.prskid1000.craftagent.context` | Detects items/entities/blocks in line of sight | `getItemsInLineOfSight()`, `getEntitiesInLineOfSight()` |
 | **WebServer** | `me.prskid1000.craftagent.web` | Web dashboard with auto-refresh | HTTP API endpoints |
 
 ### Event Listeners
@@ -426,8 +448,8 @@ graph TD
 | **NPC** | `me.prskid1000.craftagent.model` | Main NPC data structure | `entity`, `llmClient`, `history`, `eventHandler`, `contextProvider`, `config` |
 | **ConversationMessage** | `me.prskid1000.craftagent.history` | Conversation history message | `message`, `role`, `timestamp` |
 | **Message** | `me.prskid1000.craftagent.model.database` | Mail system message | `senderUuid`, `recipientUuid`, `content`, `read` |
-| **WorldContext** | `me.prskid1000.craftagent.model.context` | World state snapshot | `state`, `inventory`, `nearbyBlocks`, `nearbyEntities`, `memoryData` |
-| **ContextData** | `me.prskid1000.craftagent.model.context` | Context data structures | `BlockData`, `EntityData`, `ItemData`, `InventoryData`, `StateData` |
+| **WorldContext** | `me.prskid1000.craftagent.model.context` | World state snapshot | `state`, `inventory`, `nearbyBlocks`, `nearbyEntities`, `memoryData`, `navigation`, `lineOfSight`, `actionState` |
+| **ContextData** | `me.prskid1000.craftagent.model.context` | Context data structures | `BlockData`, `EntityData`, `ItemData`, `InventoryData`, `StateData`, `NavigationData`, `LineOfSightData`, `ActionStateData` |
 
 ### Repositories
 
@@ -465,18 +487,27 @@ graph LR
     A --> D[Get Nearby Blocks]
     A --> E[Get Nearby Entities]
     A --> F[Build Memory Data]
+    A --> G[Build Navigation Data]
+    A --> H[Build Line of Sight Data]
+    A --> I[Build Action State Data]
     
-    B --> G[StateData<br/>position, health, food, biome]
-    C --> H[InventoryData<br/>armor, main, hotbar, offhand]
-    D --> I[List of BlockData<br/>type, position, mineLevel]
-    E --> J[List of EntityData<br/>id, name, isPlayer]
-    F --> K[Memory Data<br/>privateBook, mail, sharebook]
+    B --> J[StateData<br/>position, health, food, biome]
+    C --> K[InventoryData<br/>armor, main, hotbar, offhand]
+    D --> L[List of BlockData<br/>type, position, mineLevel]
+    E --> M[List of EntityData<br/>id, name, isPlayer]
+    F --> N[Memory Data<br/>privateBook, mail, sharebook]
+    G --> O[NavigationData<br/>state, destination, time]
+    H --> P[LineOfSightData<br/>items, entities, blocks]
+    I --> Q[ActionStateData<br/>actionType, description, data]
     
-    G --> L[WorldContext]
-    H --> L
-    I --> L
-    J --> L
-    K --> L
+    J --> R[WorldContext]
+    K --> R
+    L --> R
+    M --> R
+    N --> R
+    O --> R
+    P --> R
+    Q --> R
 ```
 
 ### Memory System Structure
@@ -511,6 +542,25 @@ NPCs can execute actions through structured LLM output. The LLM returns a JSON r
 | **Memory - Private Book** | `privatebook add <title> '<content>'` | Add/update private memory page (NPC-specific). Title can be quoted or unquoted. Content must be wrapped in single (') or double (") quotes. |
 | **Memory - Private Book** | `privatebook remove <title>` | Remove private memory page |
 | **Communication** | `mail send <npc_name> '<message>'` | Send mail message to another NPC. Recipient name can be quoted or unquoted. Message must be wrapped in single (') or double (") quotes. |
+| **Navigation** | `travel to <x> <y> <z>` | Travel to specific coordinates |
+| **Navigation** | `travel to entity <entity_name>` | Travel to a nearby entity by name |
+| **Navigation** | `travel to block <block_type>` | Travel to a nearby block of specified type |
+| **Navigation** | `travel stop` | Stop current travel |
+| **Mining** | `mine <block_type> [count]` | Mine blocks of specified type (default: 1) |
+| **Mining** | `mine at <x> <y> <z>` | Mine block at specific coordinates |
+| **Building** | `build <block_type> at <x> <y> <z>` | Place block at coordinates (requires block in inventory) |
+| **Building** | `place <block_type> at <x> <y> <z>` | Place block (alias for build) |
+| **Crafting** | `craft <item_name>` | Craft item from inventory materials |
+| **Hunting** | `hunt <mob_type>` | Hunt/attack specific mob type |
+| **Hunting** | `hunt <entity_name>` | Hunt/attack entity by name |
+| **Farming** | `farm plant <crop_type> at <x> <y> <z>` | Plant crop at coordinates |
+| **Farming** | `farm harvest at <x> <y> <z>` | Harvest crop at coordinates |
+| **Farming** | `farm harvest` | Harvest nearby mature crops |
+| **Fishing** | `fish` | Start fishing (cast fishing rod) |
+| **Fishing** | `fish stop` | Stop fishing (reel in) |
+| **Combat** | `attack <entity_name>` | Attack specific entity |
+| **Combat** | `attack <entity_type>` | Attack entity by type |
+| **Combat** | `defend` | Enter defensive stance |
 
 **Action Parsing:**
 - Actions are parsed once by `ActionExecutor` using `ActionParser` utility
@@ -578,6 +628,8 @@ Config files are in `config/craftagent/`:
 | `maxMessages` | int | 50 | Maximum mail messages per NPC |
 | `maxSharebookPages` | int | 20 | Maximum shared memory pages |
 | `maxPrivatePages` | int | 20 | Maximum private memory pages per NPC |
+| `lineOfSightMaxRange` | int | 64 | Maximum range for line of sight detection |
+| `lineOfSightItemDetectionRange` | int | 32 | Range for detecting items in line of sight |
 
 ### NPC Config Fields
 
@@ -601,11 +653,22 @@ Config files are in `config/craftagent/`:
 - **NPCService**: Manages NPC lifecycle (create, remove, delete, spawn)
 - **NPCEventHandler**: Processes events and LLM interactions, handles structured output
 - **ContextProvider**: Gathers world state information (blocks, entities, inventory)
-- **ActionProvider**: Routes actions to appropriate handlers (memory, communication, etc.)
+- **ActionProvider**: Routes actions to appropriate handlers (memory, communication, navigation, mining, building, crafting, hunting, farming, fishing, combat)
 - **ActionExecutor**: Executes actions from structured LLM responses, parses commands once
 - **ActionParser**: Generic utility for parsing command arguments with quote support
 - **MemoryActionHandler**: Handles memory-related actions (sharedbook, privatebook)
 - **CommunicationActionHandler**: Handles communication actions (mail send)
+- **NavigationActionHandler**: Handles navigation/travel actions (travel to coordinates/entity/block)
+- **MiningActionHandler**: Handles mining actions (mine blocks)
+- **BuildingActionHandler**: Handles building/placing actions (build/place blocks)
+- **CraftingActionHandler**: Handles crafting actions (craft items)
+- **HuntingActionHandler**: Handles hunting actions (hunt mobs)
+- **FarmingActionHandler**: Handles farming actions (plant/harvest crops)
+- **FishingActionHandler**: Handles fishing actions (fish/stop fishing)
+- **CombatActionHandler**: Handles combat actions (attack/defend)
+- **ActionStateManager**: Tracks current action state and provides action descriptions
+- **NavigationState**: Manages navigation state (idle, traveling, arrived)
+- **LineOfSightProvider**: Detects items, entities, and blocks in NPC's line of sight
 - **MinecraftCommandUtil**: Discovers and executes Minecraft commands via Brigadier
 - **LLMClient**: Interface for LLM providers (Ollama, LM Studio)
 - **CoordinationService**: Handles inter-NPC communication via mail system
