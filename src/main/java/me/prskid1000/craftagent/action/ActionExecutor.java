@@ -58,7 +58,16 @@ public class ActionExecutor {
             return;
         }
         
-        boolean success = actionProvider.executeAction(action);
+        String trimmed = action.trim();
+        // Parse once at the executor level
+        String[] parsed = ActionParser.parseQuotedArguments(trimmed);
+        
+        if (parsed.length == 0) {
+            LogUtil.info("Action has no arguments: " + action);
+            return;
+        }
+        
+        boolean success = actionProvider.executeAction(trimmed, parsed);
         if (success) {
             LogUtil.info("Action executed successfully: " + action);
         } else {
@@ -73,7 +82,14 @@ public class ActionExecutor {
      * @return true if action format is valid
      */
     public boolean isValidAction(String action) {
-        return actionProvider.isValidAction(action);
+        if (action == null || action.trim().isEmpty()) {
+            return false;
+        }
+        
+        String trimmed = action.trim();
+        String[] parsed = ActionParser.parseQuotedArguments(trimmed);
+        
+        return actionProvider.isValidAction(trimmed, parsed);
     }
 }
 

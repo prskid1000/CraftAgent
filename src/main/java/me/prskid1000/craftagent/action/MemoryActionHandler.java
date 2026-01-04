@@ -35,54 +35,34 @@ public class MemoryActionHandler {
         this.baseConfig = baseConfig;
     }
     
-    public boolean handleAction(String action) {
-        if (action == null || action.trim().isEmpty()) {
-            LogUtil.error("MemoryActionHandler: Action is null or empty");
-            return false;
-        }
-        
-        String trimmed = action.trim();
-        
-        // Parse with quote awareness
-        String[] parsed = parseQuotedArguments(trimmed);
-        if (parsed.length < 3) {
-            LogUtil.error("MemoryActionHandler: Invalid action format (need at least 3 parts): " + action);
+    public boolean handleAction(String originalAction, String[] parsed) {
+        if (parsed == null || parsed.length < 3) {
+            LogUtil.error("MemoryActionHandler: Invalid action format (need at least 3 parts): " + originalAction);
             return false;
         }
         
         String bookType = parsed[0].toLowerCase();
         String operation = parsed[1].toLowerCase();
-        String pageTitle = parsed[2];
+        String pageTitle = parsed[2].trim();
         String content = parsed.length > 3 ? parsed[3] : "";
         
         // For "add" operations, content MUST be in single or double quotes
         if ("add".equals(operation)) {
             if (content.isEmpty()) {
-                LogUtil.error("MemoryActionHandler: Content is required for 'add' operation. Action: " + action);
+                LogUtil.error("MemoryActionHandler: Content is required for 'add' operation. Action: " + originalAction);
                 return false;
             }
             
-            boolean singleQuoted = content.startsWith("'") && content.endsWith("'");
-            boolean doubleQuoted = content.startsWith("\"") && content.endsWith("\"");
-            
-            if (!singleQuoted && !doubleQuoted) {
-                LogUtil.error("MemoryActionHandler: Content must be wrapped in single quotes (') or double quotes (\") for 'add' operation. Action: " + action);
+            // Check if content (4th argument, index 3) was quoted in the original string
+            String trimmed = originalAction.trim();
+            if (!ActionParser.wasArgumentQuoted(trimmed, parsed, 3)) {
+                LogUtil.error("MemoryActionHandler: Content must be wrapped in single quotes (') or double quotes (\") for 'add' operation. Action: " + originalAction);
                 return false;
             }
-            
-            // Strip surrounding quotes (single or double)
-            content = content.substring(1, content.length() - 1);
-        }
-        
-        // Strip quotes from title if present
-        if ((pageTitle.startsWith("'") && pageTitle.endsWith("'")) || 
-            (pageTitle.startsWith("\"") && pageTitle.endsWith("\""))) {
-            pageTitle = pageTitle.substring(1, pageTitle.length() - 1);
         }
         
         // Replace newlines and normalize whitespace
         content = content.replaceAll("\\r\\n|\\r|\\n", " ").replaceAll("\\s+", " ").trim();
-        pageTitle = pageTitle.trim();
         
         LogUtil.info("MemoryActionHandler: Processing action - type: " + bookType + ", op: " + operation + ", title: " + pageTitle + ", content length: " + content.length());
         
@@ -96,48 +76,7 @@ public class MemoryActionHandler {
         };
     }
     
-    /**
-     * Parses a string into arguments, respecting quoted strings (both single and double quotes).
-     * Handles cases like: sharedbook add "Title" "Content with spaces"
-     */
-    private String[] parseQuotedArguments(String input) {
-        java.util.List<String> args = new java.util.ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        char quoteChar = 0;
-        boolean inQuotes = false;
-        
-        for (int i = 0; i < input.length(); i++) {
-            char c = input.charAt(i);
-            
-            if (!inQuotes && (c == '\'' || c == '"')) {
-                // Start of quoted string
-                inQuotes = true;
-                quoteChar = c;
-                current.append(c);
-            } else if (inQuotes && c == quoteChar) {
-                // End of quoted string
-                current.append(c);
-                inQuotes = false;
-                quoteChar = 0;
-            } else if (!inQuotes && Character.isWhitespace(c)) {
-                // Whitespace outside quotes - end of argument
-                if (current.length() > 0) {
-                    args.add(current.toString());
-                    current.setLength(0);
-                }
-            } else {
-                // Regular character
-                current.append(c);
-            }
-        }
-        
-        // Add last argument if any
-        if (current.length() > 0) {
-            args.add(current.toString());
-        }
-        
-        return args.toArray(new String[0]);
-    }
+    
     
     private boolean handleSharedBook(String op, String title, String content) {
         if (sharebookRepository == null) {
@@ -217,16 +156,11 @@ public class MemoryActionHandler {
         };
     }
     
-    public boolean isValidAction(String action) {
-        if (action == null || action.trim().isEmpty()) return false;
+    public boolean isValidAction(String action, String[] parsed) {
+        if (parsed == null || parsed.length < 3) return false;
         
-        // Normalize newlines and extra whitespace
-        String normalized = action.replaceAll("\\r\\n|\\r|\\n", " ").trim();
-        String[] parts = parseQuotedArguments(normalized);
-        if (parts.length < 3) return false;
-        
-        String bookType = parts[0].toLowerCase();
-        String op = parts[1].toLowerCase();
+        String bookType = parsed[0].toLowerCase();
+        String op = parsed[1].toLowerCase();
         
         boolean validBookType = switch (bookType) {
             case "sharedbook", "privatebook" -> true;
@@ -243,22 +177,19 @@ public class MemoryActionHandler {
         // For "add" operation, need at least 4 parts (bookType, op, title, content)
         // Content MUST be wrapped in single or double quotes
         if ("add".equals(op)) {
-            if (parts.length < 4) return false;
-            String content = parts[3];
+            if (parsed.length < 4) return false;
             
-            // Content must be wrapped in single or double quotes
-            boolean singleQuoted = content.startsWith("'") && content.endsWith("'");
-            boolean doubleQuoted = content.startsWith("\"") && content.endsWith("\"");
-            if (!singleQuoted && !doubleQuoted) return false;
+            // Check if content was quoted in original string
+            String trimmed = action.trim();
+            if (!ActionParser.wasArgumentQuoted(trimmed, parsed, 3)) return false;
             
-            // Strip quotes to check if content is not empty
-            content = content.substring(1, content.length() - 1);
-            
-            // Content should not be empty after stripping quotes
+            // Content should not be empty
+            String content = parsed[3];
             return !content.trim().isEmpty();
         }
         
         return true; // "remove" operation only needs 3 parts
     }
+    
 }
 

@@ -37,36 +37,28 @@ public class CommunicationActionHandler {
         this.baseConfig = baseConfig;
     }
     
-    public boolean handleAction(String action) {
-        if (action == null || action.trim().isEmpty()) {
-            LogUtil.error("CommunicationActionHandler: Action is null or empty");
+    public boolean handleAction(String originalAction, String[] parsed) {
+        if (parsed == null || parsed.length < 4) {
+            LogUtil.error("CommunicationActionHandler: Invalid action format (need 4 parts): " + originalAction);
             return false;
         }
         
-        String trimmed = action.trim();
-        String[] parts = trimmed.split("\\s+", 4);
-        if (parts.length < 4) {
-            LogUtil.error("CommunicationActionHandler: Invalid action format (need 4 parts): " + action);
-            return false;
-        }
-        
-        String actionType = parts[0].toLowerCase();
-        String operation = parts[1].toLowerCase();
-        String recipientName = parts[2];
-        String messageContent = parts[3];
+        String actionType = parsed[0].toLowerCase();
+        String operation = parsed[1].toLowerCase();
+        String recipientName = parsed[2].trim();
+        String messageContent = parsed[3];
         
         // Message content MUST be in single or double quotes
-        if (!messageContent.isEmpty()) {
-            boolean singleQuoted = messageContent.startsWith("'") && messageContent.endsWith("'");
-            boolean doubleQuoted = messageContent.startsWith("\"") && messageContent.endsWith("\"");
-            
-            if (!singleQuoted && !doubleQuoted) {
-                LogUtil.error("CommunicationActionHandler: Message must be wrapped in single quotes (') or double quotes (\"). Action: " + action);
-                return false;
-            }
-            
-            // Strip surrounding quotes (single or double)
-            messageContent = messageContent.substring(1, messageContent.length() - 1);
+        // Check if message (4th argument, index 3) was quoted in the original string
+        String trimmed = originalAction.trim();
+        if (!ActionParser.wasArgumentQuoted(trimmed, parsed, 3)) {
+            LogUtil.error("CommunicationActionHandler: Message must be wrapped in single quotes (') or double quotes (\"). Action: " + originalAction);
+            return false;
+        }
+        
+        if (messageContent.isEmpty()) {
+            LogUtil.error("CommunicationActionHandler: Message cannot be empty. Action: " + originalAction);
+            return false;
         }
         
         // Replace newlines and normalize whitespace
@@ -88,6 +80,7 @@ public class CommunicationActionHandler {
             }
         };
     }
+    
     
     private boolean sendMessage(String recipientName, String content) {
         if (messageRepository == null) {
@@ -137,32 +130,24 @@ public class CommunicationActionHandler {
         }
     }
     
-    public boolean isValidAction(String action) {
-        if (action == null || action.trim().isEmpty()) return false;
+    public boolean isValidAction(String action, String[] parsed) {
+        if (parsed == null || parsed.length < 4) return false;
         
-        // Normalize newlines and extra whitespace
-        String normalized = action.replaceAll("\\r\\n|\\r|\\n", " ").replaceAll("\\s+", " ").trim();
-        String[] parts = normalized.split("\\s+", 4);
-        if (parts.length < 4) return false;
-        
-        String actionType = parts[0].toLowerCase();
-        String op = parts[1].toLowerCase();
+        String actionType = parsed[0].toLowerCase();
+        String op = parsed[1].toLowerCase();
         
         if (!"mail".equals(actionType) || !"send".equals(op)) {
             return false;
         }
         
         // Message content MUST be wrapped in single or double quotes
-        String messageContent = parts[3];
-        boolean singleQuoted = messageContent.startsWith("'") && messageContent.endsWith("'");
-        boolean doubleQuoted = messageContent.startsWith("\"") && messageContent.endsWith("\"");
-        if (!singleQuoted && !doubleQuoted) return false;
+        String trimmed = action.trim();
+        if (!ActionParser.wasArgumentQuoted(trimmed, parsed, 3)) return false;
         
-        // Strip quotes to check if message is not empty
-        messageContent = messageContent.substring(1, messageContent.length() - 1);
-        
-        // Message should not be empty after stripping quotes
+        // Message should not be empty
+        String messageContent = parsed[3];
         return !messageContent.trim().isEmpty();
     }
+    
 }
 

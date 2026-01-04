@@ -13,32 +13,26 @@ public class ActionProvider {
         this.communicationHandler = communicationHandler;
     }
     
-    public boolean executeAction(String action) {
-        if (action == null || action.trim().isEmpty()) return false;
+    public boolean executeAction(String originalAction, String[] parsed) {
+        if (parsed == null || parsed.length == 0) return false;
         
-        String[] parts = action.trim().split("\\s+", 2);
-        if (parts.length < 1) return false;
-        
-        String actionType = parts[0].toLowerCase();
+        String actionType = parsed[0].toLowerCase();
         
         return switch (actionType) {
-            case "sharedbook", "privatebook" -> memoryHandler.handleAction(action);
-            case "mail" -> communicationHandler.handleAction(action);
+            case "sharedbook", "privatebook" -> memoryHandler.handleAction(originalAction, parsed);
+            case "mail" -> communicationHandler.handleAction(originalAction, parsed);
             default -> false;
         };
     }
     
-    public boolean isValidAction(String action) {
-        if (action == null || action.trim().isEmpty()) return false;
+    public boolean isValidAction(String action, String[] parsed) {
+        if (parsed == null || parsed.length == 0) return false;
         
-        String[] parts = action.trim().split("\\s+", 2);
-        if (parts.length < 1) return false;
-        
-        String actionType = parts[0].toLowerCase();
+        String actionType = parsed[0].toLowerCase();
         
         return switch (actionType) {
-            case "sharedbook", "privatebook" -> memoryHandler.isValidAction(action);
-            case "mail" -> communicationHandler.isValidAction(action);
+            case "sharedbook", "privatebook" -> memoryHandler.isValidAction(action, parsed);
+            case "mail" -> communicationHandler.isValidAction(action, parsed);
             default -> false;
         };
     }

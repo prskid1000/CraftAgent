@@ -404,7 +404,8 @@ graph TD
 | **ConversationHistory** | `me.prskid1000.craftagent.history` | Message history management | `add()`, `performSummarizationIfNeeded()` |
 | **CoordinationService** | `me.prskid1000.craftagent.coordination` | Inter-NPC communication | `sendDirectMessage()` |
 | **ActionProvider** | `me.prskid1000.craftagent.action` | Routes actions to handlers | `executeAction()`, `isValidAction()` |
-| **ActionExecutor** | `me.prskid1000.craftagent.action` | Executes LLM-generated actions | `executeActions()` |
+| **ActionExecutor** | `me.prskid1000.craftagent.action` | Executes LLM-generated actions, parses commands | `executeActions()`, `executeAction()` |
+| **ActionParser** | `me.prskid1000.craftagent.action` | Generic command parser with quote support | `parseQuotedArguments()`, `wasArgumentQuoted()` |
 | **MemoryActionHandler** | `me.prskid1000.craftagent.action` | Handles memory actions | `handleAction()` (sharedbook/privatebook) |
 | **CommunicationActionHandler** | `me.prskid1000.craftagent.action` | Handles communication actions | `handleAction()` (mail send) |
 | **WebServer** | `me.prskid1000.craftagent.web` | Web dashboard with auto-refresh | HTTP API endpoints |
@@ -505,13 +506,25 @@ NPCs can execute actions through structured LLM output. The LLM returns a JSON r
 
 | Action Type | Format | Description |
 |-------------|--------|-------------|
-| **Memory - Shared Book** | `sharedbook add <title> <content>` | Add/update shared memory page (all NPCs can read) |
+| **Memory - Shared Book** | `sharedbook add <title> '<content>'` | Add/update shared memory page (all NPCs can read). Title can be quoted or unquoted. Content must be wrapped in single (') or double (") quotes. |
 | **Memory - Shared Book** | `sharedbook remove <title>` | Remove shared memory page |
-| **Memory - Private Book** | `privatebook add <title> <content>` | Add/update private memory page (NPC-specific) |
+| **Memory - Private Book** | `privatebook add <title> '<content>'` | Add/update private memory page (NPC-specific). Title can be quoted or unquoted. Content must be wrapped in single (') or double (") quotes. |
 | **Memory - Private Book** | `privatebook remove <title>` | Remove private memory page |
-| **Communication** | `mail send <npc_name> <message>` | Send mail message to another NPC |
+| **Communication** | `mail send <npc_name> '<message>'` | Send mail message to another NPC. Recipient name can be quoted or unquoted. Message must be wrapped in single (') or double (") quotes. |
 
-Actions are automatically executed by the ActionExecutor, which routes them to appropriate handlers (MemoryActionHandler, CommunicationActionHandler, etc.).
+**Action Parsing:**
+- Actions are parsed once by `ActionExecutor` using `ActionParser` utility
+- The parser handles both single and double quotes, allowing arguments with spaces
+- Parsed arrays are passed to handlers: `["sharedbook", "add", "title", "content"]`
+- Content and messages must be quoted to handle multi-word text and special characters
+
+**Examples:**
+- `sharedbook add "My Title" "Content with spaces and special chars!"`
+- `sharedbook add title 'Simple content'`
+- `mail send "Alice" "Hello world message"`
+- `mail send Alice 'Hello world'`
+
+Actions are automatically executed by the ActionExecutor, which parses commands and routes them to appropriate handlers (MemoryActionHandler, CommunicationActionHandler, etc.).
 
 ### Event Processing Flow
 
@@ -589,7 +602,8 @@ Config files are in `config/craftagent/`:
 - **NPCEventHandler**: Processes events and LLM interactions, handles structured output
 - **ContextProvider**: Gathers world state information (blocks, entities, inventory)
 - **ActionProvider**: Routes actions to appropriate handlers (memory, communication, etc.)
-- **ActionExecutor**: Executes actions from structured LLM responses
+- **ActionExecutor**: Executes actions from structured LLM responses, parses commands once
+- **ActionParser**: Generic utility for parsing command arguments with quote support
 - **MemoryActionHandler**: Handles memory-related actions (sharedbook, privatebook)
 - **CommunicationActionHandler**: Handles communication actions (mail send)
 - **MinecraftCommandUtil**: Discovers and executes Minecraft commands via Brigadier
