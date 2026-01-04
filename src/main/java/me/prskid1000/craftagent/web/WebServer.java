@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
@@ -33,6 +34,7 @@ public class WebServer {
     private final NPCService npcService;
     private final ConfigProvider configProvider;
     private final ObjectMapper objectMapper;
+    private final Set<HttpExchange> sseClients = ConcurrentHashMap.newKeySet();
     
     public WebServer(NPCService npcService, ConfigProvider configProvider) {
         this.npcService = npcService;
@@ -49,6 +51,7 @@ public class WebServer {
             // API endpoints - order matters! More specific paths first
             server.createContext("/api/npcs", this::handleGetNPCs);
             server.createContext("/api/npc/", this::handleNPCRequest);
+            server.createContext("/api/events", this::handleSSE);
             
             // Static files
             server.createContext("/", this::handleStatic);
@@ -409,6 +412,93 @@ public class WebServer {
     private void sendError(HttpExchange exchange, int statusCode, String message) throws IOException {
         Map<String, String> error = Map.of("error", message);
         sendJsonResponse(exchange, statusCode, error);
+    }
+    
+    /**
+     * Handles Server-Sent Events (SSE) connections for real-time updates.
+     */
+    private void handleSSE(HttpExchange exchange) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            sendError(exchange, 405, "Method not allowed");
+            return;
+        }
+        
+        // Set SSE headers
+        exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
+        exchange.getResponseHeaders().set("Cache-Control", "no-cache");
+        exchange.getResponseHeaders().set("Connection", "keep-alive");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+        exchange.sendResponseHeaders(200, 0);
+        
+        // Add client to connected set
+        sseClients.add(exchange);
+        
+        // Send initial connection message
+        sendSSEMessage(exchange, "connected", "{\"status\":\"connected\"}");
+        
+        // Keep connection alive with periodic heartbeats
+        try {
+            while (!Thread.currentThread().isInterrupted()) {
+                Thread.sleep(30000); // 30 seconds
+                sendSSEMessage(exchange, "heartbeat", "{\"type\":\"heartbeat\"}");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            // Client disconnected
+        } finally {
+            sseClients.remove(exchange);
+            try {
+                exchange.close();
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+    }
+    
+    /**
+     * Sends an SSE message to a specific client.
+     */
+    private void sendSSEMessage(HttpExchange exchange, String event, String data) throws IOException {
+        OutputStream os = exchange.getResponseBody();
+        os.write(("event: " + event + "\n").getBytes(StandardCharsets.UTF_8));
+        os.write(("data: " + data + "\n\n").getBytes(StandardCharsets.UTF_8));
+        os.flush();
+    }
+    
+    /**
+     * Broadcasts an update to all connected SSE clients.
+     */
+    public void broadcastUpdate(String event, Object data) {
+        if (sseClients.isEmpty()) {
+            return;
+        }
+        
+        try {
+            String jsonData = objectMapper.writeValueAsString(data);
+            List<HttpExchange> disconnected = new ArrayList<>();
+            
+            for (HttpExchange client : sseClients) {
+                try {
+                    sendSSEMessage(client, event, jsonData);
+                } catch (IOException e) {
+                    // Client disconnected
+                    disconnected.add(client);
+                }
+            }
+            
+            // Remove disconnected clients
+            disconnected.forEach(client -> {
+                sseClients.remove(client);
+                try {
+                    client.close();
+                } catch (Exception e) {
+                    // Ignore
+                }
+            });
+        } catch (Exception e) {
+            LogUtil.error("Error broadcasting SSE update", e);
+        }
     }
     
     private String getEmbeddedHTML() {
@@ -884,8 +974,8 @@ public class WebServer {
             padding: 40px;
             color: #666;
         }
-        .refresh-btn {
-            background: #4caf50;
+        .close-btn {
+            background: #f44336;
             color: white;
             border: none;
             padding: 10px 20px;
@@ -913,7 +1003,6 @@ public class WebServer {
             <div class="modal-header">
                 <h2 class="modal-title" id="modalTitle">NPC Details</h2>
                 <div>
-                    <button class="refresh-btn" onclick="refreshCurrentNPC()">🔄 Refresh</button>
                     <button class="close-btn" onclick="closeModal()">✕ Close</button>
                 </div>
             </div>
@@ -958,6 +1047,83 @@ public class WebServer {
     
     <script>
         let currentNPCUuid = null;
+        let eventSource = null;
+        
+        // Initialize SSE connection for real-time updates
+        function initSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource('/api/events');
+            
+            eventSource.addEventListener('connected', function(e) {
+                console.log('SSE connected');
+            });
+            
+            eventSource.addEventListener('heartbeat', function(e) {
+                // Keep connection alive
+            });
+            
+            eventSource.addEventListener('npcs-updated', function(e) {
+                const data = JSON.parse(e.data);
+                // Always reload NPC list when NPCs are updated
+                loadNPCs();
+                // If viewing a specific NPC, also reload that view
+                if (data.uuid && currentNPCUuid === data.uuid) {
+                    viewNPC(currentNPCUuid);
+                }
+            });
+            
+            eventSource.addEventListener('messages-updated', function(e) {
+                const data = JSON.parse(e.data);
+                if (data.uuid && currentNPCUuid === data.uuid) {
+                    // Reload messages tab
+                    loadNPCMessages(currentNPCUuid);
+                    // Also reload overview to show updated message count
+                    loadNPCOverview(currentNPCUuid);
+                }
+            });
+            
+            eventSource.addEventListener('mail-updated', function(e) {
+                const data = JSON.parse(e.data);
+                if (data.uuid && currentNPCUuid === data.uuid) {
+                    // Reload mail tab
+                    loadNPCMail(currentNPCUuid);
+                    // Also reload overview to show updated mail count
+                    loadNPCOverview(currentNPCUuid);
+                }
+            });
+            
+            eventSource.addEventListener('memory-updated', function(e) {
+                const data = JSON.parse(e.data);
+                if (data.uuid && currentNPCUuid === data.uuid) {
+                    // Reload memory tab
+                    loadNPCMemory(currentNPCUuid);
+                    // Also reload context which includes memory
+                    loadNPCContext(currentNPCUuid);
+                }
+            });
+            
+            eventSource.onerror = function(e) {
+                console.error('SSE error:', e);
+                // Reconnect after 5 seconds
+                setTimeout(initSSE, 5000);
+            };
+        }
+        
+        // Initialize SSE when page loads
+        window.addEventListener('load', function() {
+            initSSE();
+            loadNPCs();
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (eventSource) {
+                eventSource.close();
+            }
+        });
         
         async function loadNPCs() {
             try {
@@ -1417,11 +1583,6 @@ public class WebServer {
             currentNPCUuid = null;
         }
         
-        async function refreshCurrentNPC() {
-            if (currentNPCUuid) {
-                await viewNPC(currentNPCUuid);
-            }
-        }
         
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -1531,8 +1692,7 @@ public class WebServer {
         // Load NPCs on page load
         loadNPCs();
         
-        // Auto-refresh every 5 minutes
-        setInterval(loadNPCs, 300000);
+        // No auto-refresh needed - SSE handles all updates in real-time
     </script>
 </body>
 </html>

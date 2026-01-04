@@ -11,9 +11,11 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 - 🔧 **Multi-LLM Support**: Ollama and LM Studio (OpenAI-compatible)
 - 🎨 **Client-Server Architecture**: GUI configuration on client, NPC logic on server
 - 🛠️ **Command System**: Uses Brigadier to discover and execute all Minecraft commands
-- 🌐 **Web Dashboard**: Built-in web UI (http://localhost:8080) to monitor NPCs, view context, messages, and memory
+- 🌐 **Web Dashboard**: Built-in web UI (http://localhost:8080) with real-time updates via Server-Sent Events (SSE)
 - 📧 **Mail System**: NPCs can send and receive messages via mail system
 - 🧠 **Memory System**: Private and shared memory (privateBook, sharebook) for persistent knowledge
+- ⚡ **Structured Actions**: LLM returns structured output with messages and executable actions
+- 🔄 **Real-Time Updates**: Web UI automatically updates without manual refresh
 
 ## Requirements
 
@@ -97,7 +99,15 @@ CraftAgent includes a built-in web dashboard for monitoring NPCs in real-time. T
   - Private book pages (NPC-specific memory)
   - Shared book pages (accessible to all NPCs)
 
-**Note:** The dashboard auto-refreshes every 5 minutes. Use the refresh button in the NPC detail modal to manually update data.
+**Real-Time Updates:**
+- The dashboard uses Server-Sent Events (SSE) for real-time updates
+- All data (NPCs, messages, mail, memory) updates automatically when changes occur
+- No manual refresh needed - the UI stays synchronized with the server
+- Updates are triggered when:
+  - NPCs are created or removed
+  - New messages are added to conversation history
+  - Mail messages are sent or received
+  - Memory (private/shared book) is updated
 
 ### Creating an NPC
 
@@ -270,6 +280,8 @@ sequenceDiagram
     participant Context as Context Provider
     participant LLM as LLM Client
     participant Ollama as Ollama/LM Studio
+    participant ActionExecutor as Action Executor
+    participant WebServer as Web Server
     
     Scheduler->>EventHandler: processLLM()
     EventHandler->>History: performSummarizationIfNeeded()
@@ -280,10 +292,13 @@ sequenceDiagram
     EventHandler->>EventHandler: Format messages with context
     EventHandler->>LLM: chat(messages, server)
     LLM->>Ollama: HTTP POST /api/chat
-    Ollama-->>LLM: JSON Response
-    LLM-->>EventHandler: LLMResponse
+    Ollama-->>LLM: JSON Response {"message": "...", "actions": [...]}
+    LLM-->>EventHandler: LLMResponse (structured)
+    EventHandler->>ActionExecutor: executeActions(actions)
+    ActionExecutor->>ActionExecutor: Route to handlers (memory, communication, etc.)
     EventHandler->>History: Add response to history
     EventHandler->>ChatUtil: Send message to chat
+    EventHandler->>WebServer: broadcastUpdate("messages-updated")
     EventHandler-->>Scheduler: Success/Failure
 ```
 
@@ -388,6 +403,11 @@ graph TD
 | **ContextProvider** | `me.prskid1000.craftagent.context` | World context gathering | `buildContext()` |
 | **ConversationHistory** | `me.prskid1000.craftagent.history` | Message history management | `add()`, `performSummarizationIfNeeded()` |
 | **CoordinationService** | `me.prskid1000.craftagent.coordination` | Inter-NPC communication | `sendDirectMessage()` |
+| **ActionProvider** | `me.prskid1000.craftagent.action` | Routes actions to handlers | `executeAction()`, `isValidAction()` |
+| **ActionExecutor** | `me.prskid1000.craftagent.action` | Executes LLM-generated actions | `executeActions()` |
+| **MemoryActionHandler** | `me.prskid1000.craftagent.action` | Handles memory actions | `handleAction()` (sharedbook/privatebook) |
+| **CommunicationActionHandler** | `me.prskid1000.craftagent.action` | Handles communication actions | `handleAction()` (mail send) |
+| **WebServer** | `me.prskid1000.craftagent.web` | Web dashboard with SSE | `broadcastUpdate()`, `handleSSE()` |
 
 ### Event Listeners
 
@@ -467,6 +487,32 @@ graph LR
 | **Private Memory** | PrivateBookPageRepository | Per-NPC | NPC-specific notes and knowledge |
 | **Shared Memory** | SharebookRepository | Global | Accessible to all NPCs |
 
+### Action System
+
+NPCs can execute actions through structured LLM output. The LLM returns a JSON response with a message and a list of actions:
+
+```json
+{
+  "message": "I found an iron mine!",
+  "actions": [
+    "sharedbook add IronMine Location at 150, 64, -200",
+    "mail send Alice Found iron, want to mine together?"
+  ]
+}
+```
+
+**Available Actions:**
+
+| Action Type | Format | Description |
+|-------------|--------|-------------|
+| **Memory - Shared Book** | `sharedbook add <title> <content>` | Add/update shared memory page (all NPCs can read) |
+| **Memory - Shared Book** | `sharedbook remove <title>` | Remove shared memory page |
+| **Memory - Private Book** | `privatebook add <title> <content>` | Add/update private memory page (NPC-specific) |
+| **Memory - Private Book** | `privatebook remove <title>` | Remove private memory page |
+| **Communication** | `mail send <npc_name> <message>` | Send mail message to another NPC |
+
+Actions are automatically executed by the ActionExecutor, which routes them to appropriate handlers (MemoryActionHandler, CommunicationActionHandler, etc.).
+
 ### Event Processing Flow
 
 ```mermaid
@@ -477,19 +523,25 @@ graph TD
     B -->|Server Tick| E[LLMProcessingScheduler]
     
     C --> F[Store in Mail System]
-    F --> G[Available in Context]
+    F --> G[Broadcast SSE Update]
+    G --> H[Available in Context]
     
-    D --> H[Update NPC Age]
-    H --> I[Save Config]
+    D --> I[Update NPC Age]
+    I --> J[Save Config]
     
-    E --> J[Check Processing Interval]
-    J -->|Interval Passed| K[Queue NPC for Processing]
-    K --> L[NPCEventHandler.processLLM]
-    L --> M[Build Context]
-    M --> N[Call LLM]
-    N --> O[Process Response]
-    O --> P[Update History]
-    P --> Q[Send Chat Message]
+    E --> K[Check Processing Interval]
+    K -->|Interval Passed| L[Queue NPC for Processing]
+    L --> M[NPCEventHandler.processLLM]
+    M --> N[Build Context]
+    N --> O[Call LLM]
+    O --> P[Parse Structured Response]
+    P --> Q{Has Actions?}
+    Q -->|Yes| R[Execute Actions]
+    R --> S[Memory/Communication Handlers]
+    Q -->|No| T[Update History]
+    R --> T
+    T --> U[Send Chat Message]
+    U --> V[Broadcast SSE Update]
 ```
 
 ## Configuration
@@ -511,6 +563,9 @@ Config files are in `config/craftagent/`:
 | `llmProcessingInterval` | int | 5 | Seconds between LLM processing cycles |
 | `llmMinInterval` | int | 2 | Minimum seconds between NPC processing |
 | `conversationHistoryLength` | int | 5 | Max conversation messages before summarization |
+| `maxMessages` | int | 50 | Maximum mail messages per NPC |
+| `maxSharebookPages` | int | 20 | Maximum shared memory pages |
+| `maxPrivatePages` | int | 20 | Maximum private memory pages per NPC |
 
 ### NPC Config Fields
 
@@ -532,12 +587,16 @@ Config files are in `config/craftagent/`:
 ### Key Components
 
 - **NPCService**: Manages NPC lifecycle (create, remove, delete, spawn)
-- **NPCEventHandler**: Processes events and LLM interactions
+- **NPCEventHandler**: Processes events and LLM interactions, handles structured output
 - **ContextProvider**: Gathers world state information (blocks, entities, inventory)
+- **ActionProvider**: Routes actions to appropriate handlers (memory, communication, etc.)
+- **ActionExecutor**: Executes actions from structured LLM responses
+- **MemoryActionHandler**: Handles memory-related actions (sharedbook, privatebook)
+- **CommunicationActionHandler**: Handles communication actions (mail send)
 - **MinecraftCommandUtil**: Discovers and executes Minecraft commands via Brigadier
 - **LLMClient**: Interface for LLM providers (Ollama, LM Studio)
 - **CoordinationService**: Handles inter-NPC communication via mail system
-- **WebServer**: HTTP server for monitoring NPCs via web dashboard
+- **WebServer**: HTTP server for monitoring NPCs via web dashboard with SSE real-time updates
 
 ### Package Structure
 
@@ -581,6 +640,9 @@ me.prskid1000.craftagent/
 - **LLM timeout**: Increase `llmTimeout` in base config or try a faster model
 - **Mail not working**: Verify MessageRepository is initialized and NPC UUID is correct
 - **Context not updating**: Check ChunkManager is running and chunks are loaded
+- **Actions not executing**: Verify action format matches expected syntax (see Action System section)
+- **Web UI not updating**: Check browser console for SSE connection errors, verify server is running
+- **Structured output parsing fails**: LLM should return valid JSON with "message" and "actions" fields
 
 ## Contributing
 

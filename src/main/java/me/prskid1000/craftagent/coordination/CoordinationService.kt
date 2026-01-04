@@ -26,6 +26,7 @@ class CoordinationService(
             recipientUuid = toNpcUuid,
             senderUuid = fromNpc.config.uuid,
             senderName = fromNpc.config.npcName,
+            senderType = "NPC",
             content = message
         )
         
@@ -35,6 +36,9 @@ class CoordinationService(
         // Display in chat
         val chatMessage = "${fromNpc.config.npcName} says to ${targetNpc.config.npcName}: $message"
         me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(targetNpc.entity, chatMessage)
+        
+        // Broadcast update to web UI
+        npcService.webServer?.broadcastUpdate("mail-updated", mapOf("uuid" to toNpcUuid.toString()))
         
         // Message is stored in mail system and will be available in context during next LLM call
         // Note: Not adding to conversation history - mail is accessed via context instead

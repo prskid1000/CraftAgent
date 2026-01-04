@@ -7,6 +7,8 @@ import me.prskid1000.craftagent.model.NPC;
 import me.prskid1000.craftagent.model.database.Message;
 import me.prskid1000.craftagent.util.LogUtil;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -73,6 +75,7 @@ public class CommunicationActionHandler {
             recipientNpc.getConfig().getUuid(),
             npcUuid,
             npcName,
+            "NPC",
             content.trim(),
             System.currentTimeMillis(),
             false
@@ -80,6 +83,14 @@ public class CommunicationActionHandler {
         
         messageRepository.insert(message, baseConfig.getMaxMessages());
         LogUtil.info("NPC " + npcName + " sent message to " + recipientName + ": " + content);
+        
+        // Broadcast update to web UI
+        if (npcService.webServer != null) {
+            Map<String, String> updateData = new HashMap<>();
+            updateData.put("uuid", recipientNpc.getConfig().getUuid().toString());
+            npcService.webServer.broadcastUpdate("mail-updated", updateData);
+        }
+        
         return true;
     }
     

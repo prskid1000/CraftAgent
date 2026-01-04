@@ -19,12 +19,21 @@ class MessageRepository(
                 recipient_uuid TEXT NOT NULL,
                 sender_uuid TEXT NOT NULL,
                 sender_name TEXT NOT NULL,
+                sender_type TEXT NOT NULL,
                 content TEXT NOT NULL,
                 timestamp INTEGER NOT NULL,
                 read INTEGER NOT NULL DEFAULT 0
             );
         """
         sqliteClient.update(sql)
+        
+        // Add sender_type column if it doesn't exist (for existing databases)
+        try {
+            val alterSql = "ALTER TABLE messages ADD COLUMN sender_type TEXT NOT NULL DEFAULT 'NPC';"
+            sqliteClient.update(alterSql)
+        } catch (e: Exception) {
+            // Column already exists, ignore
+        }
         
         val indexSql = "CREATE INDEX IF NOT EXISTS idx_message_recipient ON messages(recipient_uuid, read);"
         sqliteClient.update(indexSql)
@@ -41,15 +50,16 @@ class MessageRepository(
         }
         
         val statement = sqliteClient.buildPreparedStatement(
-            """INSERT INTO messages (recipient_uuid, sender_uuid, sender_name, content, timestamp, read)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO messages (recipient_uuid, sender_uuid, sender_name, sender_type, content, timestamp, read)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
         )
         statement?.setString(1, message.recipientUuid.toString())
         statement?.setString(2, message.senderUuid.toString())
         statement?.setString(3, message.senderName)
-        statement?.setString(4, message.content)
-        statement?.setLong(5, message.timestamp)
-        statement?.setInt(6, if (message.read) 1 else 0)
+        statement?.setString(4, message.senderType)
+        statement?.setString(5, message.content)
+        statement?.setLong(6, message.timestamp)
+        statement?.setInt(7, if (message.read) 1 else 0)
         sqliteClient.update(statement)
     }
 
@@ -91,6 +101,7 @@ class MessageRepository(
                 UUID.fromString(result.getString("recipient_uuid")),
                 UUID.fromString(result.getString("sender_uuid")),
                 result.getString("sender_name"),
+                result.getString("sender_type") ?: "NPC", // Default to "NPC" for backward compatibility
                 result.getString("content"),
                 result.getLong("timestamp"),
                 result.getInt("read") == 1

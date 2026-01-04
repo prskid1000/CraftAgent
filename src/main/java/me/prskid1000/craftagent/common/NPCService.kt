@@ -21,12 +21,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.jvm.JvmField
 
 class NPCService(
     private val factory: NPCFactory,
     private val configProvider: ConfigProvider,
     private val resourceProvider: ResourceProvider
 ) {
+    @JvmField
+    var webServer: me.prskid1000.craftagent.web.WebServer? = null
     val coordinationService = CoordinationService(this)
 
     private lateinit var executorService: ExecutorService
@@ -67,12 +70,16 @@ class NPCService(
             recipientUuid = npcUuid,
             senderUuid = playerUuid,
             senderName = playerName,
+            senderType = "PLAYER",
             content = messageContent
         )
         
         val maxMessages = configProvider.baseConfig.getMaxMessages()
         messageRepository.insert(message, maxMessages)
         LogUtil.info("Player $playerName sent message to NPC $npcUuid: $messageContent")
+        
+        // Broadcast update to web UI
+        webServer?.broadcastUpdate("mail-updated", mapOf("uuid" to npcUuid.toString()))
         
         // Message is stored in mail system and will be available in context during next LLM call
         // Note: Don't display in chat again - the original player message is already visible
@@ -158,6 +165,9 @@ class NPCService(
 
                         LogUtil.infoInChat("Added NPC with name: $name")
                         
+                        // Broadcast update to web UI
+                        webServer?.broadcastUpdate("npcs-updated", mapOf("uuid" to config.uuid.toString()))
+                        
                         // Store initial prompt in state (will be processed by scheduler)
                         npc.eventHandler.updateState(Instructions.getInitialPromptWithContext(config.npcName, config.age, config.gender))
                     } catch (e: Exception) {
@@ -207,6 +217,9 @@ class NPCService(
                     } else {
                         LogUtil.infoInChat("Removed NPC with uuid $uuid")
                     }
+                    
+                    // Broadcast update to web UI
+                    webServer?.broadcastUpdate("npcs-updated", mapOf("uuid" to uuid.toString()))
                     
                     // Check if this was the last NPC - if so, clear shared knowledge
                     // Check after removing from map to get accurate count

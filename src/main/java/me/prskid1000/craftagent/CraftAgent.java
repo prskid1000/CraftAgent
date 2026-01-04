@@ -75,6 +75,7 @@ public class CraftAgent implements ModInitializer {
             
             // Start web server for NPC dashboard
             webServer = new WebServer(npcService, configProvider);
+            npcService.webServer = webServer; // Set reference for broadcasting updates
             webServer.start();
         });
 

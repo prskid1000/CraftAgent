@@ -7,6 +7,7 @@ data class Message(
     val recipientUuid: UUID,
     val senderUuid: UUID,
     val senderName: String,
+    val senderType: String, // "PLAYER" or "NPC"
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
     val read: Boolean = false
