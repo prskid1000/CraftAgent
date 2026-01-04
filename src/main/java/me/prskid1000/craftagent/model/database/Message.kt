@@ -4,13 +4,11 @@ import java.util.UUID
 
 data class Message(
     val id: Long = 0,
-    val recipientUuid: UUID, // NPC or player who receives the message
-    val senderUuid: UUID, // NPC or player who sent the message
-    val senderName: String, // Name of sender (for display)
-    val senderType: String, // "npc" or "player"
-    val subject: String, // Message subject/title
-    val content: String, // Message content
+    val recipientUuid: UUID,
+    val senderUuid: UUID,
+    val senderName: String,
+    val content: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val read: Boolean = false // Whether the message has been read
+    val read: Boolean = false
 )
 

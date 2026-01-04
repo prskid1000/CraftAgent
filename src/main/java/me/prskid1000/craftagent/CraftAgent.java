@@ -48,9 +48,13 @@ public class CraftAgent implements ModInitializer {
             repositoryFactory.getConversationRepository(),
             repositoryFactory.getPrivateBookPageRepository(),
             repositoryFactory.getMessageRepository(),
-            repositoryFactory.getSharebookRepository()
+            repositoryFactory.getSharebookRepository(),
+            null // Will be set after NPCService is created
         );
         NPCService npcService = new NPCService(npcFactory, configProvider, resourceProvider);
+        
+        // Set NPCService in factory after creation
+        npcFactory.setNpcService(npcService);
 
         PlayerAuthorizer authorizer = new PlayerAuthorizer();
 

@@ -23,6 +23,9 @@ class ConversationRepository(
         """
         sqliteClient.update(sql)
         
+        val indexSql = "CREATE INDEX IF NOT EXISTS idx_conversations_uuid ON conversations(uuid, timestamp);"
+        sqliteClient.update(indexSql)
+        
         // Migration: Add timestamp column if it doesn't exist (for existing databases)
         try {
             sqliteClient.update("ALTER TABLE conversations ADD COLUMN timestamp INTEGER DEFAULT 0")

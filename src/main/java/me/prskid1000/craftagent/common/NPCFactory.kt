@@ -25,8 +25,12 @@ class NPCFactory(
     private val conversationRepository: ConversationRepository,
     private val privateBookPageRepository: PrivateBookPageRepository,
     private val messageRepository: MessageRepository,
-    private val sharebookRepository: SharebookRepository
+    private val sharebookRepository: SharebookRepository,
+    private var npcService: NPCService?
 ) {
+    fun setNpcService(service: NPCService) {
+        this.npcService = service
+    }
      fun createNpc(npcEntity: ServerPlayerEntity, config: NPCConfig): NPC {
         val baseConfig = configProvider.baseConfig
         val contextProvider = ContextProvider(npcEntity, baseConfig)
@@ -60,7 +64,7 @@ class NPCFactory(
             defaultPrompt,
             baseConfig.conversationHistoryLength
         )
-        val eventHandler = NPCEventHandler(llmClient, history, contextProvider, config, messageRepository, sharebookRepository)
+        val eventHandler = NPCEventHandler(llmClient, history, contextProvider, config, messageRepository, sharebookRepository, npcService!!)
         return NPC(npcEntity, llmClient, history, eventHandler, contextProvider, config)
     }
 

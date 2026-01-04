@@ -16,11 +16,9 @@ class MessageRepository(
         val sql = """
             CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                recipient_uuid CHARACTER(36) NOT NULL,
-                sender_uuid CHARACTER(36) NOT NULL,
+                recipient_uuid TEXT NOT NULL,
+                sender_uuid TEXT NOT NULL,
                 sender_name TEXT NOT NULL,
-                sender_type TEXT NOT NULL,
-                subject TEXT NOT NULL,
                 content TEXT NOT NULL,
                 timestamp INTEGER NOT NULL,
                 read INTEGER NOT NULL DEFAULT 0
@@ -28,13 +26,8 @@ class MessageRepository(
         """
         sqliteClient.update(sql)
         
-        // Create indexes
-        val indexSql1 = "CREATE INDEX IF NOT EXISTS idx_message_recipient ON messages(recipient_uuid);"
-        val indexSql2 = "CREATE INDEX IF NOT EXISTS idx_message_sender ON messages(sender_uuid);"
-        val indexSql3 = "CREATE INDEX IF NOT EXISTS idx_message_read ON messages(recipient_uuid, read);"
-        sqliteClient.update(indexSql1)
-        sqliteClient.update(indexSql2)
-        sqliteClient.update(indexSql3)
+        val indexSql = "CREATE INDEX IF NOT EXISTS idx_message_recipient ON messages(recipient_uuid, read);"
+        sqliteClient.update(indexSql)
     }
 
     fun insert(message: Message, maxMessages: Int) {
@@ -48,17 +41,15 @@ class MessageRepository(
         }
         
         val statement = sqliteClient.buildPreparedStatement(
-            """INSERT INTO messages (recipient_uuid, sender_uuid, sender_name, sender_type, subject, content, timestamp, read)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO messages (recipient_uuid, sender_uuid, sender_name, content, timestamp, read)
+               VALUES (?, ?, ?, ?, ?, ?)""",
         )
         statement?.setString(1, message.recipientUuid.toString())
         statement?.setString(2, message.senderUuid.toString())
         statement?.setString(3, message.senderName)
-        statement?.setString(4, message.senderType)
-        statement?.setString(5, message.subject)
-        statement?.setString(6, message.content)
-        statement?.setLong(7, message.timestamp)
-        statement?.setInt(8, if (message.read) 1 else 0)
+        statement?.setString(4, message.content)
+        statement?.setLong(5, message.timestamp)
+        statement?.setInt(6, if (message.read) 1 else 0)
         sqliteClient.update(statement)
     }
 
@@ -77,16 +68,6 @@ class MessageRepository(
 
     fun delete(messageId: Long) {
         val sql = "DELETE FROM messages WHERE id = %d".format(messageId)
-        sqliteClient.update(sql)
-    }
-
-    fun deleteByRecipient(recipientUuid: UUID) {
-        val sql = "DELETE FROM messages WHERE recipient_uuid = '%s'".format(recipientUuid.toString())
-        sqliteClient.update(sql)
-    }
-
-    fun deleteBySender(senderUuid: UUID) {
-        val sql = "DELETE FROM messages WHERE sender_uuid = '%s'".format(senderUuid.toString())
         sqliteClient.update(sql)
     }
 
@@ -110,8 +91,6 @@ class MessageRepository(
                 UUID.fromString(result.getString("recipient_uuid")),
                 UUID.fromString(result.getString("sender_uuid")),
                 result.getString("sender_name"),
-                result.getString("sender_type"),
-                result.getString("subject"),
                 result.getString("content"),
                 result.getLong("timestamp"),
                 result.getInt("read") == 1

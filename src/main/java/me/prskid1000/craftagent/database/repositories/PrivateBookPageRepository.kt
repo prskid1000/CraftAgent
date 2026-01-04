@@ -15,21 +15,14 @@ class PrivateBookPageRepository(
     fun createTable() {
         val sql = """
             CREATE TABLE IF NOT EXISTS private_book (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                npc_uuid CHARACTER(36) NOT NULL,
+                npc_uuid TEXT NOT NULL,
                 page_title TEXT NOT NULL,
                 content TEXT NOT NULL,
                 timestamp INTEGER NOT NULL,
-                UNIQUE(npc_uuid, page_title)
+                PRIMARY KEY(npc_uuid, page_title)
             );
         """
         sqliteClient.update(sql)
-        
-        // Create indexes
-        val indexSql1 = "CREATE INDEX IF NOT EXISTS idx_private_book_npc_uuid ON private_book(npc_uuid);"
-        val indexSql2 = "CREATE INDEX IF NOT EXISTS idx_private_book_title ON private_book(page_title);"
-        sqliteClient.update(indexSql1)
-        sqliteClient.update(indexSql2)
     }
 
     fun insertOrUpdate(page: PrivateBookPage, maxPages: Int) {
@@ -83,6 +76,7 @@ class PrivateBookPageRepository(
         sqliteClient.update(sql)
     }
 
+
     private fun executeAndProcessPages(sql: String): List<PrivateBookPage> {
         val result = sqliteClient.query(sql)
         val pages = arrayListOf<PrivateBookPage>()
@@ -91,7 +85,6 @@ class PrivateBookPageRepository(
 
         while (result.next()) {
             val page = PrivateBookPage(
-                result.getLong("id"),
                 UUID.fromString(result.getString("npc_uuid")),
                 result.getString("page_title"),
                 result.getString("content"),

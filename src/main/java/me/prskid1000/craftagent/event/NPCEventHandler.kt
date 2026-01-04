@@ -1,6 +1,10 @@
 package me.prskid1000.craftagent.event
 
 import me.prskid1000.craftagent.action.ActionExecutor
+import me.prskid1000.craftagent.action.ActionProvider
+import me.prskid1000.craftagent.action.CommunicationActionHandler
+import me.prskid1000.craftagent.action.MemoryActionHandler
+import me.prskid1000.craftagent.common.NPCService
 import me.prskid1000.craftagent.config.NPCConfig
 import me.prskid1000.craftagent.context.ContextProvider
 import me.prskid1000.craftagent.database.repositories.MessageRepository
@@ -21,7 +25,8 @@ class NPCEventHandler(
     private val contextProvider: ContextProvider,
     private val config: NPCConfig,
     private val messageRepository: MessageRepository,
-    private val sharebookRepository: SharebookRepository
+    private val sharebookRepository: SharebookRepository,
+    private val npcService: NPCService
 ): EventHandler {
     private val executorService: ThreadPoolExecutor = ThreadPoolExecutor(
         1, 1, 0L, TimeUnit.MILLISECONDS,
@@ -94,7 +99,24 @@ class NPCEventHandler(
             // Execute actions if present
             if (actions.isNotEmpty()) {
                 val npcEntity = contextProvider.getNpcEntity()
-                val actionExecutor = ActionExecutor(npcEntity)
+                
+                // Create action provider with memory and communication handlers
+                val memoryHandler = MemoryActionHandler(
+                    contextProvider.memoryManager,
+                    sharebookRepository,
+                    config.uuid,
+                    config.npcName,
+                    contextProvider.baseConfig
+                )
+                val communicationHandler = CommunicationActionHandler(
+                    messageRepository,
+                    npcService,
+                    config.uuid,
+                    config.npcName,
+                    contextProvider.baseConfig
+                )
+                val actionProvider = ActionProvider(memoryHandler, communicationHandler)
+                val actionExecutor = ActionExecutor(npcEntity, actionProvider)
                 actionExecutor.executeActions(actions)
             }
             

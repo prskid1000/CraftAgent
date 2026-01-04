@@ -47,6 +47,10 @@ public class ContextProvider {
 		return messageRepository;
 	}
 
+	public SharebookRepository getSharebookRepository() {
+		return sharebookRepository;
+	}
+
 	public void setRepositories(MessageRepository messageRepository, SharebookRepository sharebookRepository, UUID npcUuid) {
 		this.messageRepository = messageRepository;
 		this.sharebookRepository = sharebookRepository;
@@ -107,8 +111,6 @@ public class ContextProvider {
 				java.util.Map<String, Object> msgMap = new java.util.HashMap<>();
 				msgMap.put("id", msg.getId());
 				msgMap.put("senderName", msg.getSenderName());
-				msgMap.put("senderType", msg.getSenderType());
-				msgMap.put("subject", msg.getSubject());
 				msgMap.put("content", msg.getContent());
 				msgMap.put("timestamp", msg.getTimestamp());
 				msgMap.put("read", true); // Always mark as read in context

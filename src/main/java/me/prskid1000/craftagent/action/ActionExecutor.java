@@ -7,20 +7,22 @@ import java.util.List;
 
 /**
  * Executes actions parsed from LLM structured output.
- * This is a placeholder for future implementation.
+ * Routes actions to appropriate handlers via ActionProvider.
  * 
  * Actions format examples:
- * - "mine stone 10" - mine 10 stone blocks
- * - "craft wooden_pickaxe" - craft a wooden pickaxe
- * - "move to 100 64 200" - move to coordinates
- * - "build house" - build a house
+ * - Memory: "sharedbook add location_iron_mine Iron mine at 150, 64, -200"
+ * - Memory: "privatebook add player_alice Alice is friendly"
+ * - Minecraft: "mine stone 10" (TODO: to be implemented)
+ * - Minecraft: "craft wooden_pickaxe" (TODO: to be implemented)
  */
 public class ActionExecutor {
     
     private final ServerPlayerEntity entity;
+    private final ActionProvider actionProvider;
     
-    public ActionExecutor(ServerPlayerEntity entity) {
+    public ActionExecutor(ServerPlayerEntity entity, ActionProvider actionProvider) {
         this.entity = entity;
+        this.actionProvider = actionProvider;
     }
     
     /**
@@ -56,19 +58,12 @@ public class ActionExecutor {
             return;
         }
         
-        // TODO: Implement action parsing and execution
-        // This will parse actions like:
-        // - "mine stone 10" -> mine 10 stone blocks
-        // - "craft wooden_pickaxe" -> craft item
-        // - "move to x y z" -> move to coordinates
-        // - "build <structure>" -> build structure
-        // - etc.
-        
-        LogUtil.info("ActionExecutor: Action queued for " + entity.getName().getString() + " (not yet implemented): " + action);
-        
-        // Placeholder: Log the action for now
-        // Future implementation will parse and execute actions
-        // Access to entity and server available via this.entity and this.entity.getServer()
+        boolean success = actionProvider.executeAction(action);
+        if (success) {
+            LogUtil.info("Action executed successfully: " + action);
+        } else {
+            LogUtil.debug("Action execution failed or not implemented: " + action);
+        }
     }
     
     /**
@@ -78,13 +73,7 @@ public class ActionExecutor {
      * @return true if action format is valid
      */
     public boolean isValidAction(String action) {
-        if (action == null || action.trim().isEmpty()) {
-            return false;
-        }
-        
-        // Basic validation: action should have at least one word
-        String[] parts = action.trim().split("\\s+");
-        return parts.length > 0;
+        return actionProvider.isValidAction(action);
     }
 }
 

@@ -67,8 +67,6 @@ class NPCService(
             recipientUuid = npcUuid,
             senderUuid = playerUuid,
             senderName = playerName,
-            senderType = "player",
-            subject = "Message from $playerName",
             content = messageContent
         )
         

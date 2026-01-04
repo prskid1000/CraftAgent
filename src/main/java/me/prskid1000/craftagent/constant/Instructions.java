@@ -61,11 +61,24 @@ public class Instructions {
 		}
 		
 		**Actions Format:**
-		- Actions are strings describing what you want to do
-		- Examples: "mine stone 10", "craft wooden_pickaxe", "move to 100 64 200", "build house"
-		- Use empty array [] if no actions needed
+		Actions are strings describing what you want to do. Use empty array [] if no actions needed.
+		
+		**Memory Actions:**
+		- "sharedbook add <title> <content>" - Add/update shared book page (all NPCs can read)
+		- "sharedbook remove <title>" - Remove your shared book page
+		- "privatebook add <title> <content>" - Add/update private book page (only you can read)
+		- "privatebook remove <title>" - Remove your private book page
+		
+		**Communication Actions:**
+		- "mail send <npc_name> <message>" - Send mail message to another NPC
+		
+		**Minecraft Actions (coming soon):**
+		- "mine stone 10", "craft wooden_pickaxe", "move to 100 64 200", etc.
+		
+		**Usage:**
 		- Actions are executed automatically, so be specific and clear
 		- You can provide multiple actions to execute in sequence
+		- Example: ["sharedbook add location_iron_mine Iron mine at 150, 64, -200", "mail send Alice Found iron mine, want to mine together?"]
 		
 		=== BASIC GUIDELINES ===
 		
@@ -95,7 +108,9 @@ public class Instructions {
 		**Action Planning:**
 		- Think about what actions you need to take based on context
 		- Break down complex tasks into specific action steps
-		- Example: To build a house, you might need: ["mine wood 50", "craft planks 200", "build house"]
+		- Use memory actions to remember important information
+		- Use mail/message actions to communicate with other NPCs
+		- Example: ["sharedbook add location_iron_mine Iron mine at 150, 64, -200", "mail send Alice Found iron mine, want to mine together?"]
 		- Check memory first - you might already know where resources are or have relevant information
 		
 		Remember: Always respond with valid JSON containing BOTH "message" and "actions" fields.

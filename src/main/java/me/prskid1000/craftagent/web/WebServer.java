@@ -179,21 +179,22 @@ public class WebServer {
                 messageMap.put("role", msg.getRole());
                 messageMap.put("timestamp", msg.getTimestamp());
                 
-                // For assistant messages, parse structured output (message + actions)
-                if ("assistant".equals(msg.getRole())) {
-                    String content = msg.getMessage();
-                    StructuredLLMResponse structured = StructuredLLMResponse.parse(content);
-                    
-                    // Store the parsed message and actions separately
-                    messageMap.put("content", structured.getMessage());
-                    messageMap.put("message", structured.getMessage()); // For backward compatibility
-                    messageMap.put("actions", structured.getActions());
-                    messageMap.put("rawContent", content); // Store raw JSON for debugging
-                } else {
-                    // For user/system messages, use content as-is
-                    messageMap.put("content", msg.getMessage());
-                    messageMap.put("message", msg.getMessage()); // For backward compatibility
-                    messageMap.put("actions", Collections.emptyList());
+                // Parse message based on role
+                String role = msg.getRole();
+                switch (role) {
+                    case "assistant" -> {
+                        String content = msg.getMessage();
+                        StructuredLLMResponse structured = StructuredLLMResponse.parse(content);
+                        messageMap.put("content", structured.getMessage());
+                        messageMap.put("message", structured.getMessage());
+                        messageMap.put("actions", structured.getActions());
+                        messageMap.put("rawContent", content);
+                    }
+                    default -> {
+                        messageMap.put("content", msg.getMessage());
+                        messageMap.put("message", msg.getMessage());
+                        messageMap.put("actions", Collections.emptyList());
+                    }
                 }
                 
                 messages.add(messageMap);
@@ -219,8 +220,6 @@ public class WebServer {
                 Map<String, Object> mailMap = new HashMap<>();
                 mailMap.put("id", msg.getId());
                 mailMap.put("senderName", msg.getSenderName());
-                mailMap.put("senderType", msg.getSenderType());
-                mailMap.put("subject", msg.getSubject());
                 mailMap.put("content", msg.getContent());
                 mailMap.put("timestamp", msg.getTimestamp());
                 mailMap.put("read", msg.getRead());
@@ -1252,17 +1251,38 @@ public class WebServer {
                     const content = msg.content || msg.message || '';
                     const actions = msg.actions || [];
                     const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'N/A';
-                    const roleIcon = role === 'user' ? '👤' : role === 'assistant' ? '🤖' : role === 'system' ? '⚙️' : '❓';
-                    const roleBadge = role === 'user' ? 'badge-info' : role === 'assistant' ? 'badge-success' : 'badge-warning';
+                    
+                    // Get role icon and badge
+                    let roleIcon, roleBadge;
+                    switch (role) {
+                        case 'user':
+                            roleIcon = '👤';
+                            roleBadge = 'badge-info';
+                            break;
+                        case 'assistant':
+                            roleIcon = '🤖';
+                            roleBadge = 'badge-success';
+                            break;
+                        case 'system':
+                            roleIcon = '⚙️';
+                            roleBadge = 'badge-warning';
+                            break;
+                        default:
+                            roleIcon = '❓';
+                            roleBadge = 'badge-warning';
+                    }
                     
                     // Format messages based on role
                     let formattedContent;
-                    if (role === 'assistant') {
-                        formattedContent = formatStructuredOutput(content, actions);
-                    } else if (role === 'system') {
-                        formattedContent = formatSystemMessage(content);
-                    } else {
-                        formattedContent = escapeHtml(content);
+                    switch (role) {
+                        case 'assistant':
+                            formattedContent = formatStructuredOutput(content, actions);
+                            break;
+                        case 'system':
+                            formattedContent = formatSystemMessage(content);
+                            break;
+                        default:
+                            formattedContent = escapeHtml(content);
                     }
                     
                     // Determine if message is long (more than 500 characters) or has actions
@@ -1311,17 +1331,15 @@ public class WebServer {
                 }
                 
                 let html = '<div class="data-section"><h3>📬 Mail Messages</h3>';
-                html += '<table><thead><tr><th>From</th><th>Subject</th><th>Content</th><th>Date</th></tr></thead><tbody>';
+                html += '<table><thead><tr><th>From</th><th>Content</th><th>Date</th></tr></thead><tbody>';
                 
                 mail.forEach(msg => {
                     const sender = msg.senderName || msg.sender || 'Unknown';
-                    const subject = msg.subject || 'No Subject';
                     const content = msg.content || msg.message || '';
                     const date = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : msg.createdAt || 'N/A';
                     
                     html += `<tr>
                         <td><strong>${escapeHtml(sender)}</strong></td>
-                        <td>${escapeHtml(subject)}</td>
                         <td style="max-width: 400px; word-wrap: break-word;">${escapeHtml(content)}</td>
                         <td>${date}</td>
                     </tr>`;
