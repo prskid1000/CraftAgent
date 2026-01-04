@@ -39,8 +39,6 @@ class CoordinationService(
         
         // Message is stored in mail system and will be available in context during next LLM call
         // Note: Not adding to conversation history - mail is accessed via context instead
-        
-        LogUtil.info("NPC ${fromNpc.config.npcName} sent direct message to ${targetNpc.config.npcName}: $message")
     }
 
     /**

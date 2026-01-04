@@ -34,6 +34,14 @@ public class StructuredLLMResponse {
         return message != null && !message.isEmpty();
     }
     
+    /**
+     * Checks if message is non-empty (not empty or whitespace-only).
+     * Used to determine if message should be broadcast to players.
+     */
+    public boolean hasNonEmptyMessage() {
+        return message != null && !message.trim().isEmpty();
+    }
+    
     public boolean hasActions() {
         return actions != null && !actions.isEmpty();
     }

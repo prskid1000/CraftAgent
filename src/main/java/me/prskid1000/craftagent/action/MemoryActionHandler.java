@@ -66,8 +66,6 @@ public class MemoryActionHandler implements ActionSyntaxProvider {
         // Replace newlines and normalize whitespace
         content = content.replaceAll("\\r\\n|\\r|\\n", " ").replaceAll("\\s+", " ").trim();
         
-        LogUtil.info("MemoryActionHandler: Processing action - type: " + bookType + ", op: " + operation + ", title: " + pageTitle + ", content length: " + content.length());
-        
         return switch (bookType) {
             case "sharedbook" -> handleSharedBook(operation, pageTitle, content);
             case "privatebook" -> handlePrivateBook(operation, pageTitle, content);
@@ -99,7 +97,6 @@ public class MemoryActionHandler implements ActionSyntaxProvider {
                 }
                 try {
                     int maxPages = baseConfig.getMaxSharebookPages();
-                    LogUtil.info("MemoryActionHandler: Adding sharedbook page - title: '" + title + "', content length: " + content.length() + ", maxPages: " + maxPages);
                     
                     SharebookPage page = new SharebookPage(title, content.trim(), 
                         npcUuid.toString(), System.currentTimeMillis());
@@ -108,7 +105,6 @@ public class MemoryActionHandler implements ActionSyntaxProvider {
                     // Verify the page was actually added
                     SharebookPage verifyPage = sharebookRepository.selectByTitleAndAuthor(title, npcUuid.toString());
                     if (verifyPage != null) {
-                        LogUtil.info("MemoryActionHandler: Successfully added sharedbook page: '" + title + "' (verified in database)");
                         yield true;
                     } else {
                         LogUtil.error("MemoryActionHandler: Failed to verify sharedbook page after insert: '" + title + "'");
@@ -123,7 +119,6 @@ public class MemoryActionHandler implements ActionSyntaxProvider {
             case "remove" -> {
                 try {
                     sharebookRepository.delete(title, npcUuid.toString());
-                    LogUtil.info("MemoryActionHandler: Successfully removed sharedbook page: " + title);
                     yield true;
                 } catch (Exception e) {
                     LogUtil.error("MemoryActionHandler: Error removing sharedbook page: " + title, e);
@@ -155,14 +150,11 @@ public class MemoryActionHandler implements ActionSyntaxProvider {
                     yield false;
                 }
                 try {
-                    LogUtil.info("MemoryActionHandler: Adding privatebook page - title: '" + title + "', content length: " + content.length());
-                    
                     memoryManager.savePage(title, content.trim());
                     
                     // Verify the page was actually added
                     var verifyPage = memoryManager.getPage(title);
                     if (verifyPage != null && verifyPage.getContent().equals(content.trim())) {
-                        LogUtil.info("MemoryActionHandler: Successfully added privatebook page: '" + title + "' (verified in database)");
                         yield true;
                     } else {
                         LogUtil.error("MemoryActionHandler: Failed to verify privatebook page after insert: '" + title + "'");
@@ -177,7 +169,6 @@ public class MemoryActionHandler implements ActionSyntaxProvider {
             case "remove" -> {
                 try {
                     memoryManager.deletePage(title);
-                    LogUtil.info("MemoryActionHandler: Successfully removed privatebook page: " + title);
                     yield true;
                 } catch (Exception e) {
                     LogUtil.error("MemoryActionHandler: Error removing privatebook page: " + title, e);

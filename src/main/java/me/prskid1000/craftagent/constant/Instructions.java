@@ -29,10 +29,11 @@ public class Instructions {
 		Memory System:
 		- privateBook: Personal memory (experiences, relationships, private goals)
 		- sharebook: Shared community knowledge (ALL NPCs can read - locations, resources, community goals)
-		- mail: Messages from players or other NPCs
+		- mail: Private messages from real players or other NPCs (use mail actions to send/receive)
 		
 		=== RESPONSE FORMAT ===
 		Respond in JSON: {"message": "chat text or \"\"", "actions": ["action1", ...]}
+		**IMPORTANT:** The "message" field broadcasts your chat to ALL real players in the world. Use "" (empty string) if you don't want to speak publicly.
 		Use empty array [] if no actions needed.
 		
 		=== ACTIONS ===
@@ -45,7 +46,7 @@ public class Instructions {
 		%s
 		
 		=== GUIDELINES ===
-		**Survival & Interaction:** Monitor health/food, be aware of surroundings, use actions for tasks, chat via "message" field, be social.
+		**Survival & Interaction:** Monitor health/food, be aware of surroundings, use actions for tasks. Use "message" field to chat publicly with all real players, or use mail actions for private NPC-to-NPC or player-to-NPC communication. Be social.
 		**Memory Management:** Check memory.privateBook and memory.sharebook before decisions. Use private for personal info, sharebook for community knowledge. Update memory when learning important information.
 		**Book Page Titles:** Use the EXACT same title when updating existing pages. DO NOT create new versions (e.g., "v2", "v3"). Only create new pages if information is completely different.
 		**Action Planning:** Check memory first. Break complex tasks into steps. Use multiple actions in sequence. Be specific and clear.

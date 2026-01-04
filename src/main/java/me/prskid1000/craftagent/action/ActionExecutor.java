@@ -63,15 +63,12 @@ public class ActionExecutor {
         String[] parsed = ActionParser.parseQuotedArguments(trimmed);
         
         if (parsed.length == 0) {
-            LogUtil.info("Action has no arguments: " + action);
             return;
         }
         
         boolean success = actionProvider.executeAction(trimmed, parsed);
-        if (success) {
-            LogUtil.info("Action executed successfully: " + action);
-        } else {
-            LogUtil.info("Action execution failed or not implemented: " + action);
+        if (!success) {
+            LogUtil.error("Action execution failed or not implemented: " + action);
         }
     }
     

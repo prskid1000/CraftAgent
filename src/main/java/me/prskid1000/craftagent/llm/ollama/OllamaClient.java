@@ -157,8 +157,6 @@ public class OllamaClient implements LLMClient {
 			
 			String requestBodyJson = objectMapper.writeValueAsString(requestBody);
 			
-			// Log request
-			LogUtil.info("LLM Request (Ollama): " + requestBodyJson);
 			LogUtil.debugInChat("LLM Request sent to Ollama");
 			
 			// Create HTTP request
@@ -172,8 +170,6 @@ public class OllamaClient implements LLMClient {
 			// Send request and get response
 			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 			
-			// Log response
-			LogUtil.info("LLM Response (Ollama): " + response.body());
 			LogUtil.debugInChat("LLM Response received from Ollama");
 			
 			if (response.statusCode() != 200) {

@@ -48,7 +48,6 @@ class NPCEventHandler(
      */
     override fun updateState(prompt: String) {
         CompletableFuture.runAsync({
-            LogUtil.info("updateState: $prompt")
             // Store only the original prompt in history (without context to avoid duplication)
             history.add(ConversationMessage(prompt, "user"))
         }, executorService)
@@ -65,8 +64,6 @@ class NPCEventHandler(
      */
     override fun processLLM(): Boolean {
         return try {
-            LogUtil.info("processLLM: Processing LLM for NPC ${config.npcName}")
-
             // Perform summarization if needed
             history.performSummarizationIfNeeded()
 
@@ -123,8 +120,9 @@ class NPCEventHandler(
                 
             }
             
-            // Send message if present and different from last
-            if (message.isNotEmpty() && message != history.getLastMessage()) {
+            // Send message if present (non-empty, not whitespace-only) and different from last
+            // Empty string ("") means NPC doesn't want to speak publicly
+            if (structuredResponse.hasNonEmptyMessage() && message.trim() != history.getLastMessage().trim()) {
                 val npcEntity = contextProvider.getNpcEntity()
                 me.prskid1000.craftagent.util.ChatUtil.sendChatMessage(npcEntity, message)
             }

@@ -57,7 +57,6 @@ public class ConfigProvider {
     public void saveAll() {
         save(BASE_CONFIG_DIR, baseConfig);
         npcConfigs.forEach(config -> save(NPC_CONFIG_DIR, config));
-        LogUtil.info("Saved all configs");
     }
     
     /**
@@ -66,7 +65,6 @@ public class ConfigProvider {
      */
     public synchronized void saveNpcConfig(NPCConfig config) {
         save(NPC_CONFIG_DIR, config);
-        LogUtil.info("Saved NPC config: " + config.getNpcName());
     }
 
     private synchronized void save(Path dir, Configurable config) {
@@ -155,6 +153,5 @@ public class ConfigProvider {
      */
     public synchronized void saveBaseConfig() {
         save(BASE_CONFIG_DIR, baseConfig);
-        LogUtil.info("Saved base config");
     }
 }

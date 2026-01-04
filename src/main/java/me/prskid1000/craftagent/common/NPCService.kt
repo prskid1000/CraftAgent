@@ -76,7 +76,6 @@ class NPCService(
         
         val maxMessages = configProvider.baseConfig.getMaxMessages()
         messageRepository.insert(message, maxMessages)
-        LogUtil.info("Player $playerName sent message to NPC $npcUuid: $messageContent")
         
         // Message is stored in mail system and will be available in context during next LLM call
         // Note: Don't display in chat again - the original player message is already visible
@@ -127,9 +126,7 @@ class NPCService(
             
             // Check LLM service reachability BEFORE spawning entity (on background thread, not server thread)
             try {
-                LogUtil.info("Checking LLM service reachability for NPC: $name")
                 factory.checkLLMServiceReachable(config)
-                LogUtil.info("LLM service is reachable for NPC: $name")
             } catch (e: Exception) {
                 LogUtil.error("LLM service is not reachable for NPC: $name", e)
                 LogUtil.errorInChat("Failed to create NPC '$name': LLM service is not reachable. ${e.message}")
@@ -217,7 +214,6 @@ class NPCService(
                         CompletableFuture.runAsync({
                             try {
                                 resourceProvider.sharebookRepository?.deleteAll()
-                                LogUtil.info("Cleared shared knowledge - no NPCs remaining")
                             } catch (e: Exception) {
                                 LogUtil.error("Error clearing shared knowledge", e)
                             }
@@ -277,7 +273,6 @@ class NPCService(
                         CompletableFuture.runAsync({
                             try {
                                 resourceProvider.sharebookRepository?.deleteAll()
-                                LogUtil.info("Cleared shared knowledge - no NPCs remaining")
                             } catch (e: Exception) {
                                 LogUtil.error("Error clearing shared knowledge", e)
                             }
@@ -368,7 +363,6 @@ class NPCService(
                     NPCSpawner.remove(entityUuid, playerManager)
                     
                     // Note: We do NOT set isActive = false here, so NPCs can respawn on restart
-                    LogUtil.info("Shut down NPC: ${npcToShutdown.config.npcName}")
                 } catch (e: Exception) {
                     LogUtil.error("Error shutting down NPC: $uuid", e)
                 }
@@ -418,10 +412,6 @@ class NPCService(
     fun updateNpcSystemPrompt(npcUuid: UUID) {
         // System prompt is generated fresh from Instructions.java, no need to update
         // The prompt will be regenerated on next LLM call
-        val npc = uuidToNpc[npcUuid]
-        if (npc != null) {
-            LogUtil.info("System prompt for NPC: ${npc.config.npcName} will be regenerated fresh on next LLM call")
-        }
     }
 
     /**
@@ -436,7 +426,6 @@ class NPCService(
         if (npc != null) {
             // Update the config's custom system prompt
             npc.config.customSystemPrompt = customSystemPrompt
-            LogUtil.info("Updated custom system prompt in config for NPC: ${npc.config.npcName}")
         }
     }
 
@@ -458,8 +447,6 @@ class NPCService(
                     newBaseConfig.getMaxNearbyBlocks(),
                     newBaseConfig.getChunkExpiryTime()
                 )
-                
-                LogUtil.info("Updated NPC ${npc.config.npcName} with new base config values")
             } catch (e: Exception) {
                 LogUtil.error("Error updating NPC ${npc.config.npcName} with base config", e)
             }

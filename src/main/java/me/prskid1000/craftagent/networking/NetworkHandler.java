@@ -66,7 +66,6 @@ public class NetworkHandler {
                 configProvider.saveBaseConfig();
                 // Update all active NPCs with new base config values in real-time
                 npcService.updateAllNpcsWithBaseConfig(configPacket.baseConfig());
-                LogUtil.info("Updated base config to: " + configPacket);
             }
         });
     }
@@ -78,7 +77,6 @@ public class NetworkHandler {
                 configProvider.updateNpcConfig(updatedConfig);
                 // Update system prompt for active NPC if it exists
                 npcService.updateNpcSystemPrompt(updatedConfig.getUuid());
-                LogUtil.info("Updated npc config to: " + configPacket);
             }
         });
     }

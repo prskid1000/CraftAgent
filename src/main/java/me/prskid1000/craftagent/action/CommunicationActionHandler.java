@@ -66,8 +66,6 @@ public class CommunicationActionHandler implements ActionSyntaxProvider {
         // Replace newlines and normalize whitespace
         messageContent = messageContent.replaceAll("\\r\\n|\\r|\\n", " ").replaceAll("\\s+", " ").trim();
         
-        LogUtil.info("CommunicationActionHandler: Processing action - type: " + actionType + ", op: " + operation + ", recipient: " + recipientName + ", message length: " + messageContent.length());
-        
         return switch (actionType) {
             case "mail" -> switch (operation) {
                 case "send" -> sendMessage(recipientName, messageContent);
@@ -115,15 +113,13 @@ public class CommunicationActionHandler implements ActionSyntaxProvider {
         }
         
         if (recipientNpc == null) {
-            LogUtil.info("CommunicationActionHandler: Recipient NPC not found: " + recipientName);
+            LogUtil.error("CommunicationActionHandler: Recipient NPC not found: " + recipientName);
             return false;
         }
         
         try {
             long timestamp = System.currentTimeMillis();
             String trimmedContent = content.trim();
-            
-            LogUtil.info("CommunicationActionHandler: Sending mail - from: " + npcName + " (" + npcUuid + "), to: " + recipientName + " (" + recipientNpc.getConfig().getUuid() + "), content length: " + trimmedContent.length());
             
             // Create and send message
             Message message = new Message(
@@ -147,7 +143,6 @@ public class CommunicationActionHandler implements ActionSyntaxProvider {
                     && Math.abs(msg.getTimestamp() - timestamp) < 1000); // Within 1 second
             
             if (verified) {
-                LogUtil.info("CommunicationActionHandler: Successfully sent mail from " + npcName + " to " + recipientName + " (verified in database)");
                 return true;
             } else {
                 LogUtil.error("CommunicationActionHandler: Failed to verify mail after insert - from: " + npcName + ", to: " + recipientName);

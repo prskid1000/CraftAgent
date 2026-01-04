@@ -26,7 +26,6 @@ class ResourceProvider(
     fun loadResources(uuids: List<UUID>) {
         // All resources (conversations, private pages, etc.) are stored directly in database
         // No need to pre-load them into memory
-        LogUtil.info("Resource loading: All resources are stored directly in database")
     }
 
     /**
@@ -36,6 +35,5 @@ class ResourceProvider(
     fun saveResources() {
         // All resources are already saved in database as they're created
         // No need to save them again on shutdown
-        LogUtil.info("Resource saving: All resources are already in database")
     }
 }

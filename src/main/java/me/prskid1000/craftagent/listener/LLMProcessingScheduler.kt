@@ -57,7 +57,6 @@ class LLMProcessingScheduler(
         currentNPCs.forEach { uuid ->
             if (!queueSet.contains(uuid)) {
                 fifoQueue.offer(uuid)
-                LogUtil.info("Added NPC $uuid to LLM processing queue")
             }
         }
         // Remove deleted NPCs from queue
@@ -66,7 +65,6 @@ class LLMProcessingScheduler(
             val uuid = iterator.next()
             if (!currentNPCs.contains(uuid)) {
                 iterator.remove()
-                LogUtil.info("Removed deleted NPC $uuid from LLM processing queue")
             }
         }
     }
@@ -96,16 +94,12 @@ class LLMProcessingScheduler(
                     // Re-check NPC exists (could be removed while queued)
                     val currentNpc = npcService.uuidToNpc[npcUuid]
                     if (currentNpc == null) {
-                        LogUtil.info("NPC $npcName was removed during processing, skipping")
                         return@submit
                     }
                     
                     val success = currentNpc.eventHandler.processLLM()
                     if (success) {
                         lastSuccessfulTrigger[npcUuid] = currentTime
-                        LogUtil.info("Successfully processed LLM for NPC: $npcName")
-                    } else {
-                        LogUtil.info("LLM processing returned false for NPC: $npcName")
                     }
                 } catch (e: Exception) {
                     LogUtil.error("Error processing LLM for NPC: $npcName", e)

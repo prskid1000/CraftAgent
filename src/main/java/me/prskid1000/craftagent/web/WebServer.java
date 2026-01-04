@@ -55,7 +55,6 @@ public class WebServer {
             server.createContext("/", this::handleStatic);
             
             server.start();
-            LogUtil.info("Web UI server started on http://localhost:" + PORT);
         } catch (IOException e) {
             LogUtil.error("Failed to start web server", e);
         }
@@ -64,7 +63,6 @@ public class WebServer {
     public void stop() {
         if (server != null) {
             server.stop(0);
-            LogUtil.info("Web UI server stopped");
         }
     }
     

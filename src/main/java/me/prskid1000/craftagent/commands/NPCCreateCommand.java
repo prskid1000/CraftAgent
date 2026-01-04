@@ -71,7 +71,6 @@ public class NPCCreateCommand {
 
 			NPCConfig config = NPCConfig.builder(name).llmType(llmType).build();
 			npcService.createNpc(config, source.getWorld().getServer(), source.getBlockPos(), source);
-			LogUtil.info("Created new NPC: $name");
 			return 1;
 		} catch (Exception e) {
 			LogUtil.error("Error creating NPC", e);

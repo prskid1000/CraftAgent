@@ -77,11 +77,9 @@ public class LMStudioClient implements LLMClient {
 			int statusCode = response.statusCode();
 			if (statusCode >= 200 && statusCode < 400) {
 				// Success - server is reachable
-				LogUtil.info("LM Studio server is reachable");
 				return;
 			} else if (statusCode == 401) {
 				// Unauthorized but server is reachable
-				LogUtil.info("LM Studio server is reachable (401 unauthorized)");
 				return;
 			} else {
 				// Unexpected status code
@@ -126,8 +124,6 @@ public class LMStudioClient implements LLMClient {
 			
 			String requestBodyJson = objectMapper.writeValueAsString(requestBody);
 
-			// Log request
-			LogUtil.info("LLM Request (LM Studio): " + requestBodyJson);
 			LogUtil.debugInChat("LLM Request sent to LM Studio");
 
 			// Create HTTP request
@@ -141,8 +137,6 @@ public class LMStudioClient implements LLMClient {
 			// Send request and get response
 			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-			// Log response
-			LogUtil.info("LLM Response (LM Studio): " + response.body());
 			LogUtil.debugInChat("LLM Response received from LM Studio");
 
 			if (response.statusCode() != 200) {
