@@ -15,8 +15,10 @@ import java.util.UUID;
  * Handles communication actions: sending mail.
  * Format: "mail send <recipient_name> '<message>'"
  * 
- * IMPORTANT: Message MUST be wrapped in single quotes ('...') to handle multi-word messages and special characters.
- * Example: "mail send Alice 'Found iron mine, want to mine together?'"
+ * IMPORTANT: Message MUST be wrapped in single quotes (') or double quotes (") to handle multi-word messages and special characters.
+ * Examples: 
+ *   "mail send Alice 'Found iron mine, want to mine together?'"
+ *   "mail send Alice \"Found iron mine, want to mine together?\""
  */
 public class CommunicationActionHandler {
     
@@ -53,14 +55,17 @@ public class CommunicationActionHandler {
         String recipientName = parts[2];
         String messageContent = parts[3];
         
-        // Message content MUST be in single quotes
+        // Message content MUST be in single or double quotes
         if (!messageContent.isEmpty()) {
-            if (!messageContent.startsWith("'") || !messageContent.endsWith("'")) {
-                LogUtil.error("CommunicationActionHandler: Message must be wrapped in single quotes. Action: " + action);
+            boolean singleQuoted = messageContent.startsWith("'") && messageContent.endsWith("'");
+            boolean doubleQuoted = messageContent.startsWith("\"") && messageContent.endsWith("\"");
+            
+            if (!singleQuoted && !doubleQuoted) {
+                LogUtil.error("CommunicationActionHandler: Message must be wrapped in single quotes (') or double quotes (\"). Action: " + action);
                 return false;
             }
             
-            // Strip surrounding single quotes
+            // Strip surrounding quotes (single or double)
             messageContent = messageContent.substring(1, messageContent.length() - 1);
         }
         
@@ -124,13 +129,6 @@ public class CommunicationActionHandler {
             
             messageRepository.insert(message, baseConfig.getMaxMessages());
             LogUtil.info("CommunicationActionHandler: Successfully sent mail from " + npcName + " to " + recipientName + ": " + content);
-        
-            // Broadcast update to web UI
-            if (npcService.webServer != null) {
-                Map<String, String> updateData = new HashMap<>();
-                updateData.put("uuid", recipientNpc.getConfig().getUuid().toString());
-                npcService.webServer.broadcastUpdate("mail-updated", updateData);
-            }
             
             return true;
         } catch (Exception e) {
@@ -154,11 +152,13 @@ public class CommunicationActionHandler {
             return false;
         }
         
-        // Message content MUST be wrapped in single quotes
+        // Message content MUST be wrapped in single or double quotes
         String messageContent = parts[3];
-        if (!messageContent.startsWith("'") || !messageContent.endsWith("'")) return false;
+        boolean singleQuoted = messageContent.startsWith("'") && messageContent.endsWith("'");
+        boolean doubleQuoted = messageContent.startsWith("\"") && messageContent.endsWith("\"");
+        if (!singleQuoted && !doubleQuoted) return false;
         
-        // Strip single quotes to check if message is not empty
+        // Strip quotes to check if message is not empty
         messageContent = messageContent.substring(1, messageContent.length() - 1);
         
         // Message should not be empty after stripping quotes

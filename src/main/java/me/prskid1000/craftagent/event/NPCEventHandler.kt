@@ -119,11 +119,6 @@ class NPCEventHandler(
                 val actionExecutor = ActionExecutor(npcEntity, actionProvider)
                 actionExecutor.executeActions(actions)
                 
-                // Broadcast memory update if any memory actions were executed
-                val hasMemoryActions = actions.any { it.trim().startsWith("sharedbook ") || it.trim().startsWith("privatebook ") }
-                if (hasMemoryActions) {
-                    npcService.webServer?.broadcastUpdate("memory-updated", mapOf("uuid" to config.uuid.toString()))
-                }
             }
             
             // Send message if present and different from last
@@ -136,9 +131,6 @@ class NPCEventHandler(
             // The web UI will parse and display both message and actions
             val responseContent = llmResponse.content.trim()
             history.add(ConversationMessage(responseContent, "assistant"))
-            
-            // Broadcast update to web UI
-            npcService.webServer?.broadcastUpdate("messages-updated", mapOf("uuid" to config.uuid.toString()))
             
             true
         } catch (e: Exception) {

@@ -45,6 +45,7 @@ public class Instructions {
 		=== ACTIONS ===
 		**Memory:** "sharedbook add <title> '<content>'", "sharedbook remove <title>", "privatebook add <title> '<content>'", "privatebook remove <title>"
 		**Communication:** "mail send <npc_name> '<message>'"
+		Note: Content and messages can be wrapped in single quotes (') or double quotes (").
 		**Minecraft (coming soon):** "mine stone 10", "craft wooden_pickaxe", "move to 100 64 200"
 		
 		=== GUIDELINES ===

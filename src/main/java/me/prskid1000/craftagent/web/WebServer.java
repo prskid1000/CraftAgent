@@ -16,7 +16,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
@@ -34,7 +33,6 @@ public class WebServer {
     private final NPCService npcService;
     private final ConfigProvider configProvider;
     private final ObjectMapper objectMapper;
-    private final Set<HttpExchange> sseClients = ConcurrentHashMap.newKeySet();
     
     public WebServer(NPCService npcService, ConfigProvider configProvider) {
         this.npcService = npcService;
@@ -51,7 +49,7 @@ public class WebServer {
             // API endpoints - order matters! More specific paths first
             server.createContext("/api/npcs", this::handleGetNPCs);
             server.createContext("/api/npc/", this::handleNPCRequest);
-            server.createContext("/api/events", this::handleSSE);
+            server.createContext("/api/config", this::handleGetConfig);
             
             // Static files
             server.createContext("/", this::handleStatic);
@@ -81,6 +79,22 @@ public class WebServer {
                 .collect(Collectors.toList());
         
         sendJsonResponse(exchange, 200, npcs);
+    }
+    
+    private void handleGetConfig(HttpExchange exchange) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            sendError(exchange, 405, "Method not allowed");
+            return;
+        }
+        
+        var baseConfig = configProvider.getBaseConfig();
+        Map<String, Object> config = new HashMap<>();
+        config.put("llmProcessingInterval", baseConfig.getLlmProcessingInterval());
+        config.put("llmMinInterval", baseConfig.getLlmMinInterval());
+        // Use max of both intervals for refresh rate
+        config.put("refreshInterval", Math.max(baseConfig.getLlmProcessingInterval(), baseConfig.getLlmMinInterval()));
+        
+        sendJsonResponse(exchange, 200, config);
     }
     
     private void handleNPCRequest(HttpExchange exchange) throws IOException {
@@ -414,92 +428,6 @@ public class WebServer {
         sendJsonResponse(exchange, statusCode, error);
     }
     
-    /**
-     * Handles Server-Sent Events (SSE) connections for real-time updates.
-     */
-    private void handleSSE(HttpExchange exchange) throws IOException {
-        if (!"GET".equals(exchange.getRequestMethod())) {
-            sendError(exchange, 405, "Method not allowed");
-            return;
-        }
-        
-        // Set SSE headers
-        exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
-        exchange.getResponseHeaders().set("Cache-Control", "no-cache");
-        exchange.getResponseHeaders().set("Connection", "keep-alive");
-        exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-        exchange.sendResponseHeaders(200, 0);
-        
-        // Add client to connected set
-        sseClients.add(exchange);
-        
-        // Send initial connection message
-        sendSSEMessage(exchange, "connected", "{\"status\":\"connected\"}");
-        
-        // Keep connection alive with periodic heartbeats
-        try {
-            while (!Thread.currentThread().isInterrupted()) {
-                Thread.sleep(30000); // 30 seconds
-                sendSSEMessage(exchange, "heartbeat", "{\"type\":\"heartbeat\"}");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } catch (IOException e) {
-            // Client disconnected
-        } finally {
-            sseClients.remove(exchange);
-            try {
-                exchange.close();
-            } catch (Exception e) {
-                // Ignore
-            }
-        }
-    }
-    
-    /**
-     * Sends an SSE message to a specific client.
-     */
-    private void sendSSEMessage(HttpExchange exchange, String event, String data) throws IOException {
-        OutputStream os = exchange.getResponseBody();
-        os.write(("event: " + event + "\n").getBytes(StandardCharsets.UTF_8));
-        os.write(("data: " + data + "\n\n").getBytes(StandardCharsets.UTF_8));
-        os.flush();
-    }
-    
-    /**
-     * Broadcasts an update to all connected SSE clients.
-     */
-    public void broadcastUpdate(String event, Object data) {
-        if (sseClients.isEmpty()) {
-            return;
-        }
-        
-        try {
-            String jsonData = objectMapper.writeValueAsString(data);
-            List<HttpExchange> disconnected = new ArrayList<>();
-            
-            for (HttpExchange client : sseClients) {
-                try {
-                    sendSSEMessage(client, event, jsonData);
-                } catch (IOException e) {
-                    // Client disconnected
-                    disconnected.add(client);
-                }
-            }
-            
-            // Remove disconnected clients
-            disconnected.forEach(client -> {
-                sseClients.remove(client);
-                try {
-                    client.close();
-                } catch (Exception e) {
-                    // Ignore
-                }
-            });
-        } catch (Exception e) {
-            LogUtil.error("Error broadcasting SSE update", e);
-        }
-    }
     
     private String getEmbeddedHTML() {
         return """
@@ -749,6 +677,47 @@ public class WebServer {
         }
         .tab-content.active {
             display: block;
+        }
+        .sub-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .sub-tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95em;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .sub-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: bold;
+        }
+        .sub-tab:hover {
+            color: #667eea;
+        }
+        .sub-tab-content {
+            display: none;
+        }
+        .sub-tab-content.active {
+            display: block;
+        }
+        .action-code {
+            background-color: #2d2d2d;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            color: #81C784;
+            font-size: 0.95em;
+            display: inline-block;
+            border-left: 3px solid #4CAF50;
+            word-break: break-all;
         }
         .data-section {
             margin-bottom: 30px;
@@ -1032,7 +1001,16 @@ public class WebServer {
             </div>
             
             <div id="messages" class="tab-content">
-                <div class="loading">Loading messages...</div>
+                <div class="sub-tabs">
+                    <button class="sub-tab active" onclick="switchSubTab('messages-content', 'actions-content', event)">💬 Messages</button>
+                    <button class="sub-tab" onclick="switchSubTab('actions-content', 'messages-content', event)">⚡ Actions</button>
+                </div>
+                <div id="messages-content" class="sub-tab-content active">
+                    <div class="loading">Loading messages...</div>
+                </div>
+                <div id="actions-content" class="sub-tab-content">
+                    <div class="loading">Loading actions...</div>
+                </div>
             </div>
             
             <div id="mail" class="tab-content">
@@ -1047,81 +1025,58 @@ public class WebServer {
     
     <script>
         let currentNPCUuid = null;
-        let eventSource = null;
+        let refreshInterval = null;
+        let refreshIntervalMs = 5000; // Default 5 seconds
         
-        // Initialize SSE connection for real-time updates
-        function initSSE() {
-            if (eventSource) {
-                eventSource.close();
+        // Get config and set up auto-refresh
+        async function initAutoRefresh() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                // Use max of both intervals, convert to milliseconds
+                refreshIntervalMs = Math.max(config.llmProcessingInterval || 5, config.llmMinInterval || 2) * 1000;
+                console.log('Auto-refresh interval set to', refreshIntervalMs / 1000, 'seconds');
+                
+                // Start auto-refresh
+                startAutoRefresh();
+            } catch (error) {
+                console.error('Error loading config, using default refresh interval:', error);
+                startAutoRefresh();
             }
-            
-            eventSource = new EventSource('/api/events');
-            
-            eventSource.addEventListener('connected', function(e) {
-                console.log('SSE connected');
-            });
-            
-            eventSource.addEventListener('heartbeat', function(e) {
-                // Keep connection alive
-            });
-            
-            eventSource.addEventListener('npcs-updated', function(e) {
-                const data = JSON.parse(e.data);
-                // Always reload NPC list when NPCs are updated
-                loadNPCs();
-                // If viewing a specific NPC, also reload that view
-                if (data.uuid && currentNPCUuid === data.uuid) {
-                    viewNPC(currentNPCUuid);
-                }
-            });
-            
-            eventSource.addEventListener('messages-updated', function(e) {
-                const data = JSON.parse(e.data);
-                if (data.uuid && currentNPCUuid === data.uuid) {
-                    // Reload messages tab
-                    loadNPCMessages(currentNPCUuid);
-                    // Also reload overview to show updated message count
-                    loadNPCOverview(currentNPCUuid);
-                }
-            });
-            
-            eventSource.addEventListener('mail-updated', function(e) {
-                const data = JSON.parse(e.data);
-                if (data.uuid && currentNPCUuid === data.uuid) {
-                    // Reload mail tab
-                    loadNPCMail(currentNPCUuid);
-                    // Also reload overview to show updated mail count
-                    loadNPCOverview(currentNPCUuid);
-                }
-            });
-            
-            eventSource.addEventListener('memory-updated', function(e) {
-                const data = JSON.parse(e.data);
-                if (data.uuid && currentNPCUuid === data.uuid) {
-                    // Reload memory tab
-                    loadNPCMemory(currentNPCUuid);
-                    // Also reload context which includes memory
-                    loadNPCContext(currentNPCUuid);
-                }
-            });
-            
-            eventSource.onerror = function(e) {
-                console.error('SSE error:', e);
-                // Reconnect after 5 seconds
-                setTimeout(initSSE, 5000);
-            };
         }
         
-        // Initialize SSE when page loads
+        // Start auto-refresh timer
+        function startAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            
+            refreshInterval = setInterval(() => {
+                // Always reload NPC list
+                loadNPCs();
+                
+                // If viewing a specific NPC, reload all its data
+                if (currentNPCUuid) {
+                    loadNPCOverview(currentNPCUuid);
+                    loadNPCState(currentNPCUuid);
+                    loadNPCContext(currentNPCUuid);
+                    loadNPCMessages(currentNPCUuid);
+                    loadNPCMail(currentNPCUuid);
+                    loadNPCMemory(currentNPCUuid);
+                }
+            }, refreshIntervalMs);
+        }
+        
+        // Initialize when page loads
         window.addEventListener('load', function() {
-            initSSE();
             loadNPCs();
+            initAutoRefresh();
         });
         
         // Cleanup on page unload
         window.addEventListener('beforeunload', function() {
-            if (eventSource) {
-                eventSource.close();
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
             }
         });
         
@@ -1403,20 +1358,41 @@ public class WebServer {
                 const response = await fetch(`/api/npc/${uuid}/messages`);
                 const messages = await response.json();
                 
+                // Separate messages and actions
+                let messagesHtml = '';
+                let actionsHtml = '';
+                const allActions = [];
+                
                 if (messages.length === 0) {
-                    document.getElementById('messages').innerHTML = 
+                    document.getElementById('messages-content').innerHTML = 
                         '<div class="loading">No messages in conversation history</div>';
+                    document.getElementById('actions-content').innerHTML = 
+                        '<div class="loading">No actions found</div>';
                     return;
                 }
                 
-                let html = '<div class="data-section"><h3>💬 Conversation History</h3>';
-                html += '<table><thead><tr><th>Role</th><th>Message</th><th>Timestamp</th></tr></thead><tbody>';
+                // Build messages table
+                messagesHtml = '<div class="data-section"><h3>💬 Conversation History</h3>';
+                messagesHtml += '<table><thead><tr><th>Role</th><th>Message</th><th>Timestamp</th></tr></thead><tbody>';
                 
                 messages.forEach((msg, index) => {
                     const role = msg.role || 'unknown';
                     const content = msg.content || msg.message || '';
                     const actions = msg.actions || [];
                     const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'N/A';
+                    
+                    // Collect actions for the actions tab
+                    if (actions && actions.length > 0) {
+                        actions.forEach((action, actionIdx) => {
+                            allActions.push({
+                                action: action,
+                                timestamp: timestamp,
+                                role: role,
+                                messageIndex: index,
+                                actionIndex: actionIdx
+                            });
+                        });
+                    }
                     
                     // Get role icon and badge
                     let roleIcon, roleBadge;
@@ -1438,11 +1414,12 @@ public class WebServer {
                             roleBadge = 'badge-warning';
                     }
                     
-                    // Format messages based on role
+                    // Format messages - only show message content, not actions
                     let formattedContent;
                     switch (role) {
                         case 'assistant':
-                            formattedContent = formatStructuredOutput(content, actions);
+                            // Only show message text, not actions
+                            formattedContent = content ? escapeHtml(content) : '<em>No message text</em>';
                             break;
                         case 'system':
                             formattedContent = formatSystemMessage(content);
@@ -1451,13 +1428,12 @@ public class WebServer {
                             formattedContent = escapeHtml(content);
                     }
                     
-                    // Determine if message is long (more than 500 characters) or has actions
-                    // This covers both long text and multi-line system messages
-                    const isLong = content.length > 500 || actions.length > 0;
+                    // Determine if message is long (more than 500 characters)
+                    const isLong = content.length > 500;
                     const messageId = `msg-${index}`;
                     
                     if (isLong) {
-                        html += `<tr>
+                        messagesHtml += `<tr>
                             <td><span class="badge ${roleBadge}">${roleIcon} ${role.toUpperCase()}</span></td>
                             <td>
                                 <div class="message-collapsible">
@@ -1469,7 +1445,7 @@ public class WebServer {
                             <td>${timestamp}</td>
                         </tr>`;
                     } else {
-                        html += `<tr>
+                        messagesHtml += `<tr>
                             <td><span class="badge ${roleBadge}">${roleIcon} ${role.toUpperCase()}</span></td>
                             <td class="message-content">${formattedContent}</td>
                             <td>${timestamp}</td>
@@ -1477,10 +1453,34 @@ public class WebServer {
                     }
                 });
                 
-                html += '</tbody></table></div>';
-                document.getElementById('messages').innerHTML = html;
+                messagesHtml += '</tbody></table></div>';
+                document.getElementById('messages-content').innerHTML = messagesHtml;
+                
+                // Build actions table
+                if (allActions.length === 0) {
+                    actionsHtml = '<div class="data-section"><h3>⚡ Actions</h3><p>No actions found in conversation history</p></div>';
+                } else {
+                    actionsHtml = '<div class="data-section"><h3>⚡ Actions History</h3>';
+                    actionsHtml += '<table><thead><tr><th>#</th><th>Action</th><th>Timestamp</th><th>From Message</th></tr></thead><tbody>';
+                    
+                    allActions.forEach((actionData, idx) => {
+                        const actionBadge = actionData.role === 'assistant' ? 'badge-success' : 'badge-info';
+                        actionsHtml += `<tr>
+                            <td><strong style="color: #667eea;">${idx + 1}</strong></td>
+                            <td><span class="action-code">${escapeHtml(actionData.action)}</span></td>
+                            <td>${actionData.timestamp}</td>
+                            <td><span class="badge ${actionBadge}">Message #${actionData.messageIndex + 1}</span></td>
+                        </tr>`;
+                    });
+                    
+                    actionsHtml += '</tbody></table></div>';
+                }
+                
+                document.getElementById('actions-content').innerHTML = actionsHtml;
             } catch (error) {
-                document.getElementById('messages').innerHTML = 
+                document.getElementById('messages-content').innerHTML = 
+                    '<div class="loading">Error: ' + error.message + '</div>';
+                document.getElementById('actions-content').innerHTML = 
                     '<div class="loading">Error: ' + error.message + '</div>';
             }
         }
@@ -1576,6 +1576,20 @@ public class WebServer {
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
             
+        }
+        
+        function switchSubTab(showId, hideId, event) {
+            // Hide all sub-tabs
+            document.querySelectorAll('.sub-tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.sub-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected sub-tab
+            document.getElementById(showId).classList.add('active');
+            event.target.classList.add('active');
         }
         
         function closeModal() {
@@ -1692,7 +1706,7 @@ public class WebServer {
         // Load NPCs on page load
         loadNPCs();
         
-        // No auto-refresh needed - SSE handles all updates in real-time
+        // Auto-refresh handles all updates periodically
     </script>
 </body>
 </html>

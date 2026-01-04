@@ -12,9 +12,11 @@ import java.util.UUID;
  * Handles memory actions: SharedBook and PrivateBook.
  * Format: "sharedbook add <title> '<content>'" or "sharedbook remove <title>"
  * 
- * IMPORTANT: Content MUST be wrapped in single quotes ('...') for "add" operations.
+ * IMPORTANT: Content MUST be wrapped in single quotes (') or double quotes (") for "add" operations.
  * This allows multi-word content and special characters to be parsed correctly.
- * Example: "sharedbook add location_oak_forest 'Oak forest at coordinates x=23, y=64, z=4.'"
+ * Examples: 
+ *   "sharedbook add location_oak_forest 'Oak forest at coordinates x=23, y=64, z=4.'"
+ *   "sharedbook add location_oak_forest \"Oak forest at coordinates x=23, y=64, z=4.\""
  */
 public class MemoryActionHandler {
     
@@ -51,14 +53,17 @@ public class MemoryActionHandler {
         String pageTitle = parts[2];
         String content = parts.length > 3 ? parts[3] : "";
         
-        // For "add" operations, content MUST be in single quotes
+        // For "add" operations, content MUST be in single or double quotes
         if ("add".equals(operation) && !content.isEmpty()) {
-            if (!content.startsWith("'") || !content.endsWith("'")) {
-                LogUtil.error("MemoryActionHandler: Content must be wrapped in single quotes for 'add' operation. Action: " + action);
+            boolean singleQuoted = content.startsWith("'") && content.endsWith("'");
+            boolean doubleQuoted = content.startsWith("\"") && content.endsWith("\"");
+            
+            if (!singleQuoted && !doubleQuoted) {
+                LogUtil.error("MemoryActionHandler: Content must be wrapped in single quotes (') or double quotes (\") for 'add' operation. Action: " + action);
                 return false;
             }
             
-            // Strip surrounding single quotes
+            // Strip surrounding quotes (single or double)
             content = content.substring(1, content.length() - 1);
         }
         
@@ -179,15 +184,17 @@ public class MemoryActionHandler {
         if (!validOp) return false;
         
         // For "add" operation, need at least 4 parts (bookType, op, title, content)
-        // Content MUST be wrapped in single quotes
+        // Content MUST be wrapped in single or double quotes
         if ("add".equals(op)) {
             if (parts.length < 4) return false;
             String content = parts[3];
             
-            // Content must be wrapped in single quotes
-            if (!content.startsWith("'") || !content.endsWith("'")) return false;
+            // Content must be wrapped in single or double quotes
+            boolean singleQuoted = content.startsWith("'") && content.endsWith("'");
+            boolean doubleQuoted = content.startsWith("\"") && content.endsWith("\"");
+            if (!singleQuoted && !doubleQuoted) return false;
             
-            // Strip single quotes to check if content is not empty
+            // Strip quotes to check if content is not empty
             content = content.substring(1, content.length() - 1);
             
             // Content should not be empty after stripping quotes

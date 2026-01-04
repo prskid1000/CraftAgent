@@ -11,7 +11,7 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 - 🔧 **Multi-LLM Support**: Ollama and LM Studio (OpenAI-compatible)
 - 🎨 **Client-Server Architecture**: GUI configuration on client, NPC logic on server
 - 🛠️ **Command System**: Uses Brigadier to discover and execute all Minecraft commands
-- 🌐 **Web Dashboard**: Built-in web UI (http://localhost:8080) with real-time updates via Server-Sent Events (SSE)
+- 🌐 **Web Dashboard**: Built-in web UI (http://localhost:8080) with auto-refresh based on LLM processing intervals
 - 📧 **Mail System**: NPCs can send and receive messages via mail system
 - 🧠 **Memory System**: Private and shared memory (privateBook, sharebook) for persistent knowledge
 - ⚡ **Structured Actions**: LLM returns structured output with messages and executable actions
@@ -99,9 +99,9 @@ CraftAgent includes a built-in web dashboard for monitoring NPCs in real-time. T
   - Private book pages (NPC-specific memory)
   - Shared book pages (accessible to all NPCs)
 
-**Real-Time Updates:**
-- The dashboard uses Server-Sent Events (SSE) for real-time updates
-- All data (NPCs, messages, mail, memory) updates automatically when changes occur
+**Auto-Refresh:**
+- The dashboard uses auto-refresh based on the maximum LLM processing interval
+- All data (NPCs, messages, mail, memory) updates automatically at configured intervals
 - No manual refresh needed - the UI stays synchronized with the server
 - Updates are triggered when:
   - NPCs are created or removed
@@ -298,7 +298,7 @@ sequenceDiagram
     ActionExecutor->>ActionExecutor: Route to handlers (memory, communication, etc.)
     EventHandler->>History: Add response to history
     EventHandler->>ChatUtil: Send message to chat
-    EventHandler->>WebServer: broadcastUpdate("messages-updated")
+    EventHandler->>History: Store response
     EventHandler-->>Scheduler: Success/Failure
 ```
 
@@ -407,7 +407,7 @@ graph TD
 | **ActionExecutor** | `me.prskid1000.craftagent.action` | Executes LLM-generated actions | `executeActions()` |
 | **MemoryActionHandler** | `me.prskid1000.craftagent.action` | Handles memory actions | `handleAction()` (sharedbook/privatebook) |
 | **CommunicationActionHandler** | `me.prskid1000.craftagent.action` | Handles communication actions | `handleAction()` (mail send) |
-| **WebServer** | `me.prskid1000.craftagent.web` | Web dashboard with SSE | `broadcastUpdate()`, `handleSSE()` |
+| **WebServer** | `me.prskid1000.craftagent.web` | Web dashboard with auto-refresh | HTTP API endpoints |
 
 ### Event Listeners
 
@@ -523,8 +523,7 @@ graph TD
     B -->|Server Tick| E[LLMProcessingScheduler]
     
     C --> F[Store in Mail System]
-    F --> G[Broadcast SSE Update]
-    G --> H[Available in Context]
+    F --> H[Available in Context]
     
     D --> I[Update NPC Age]
     I --> J[Save Config]
@@ -541,7 +540,7 @@ graph TD
     Q -->|No| T[Update History]
     R --> T
     T --> U[Send Chat Message]
-    U --> V[Broadcast SSE Update]
+    U --> V[Store in History]
 ```
 
 ## Configuration
@@ -596,7 +595,7 @@ Config files are in `config/craftagent/`:
 - **MinecraftCommandUtil**: Discovers and executes Minecraft commands via Brigadier
 - **LLMClient**: Interface for LLM providers (Ollama, LM Studio)
 - **CoordinationService**: Handles inter-NPC communication via mail system
-- **WebServer**: HTTP server for monitoring NPCs via web dashboard with SSE real-time updates
+- **WebServer**: HTTP server for monitoring NPCs via web dashboard with auto-refresh
 
 ### Package Structure
 
@@ -641,7 +640,7 @@ me.prskid1000.craftagent/
 - **Mail not working**: Verify MessageRepository is initialized and NPC UUID is correct
 - **Context not updating**: Check ChunkManager is running and chunks are loaded
 - **Actions not executing**: Verify action format matches expected syntax (see Action System section)
-- **Web UI not updating**: Check browser console for SSE connection errors, verify server is running
+- **Web UI not updating**: Check browser console for errors, verify server is running and refresh interval is configured
 - **Structured output parsing fails**: LLM should return valid JSON with "message" and "actions" fields
 
 ## Contributing
