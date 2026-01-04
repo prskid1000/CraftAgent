@@ -1,5 +1,8 @@
 package me.prskid1000.craftagent.action;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Routes actions to appropriate handlers.
  */
@@ -11,6 +14,35 @@ public class ActionProvider {
     public ActionProvider(MemoryActionHandler memoryHandler, CommunicationActionHandler communicationHandler) {
         this.memoryHandler = memoryHandler;
         this.communicationHandler = communicationHandler;
+    }
+    
+    /**
+     * Gets all available action syntax from registered handlers.
+     * 
+     * @return List of action syntax strings
+     */
+    public List<String> getAllActionSyntax() {
+        List<String> syntax = new ArrayList<>();
+        if (memoryHandler instanceof ActionSyntaxProvider) {
+            syntax.addAll(((ActionSyntaxProvider) memoryHandler).getActionSyntax());
+        }
+        if (communicationHandler instanceof ActionSyntaxProvider) {
+            syntax.addAll(((ActionSyntaxProvider) communicationHandler).getActionSyntax());
+        }
+        return syntax;
+    }
+    
+    /**
+     * Static method to get all available action syntax without creating an instance.
+     * Used for generating instructions at runtime.
+     * 
+     * @return List of action syntax strings
+     */
+    public static List<String> getAllStaticActionSyntax() {
+        List<String> syntax = new ArrayList<>();
+        syntax.addAll(MemoryActionHandler.getStaticActionSyntax());
+        syntax.addAll(CommunicationActionHandler.getStaticActionSyntax());
+        return syntax;
     }
     
     public boolean executeAction(String originalAction, String[] parsed) {

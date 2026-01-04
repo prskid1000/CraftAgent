@@ -7,7 +7,9 @@ import me.prskid1000.craftagent.model.NPC;
 import me.prskid1000.craftagent.model.database.Message;
 import me.prskid1000.craftagent.util.LogUtil;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -20,7 +22,7 @@ import java.util.UUID;
  *   "mail send Alice 'Found iron mine, want to mine together?'"
  *   "mail send Alice \"Found iron mine, want to mine together?\""
  */
-public class CommunicationActionHandler {
+public class CommunicationActionHandler implements ActionSyntaxProvider {
     
     private final MessageRepository messageRepository;
     private final NPCService npcService;
@@ -149,5 +151,19 @@ public class CommunicationActionHandler {
         return !messageContent.trim().isEmpty();
     }
     
+    @Override
+    public List<String> getActionSyntax() {
+        return getStaticActionSyntax();
+    }
+    
+    /**
+     * Static method to get action syntax without creating an instance.
+     * Used for generating instructions at runtime.
+     */
+    public static List<String> getStaticActionSyntax() {
+        return Arrays.asList(
+            "mail send <npc_name> '<message>'"
+        );
+    }
 }
 

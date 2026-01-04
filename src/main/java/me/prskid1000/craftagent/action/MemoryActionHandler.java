@@ -6,6 +6,8 @@ import me.prskid1000.craftagent.memory.MemoryManager;
 import me.prskid1000.craftagent.model.database.SharebookPage;
 import me.prskid1000.craftagent.util.LogUtil;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -18,7 +20,7 @@ import java.util.UUID;
  *   "sharedbook add location_oak_forest 'Oak forest at coordinates x=23, y=64, z=4.'"
  *   "sharedbook add location_oak_forest \"Oak forest at coordinates x=23, y=64, z=4.\""
  */
-public class MemoryActionHandler {
+public class MemoryActionHandler implements ActionSyntaxProvider {
     
     private final MemoryManager memoryManager;
     private final SharebookRepository sharebookRepository;
@@ -191,5 +193,22 @@ public class MemoryActionHandler {
         return true; // "remove" operation only needs 3 parts
     }
     
+    @Override
+    public List<String> getActionSyntax() {
+        return getStaticActionSyntax();
+    }
+    
+    /**
+     * Static method to get action syntax without creating an instance.
+     * Used for generating instructions at runtime.
+     */
+    public static List<String> getStaticActionSyntax() {
+        return Arrays.asList(
+            "sharedbook add <title> '<content>'",
+            "sharedbook remove <title>",
+            "privatebook add <title> '<content>'",
+            "privatebook remove <title>"
+        );
+    }
 }
 

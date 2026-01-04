@@ -1,7 +1,9 @@
 package me.prskid1000.craftagent.constant;
 
+import me.prskid1000.craftagent.action.ActionProvider;
 import me.prskid1000.craftagent.llm.LLMType;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -14,9 +16,10 @@ public class Instructions {
 
 
 	/**
-	 * System prompt for NPC behavior
+	 * System prompt template for NPC behavior.
+	 * Action list is dynamically generated at runtime.
 	 */
-	public static final String DEFAULT_SYSTEM_PROMPT = """
+	private static final String SYSTEM_PROMPT_TEMPLATE = """
 		=== IDENTITY ===
 		You are %s, a %d-year-old %s NPC in Minecraft. You can move, gather resources, craft items, build, and interact with the world.
 		
@@ -33,10 +36,13 @@ public class Instructions {
 		Use empty array [] if no actions needed.
 		
 		=== ACTIONS ===
-		**Memory:** "sharedbook add <title> '<content>'", "sharedbook remove <title>", "privatebook add <title> '<content>'", "privatebook remove <title>"
-		**Communication:** "mail send <npc_name> '<message>'"
-		Note: Content and messages can be wrapped in single quotes (') or double quotes (").
-		**Minecraft (coming soon):** "mine stone 10", "craft wooden_pickaxe", "move to 100 64 200"
+		**Action Format Rules:**
+		- Arguments with spaces MUST be wrapped in quotes (single ' or double ")
+		- Arguments without spaces can be quoted or unquoted
+		- Single quotes (') and double quotes (") are both accepted
+		
+		**Available Actions:**
+		%s
 		
 		=== GUIDELINES ===
 		**Survival & Interaction:** Monitor health/food, be aware of surroundings, use actions for tasks, chat via "message" field, be social.
@@ -45,6 +51,23 @@ public class Instructions {
 		
 		Remember: Always respond with valid JSON containing BOTH "message" and "actions" fields.
 		""";
+	
+	/**
+	 * Gets the default system prompt with dynamically generated action list.
+	 * 
+	 * @param npcName NPC name
+	 * @param age NPC age
+	 * @param gender NPC gender
+	 * @return Formatted system prompt with action list
+	 */
+	public static String getDefaultSystemPrompt(String npcName, int age, String gender) {
+		List<String> actions = ActionProvider.getAllStaticActionSyntax();
+		String actionsList = actions.stream()
+			.map(action -> "- \"" + action + "\"")
+			.collect(Collectors.joining("\n\t\t"));
+		
+		return String.format(SYSTEM_PROMPT_TEMPLATE, npcName, age, gender, actionsList);
+	}
 
 	/**
 	 * Legacy prompt template - deprecated in favor of structured JSON context
@@ -108,11 +131,8 @@ public class Instructions {
 	                                        LLMType llmType,
 	                                        net.minecraft.server.MinecraftServer server,
 	                                        me.prskid1000.craftagent.config.BaseConfig baseConfig) {
-        // Build prompt
-        String enhancedPrompt = String.format(
-            Instructions.DEFAULT_SYSTEM_PROMPT, 
-            npcName, age, gender
-        );
+        // Build prompt with dynamically generated action list
+        String enhancedPrompt = getDefaultSystemPrompt(npcName, age, gender);
         
         // Append custom instructions if provided
         if (customSystemPrompt != null && !customSystemPrompt.trim().isEmpty()) {
