@@ -27,6 +27,11 @@ class ConversationRepository(
             // Drop table if it exists (this also drops indexes)
             sqliteClient.dropTable("conversations")
             
+            // Verify table was dropped before creating
+            if (sqliteClient.tableExists("conversations")) {
+                throw RuntimeException("Failed to drop conversations table before recreation")
+            }
+            
             // Create table from scratch
             sqliteClient.update(sql)
             

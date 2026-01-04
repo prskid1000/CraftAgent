@@ -27,6 +27,11 @@ class SharebookRepository(
             // Drop table if it exists (this also drops indexes)
             sqliteClient.dropTable("sharebook")
             
+            // Verify table was dropped before creating
+            if (sqliteClient.tableExists("sharebook")) {
+                throw RuntimeException("Failed to drop sharebook table before recreation")
+            }
+            
             // Create table from scratch
             sqliteClient.update(sql)
             

@@ -21,13 +21,14 @@ class RepositoryFactory(
             privateBookPageRepository.init()
             messageRepository.init()
             sharebookRepository.init()
-        } catch (e: SQLException) {
+        } catch (e: Exception) {
             // Migration error detected - delete database and restart from beginning
             val errorMessage = e.message ?: "Unknown error"
             if (errorMessage.contains("duplicate column") || 
                 errorMessage.contains("SQLITE_ERROR") ||
                 errorMessage.contains("no such column") ||
-                errorMessage.contains("syntax error")) {
+                errorMessage.contains("syntax error") ||
+                errorMessage.contains("Failed to drop")) {
                 
                 LogUtil.error("Migration error detected: $errorMessage. Resetting database and running migrations from beginning.")
                 sqliteClient.deleteDatabase()

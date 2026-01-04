@@ -142,10 +142,9 @@ public class SqliteClient {
 	 * @throws SQLException if the operation fails
 	 */
 	public void dropTable(String tableName) throws SQLException {
-		if (tableExists(tableName)) {
-			update("DROP TABLE " + tableName);
-			LOGGER.info("Dropped table: {}", tableName);
-		}
+		// Use IF EXISTS to avoid errors if table doesn't exist
+		update("DROP TABLE IF EXISTS " + tableName);
+		LOGGER.info("Dropped table (if existed): {}", tableName);
 	}
 
 	/**
@@ -172,6 +171,7 @@ public class SqliteClient {
 			initSchemaVersionTable();
 			PreparedStatement stmt = buildPreparedStatement("SELECT schema_hash FROM schema_versions WHERE table_name = ?");
 			if (stmt == null) {
+				LOGGER.warn("Failed to build prepared statement for getting schema version of table: {}", tableName);
 				return null;
 			}
 			stmt.setString(1, tableName);
@@ -180,12 +180,14 @@ public class SqliteClient {
 				String hash = rs.getString("schema_hash");
 				rs.close();
 				stmt.close();
+				LOGGER.debug("Retrieved schema version for table {}: {}", tableName, hash);
 				return hash;
 			}
 			if (rs != null) {
 				rs.close();
 			}
 			stmt.close();
+			LOGGER.debug("No schema version found for table: {}", tableName);
 			return null;
 		} catch (SQLException e) {
 			LOGGER.error("Error getting schema version for table {}: {}", tableName, e.getMessage());
@@ -208,6 +210,9 @@ public class SqliteClient {
 			stmt.setString(2, schemaHash);
 			stmt.executeUpdate();
 			stmt.close();
+			LOGGER.info("Stored schema version for table {}: {}", tableName, schemaHash);
+		} else {
+			LOGGER.error("Failed to build prepared statement for storing schema version of table: {}", tableName);
 		}
 	}
 
@@ -230,20 +235,34 @@ public class SqliteClient {
 	 * @return true if the schema has changed and table needs to be recreated
 	 */
 	public boolean needsSchemaUpdate(String tableName, String schemaSql) {
-		if (!tableExists(tableName)) {
+		boolean tableExists = tableExists(tableName);
+		LOGGER.debug("Checking schema version for table: {} (exists: {})", tableName, tableExists);
+		
+		if (!tableExists) {
+			LOGGER.info("Table {} does not exist, will create it", tableName);
 			return true; // Table doesn't exist, need to create it
 		}
 		
 		String currentHash = getSchemaVersion(tableName);
 		String expectedHash = calculateSchemaHash(schemaSql);
 		
+		LOGGER.debug("Schema version check for table {} - current: {}, expected: {}", tableName, currentHash, expectedHash);
+		
 		// If no version stored, table exists but we don't know its schema version
 		// Recreate it to ensure it matches current schema and store the version
 		if (currentHash == null) {
+			LOGGER.info("Table {} exists but has no schema version stored, will recreate with version", tableName);
 			return true; // No version stored - drop table and recreate with version
 		}
 		
-		return !currentHash.equals(expectedHash); // Schema changed if hashes don't match
+		boolean needsUpdate = !currentHash.equals(expectedHash);
+		if (needsUpdate) {
+			LOGGER.info("Schema version mismatch for table {} - current: {}, expected: {}. Will recreate table.", tableName, currentHash, expectedHash);
+		} else {
+			LOGGER.debug("Schema version matches for table {} (hash: {}), no update needed", tableName, currentHash);
+		}
+		
+		return needsUpdate; // Schema changed if hashes don't match
 	}
 
 	/**
