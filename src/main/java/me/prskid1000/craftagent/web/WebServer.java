@@ -251,24 +251,39 @@ public class WebServer {
     
     private void handleGetNPCMemory(NPC npc, HttpExchange exchange) throws IOException {
         try {
-            var memoryManager = npc.getContextProvider().memoryManager;
-            if (memoryManager == null) {
-                sendJsonResponse(exchange, 200, Map.of("privateBook", Collections.emptyList()));
-                return;
-            }
+            var contextProvider = npc.getContextProvider();
+            var memoryManager = contextProvider.memoryManager;
             
             Map<String, Object> memory = new HashMap<>();
             
+            // Add private book pages
             List<Map<String, Object>> privatePages = new ArrayList<>();
-            for (var page : memoryManager.getPages()) {
-                Map<String, Object> pageMap = new HashMap<>();
-                pageMap.put("pageTitle", page.getPageTitle());
-                pageMap.put("content", page.getContent());
-                pageMap.put("timestamp", page.getTimestamp());
-                privatePages.add(pageMap);
+            if (memoryManager != null) {
+                for (var page : memoryManager.getPages()) {
+                    Map<String, Object> pageMap = new HashMap<>();
+                    pageMap.put("pageTitle", page.getPageTitle());
+                    pageMap.put("content", page.getContent());
+                    pageMap.put("timestamp", page.getTimestamp());
+                    privatePages.add(pageMap);
+                }
             }
-            
             memory.put("privateBook", privatePages);
+            
+            // Add sharebook (shared information accessible to all NPCs)
+            List<Map<String, Object>> sharebookPages = new ArrayList<>();
+            var sharebookRepository = contextProvider.getSharebookRepository();
+            if (sharebookRepository != null) {
+                for (var page : sharebookRepository.selectAll()) {
+                    Map<String, Object> pageMap = new HashMap<>();
+                    pageMap.put("pageTitle", page.getPageTitle());
+                    pageMap.put("content", page.getContent());
+                    pageMap.put("authorUuid", page.getAuthorUuid());
+                    pageMap.put("timestamp", page.getTimestamp());
+                    sharebookPages.add(pageMap);
+                }
+            }
+            memory.put("sharebook", sharebookPages);
+            
             sendJsonResponse(exchange, 200, memory);
         } catch (Exception e) {
             LogUtil.error("Error getting NPC memory", e);
@@ -1544,11 +1559,13 @@ public class WebServer {
                 
                 if (memory.sharebook && memory.sharebook.length > 0) {
                     html += '<div class="data-section"><h3>📖 Shared Book</h3>';
-                    html += '<table><thead><tr><th>Page</th><th>Content</th></tr></thead><tbody>';
-                    memory.sharebook.forEach((page, index) => {
+                    html += '<table><thead><tr><th>Page Title</th><th>Content</th><th>Last Updated</th></tr></thead><tbody>';
+                    memory.sharebook.forEach(page => {
+                        const date = page.timestamp ? new Date(page.timestamp).toLocaleString() : 'N/A';
                         html += `<tr>
-                            <td><strong>Page ${index + 1}</strong></td>
-                            <td style="max-width: 500px; word-wrap: break-word;">${escapeHtml(page.content || page || 'Empty page')}</td>
+                            <td><strong>${escapeHtml(page.pageTitle || 'Untitled')}</strong></td>
+                            <td style="max-width: 500px; word-wrap: break-word;">${escapeHtml(page.content || 'Empty page')}</td>
+                            <td>${date}</td>
                         </tr>`;
                     });
                     html += '</tbody></table></div>';
