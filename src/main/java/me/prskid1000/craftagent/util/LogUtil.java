@@ -44,20 +44,26 @@ public class LogUtil {
 		return message;
 	}
 
+	private static void chatLog(MutableText formattedMessage) {
+		if (configProvider != null && configProvider.getBaseConfig().isVerbose()) {
+			log(formattedMessage);
+		}
+	}
+
 	public static void debugInChat(String message) {
-		log(formatDebug(message));
+		chatLog(formatDebug(message));
 	}
 
 	public static void infoInChat(String message) {
-		log(formatInfo(message));
+		chatLog(formatInfo(message));
 	}
 
 	public static void errorInChat(String message) {
-		log(formatError(formatExceptionMessage(message)));
+		chatLog(formatError(formatExceptionMessage(message)));
 	}
 
 	public static void info(String message) {
-		if (configProvider.getBaseConfig().isVerbose()) LOGGER.info(formatInfo(message).getString());
+		LOGGER.info(formatInfo(message).getString());
 	}
 
 	public static void error(String message) {
