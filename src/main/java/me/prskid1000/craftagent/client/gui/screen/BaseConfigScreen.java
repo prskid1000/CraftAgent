@@ -55,6 +55,12 @@ public class BaseConfigScreen extends ConfigScreen<BaseConfig> {
         bindSlider(content, "maxNearbyEntities-label", "maxNearbyEntities",
                 BaseConfig.MAX_NEARBY_ENTITIES_KEY, config.getMaxNearbyEntities(), config::setMaxNearbyEntities);
 
+        bindSlider(content, "lineOfSightMaxRange-label", "lineOfSightMaxRange",
+                BaseConfig.LINE_OF_SIGHT_MAX_RANGE_KEY, config.getLineOfSightMaxRange(), config::setLineOfSightMaxRange);
+
+        bindSlider(content, "lineOfSightItemDetectionRange-label", "lineOfSightItemDetectionRange",
+                BaseConfig.LINE_OF_SIGHT_ITEM_DETECTION_RANGE_KEY, config.getLineOfSightItemDetectionRange(), config::setLineOfSightItemDetectionRange);
+
         content.childById(LabelComponent.class, "verbose-label").text(Text.of(BaseConfig.VERBOSE_KEY));
         CheckboxComponent verbose = content.childById(CheckboxComponent.class, "verbose");
         verbose.checked(config.isVerbose());

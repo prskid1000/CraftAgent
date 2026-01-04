@@ -56,6 +56,81 @@ public class StructuredInputFormatter {
             if (worldContext.memoryData() != null) {
                 context.put("memory", worldContext.memoryData());
             }
+            
+            // Add navigation data if available
+            if (worldContext.navigation() != null) {
+                Map<String, Object> navMap = new HashMap<>();
+                navMap.put("state", worldContext.navigation().state());
+                navMap.put("stateDescription", worldContext.navigation().stateDescription());
+                navMap.put("timeInCurrentState", worldContext.navigation().timeInCurrentState());
+                if (worldContext.navigation().destination() != null) {
+                    navMap.put("destination", Map.of(
+                            "x", worldContext.navigation().destination().getX(),
+                            "y", worldContext.navigation().destination().getY(),
+                            "z", worldContext.navigation().destination().getZ()
+                    ));
+                }
+                context.put("navigation", navMap);
+            }
+            
+            // Add line of sight data if available
+            if (worldContext.lineOfSight() != null) {
+                Map<String, Object> losMap = new HashMap<>();
+                
+                // Items in line of sight
+                losMap.put("items", worldContext.lineOfSight().items().stream()
+                        .map(item -> Map.of(
+                                "type", item.type(),
+                                "count", item.count(),
+                                "distance", item.distance(),
+                                "position", Map.of(
+                                        "x", item.position().getX(),
+                                        "y", item.position().getY(),
+                                        "z", item.position().getZ()
+                                )
+                        ))
+                        .toList());
+                
+                // Entities in line of sight
+                losMap.put("entities", worldContext.lineOfSight().entities().stream()
+                        .map(entity -> Map.of(
+                                "id", entity.id(),
+                                "name", entity.name(),
+                                "isPlayer", entity.isPlayer()
+                        ))
+                        .toList());
+                
+                // Target block (where NPC is looking)
+                if (worldContext.lineOfSight().targetBlock() != null) {
+                    var targetBlock = worldContext.lineOfSight().targetBlock();
+                    losMap.put("targetBlock", Map.of(
+                            "type", targetBlock.type(),
+                            "position", Map.of(
+                                    "x", targetBlock.position().getX(),
+                                    "y", targetBlock.position().getY(),
+                                    "z", targetBlock.position().getZ()
+                            ),
+                            "mineLevel", targetBlock.mineLevel(),
+                            "toolNeeded", targetBlock.toolNeeded()
+                    ));
+                }
+                
+                // Visible blocks
+                losMap.put("visibleBlocks", worldContext.lineOfSight().visibleBlocks().stream()
+                        .map(block -> Map.of(
+                                "type", block.type(),
+                                "position", Map.of(
+                                        "x", block.position().getX(),
+                                        "y", block.position().getY(),
+                                        "z", block.position().getZ()
+                                ),
+                                "mineLevel", block.mineLevel(),
+                                "toolNeeded", block.toolNeeded()
+                        ))
+                        .toList());
+                
+                context.put("lineOfSight", losMap);
+            }
 
             // Convert context to JSON string
             String contextJson = objectMapper.writeValueAsString(context);

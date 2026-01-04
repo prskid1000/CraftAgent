@@ -57,6 +57,16 @@ public class ContextData {
      * Represents item information in inventory
      */
     public record ItemData(String type, int count, int slot) {}
+    
+    /**
+     * Represents item entity information in the world (dropped items)
+     */
+    public record ItemEntityData(
+        String type,
+        int count,
+        BlockPos position,
+        double distance
+    ) {}
 
     /**
      * Represents inventory data (armor, main inventory, hotbar, off-hand)
@@ -81,5 +91,25 @@ public class ContextData {
      * Represents NPC state data (position, health, food, biome)
      */
     public record StateData(BlockPos position, float health, int food, String biome) {}
+    
+    /**
+     * Represents navigation state data (current state, destination if traveling)
+     */
+    public record NavigationData(
+        String state, // "idle", "traveling", "arrived"
+        BlockPos destination, // null if idle
+        String stateDescription, // Human-readable description
+        long timeInCurrentState // milliseconds
+    ) {}
+    
+    /**
+     * Represents line of sight data (items, entities, blocks visible to NPC)
+     */
+    public record LineOfSightData(
+        List<ItemEntityData> items, // Items visible in line of sight
+        List<EntityData> entities, // Entities visible in line of sight
+        BlockData targetBlock, // Block directly in line of sight (where NPC is looking)
+        List<BlockData> visibleBlocks // Additional blocks visible in line of sight
+    ) {}
 }
 

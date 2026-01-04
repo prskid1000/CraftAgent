@@ -19,6 +19,8 @@ public class BaseConfig implements Configurable {
     private int maxSharebookPages = 20;
     private int maxNearbyBlocks = 30;
     private int maxNearbyEntities = 15;
+    private int lineOfSightMaxRange = 64;
+    private int lineOfSightItemDetectionRange = 32;
     private boolean verbose = false;
     private int llmProcessingInterval = 5;
     private int llmMinInterval = 10;
@@ -111,6 +113,22 @@ public class BaseConfig implements Configurable {
         this.maxNearbyEntities = maxNearbyEntities;
     }
 
+    public int getLineOfSightMaxRange() {
+        return lineOfSightMaxRange;
+    }
+
+    public void setLineOfSightMaxRange(int lineOfSightMaxRange) {
+        this.lineOfSightMaxRange = lineOfSightMaxRange;
+    }
+
+    public int getLineOfSightItemDetectionRange() {
+        return lineOfSightItemDetectionRange;
+    }
+
+    public void setLineOfSightItemDetectionRange(int lineOfSightItemDetectionRange) {
+        this.lineOfSightItemDetectionRange = lineOfSightItemDetectionRange;
+    }
+
     public int getLlmProcessingInterval() {
         return llmProcessingInterval;
     }
@@ -143,6 +161,8 @@ public class BaseConfig implements Configurable {
             Endec.INT.fieldOf("maxSharebookPages", BaseConfig::getMaxSharebookPages),
             Endec.INT.fieldOf("maxNearbyBlocks", BaseConfig::getMaxNearbyBlocks),
             Endec.INT.fieldOf("maxNearbyEntities", BaseConfig::getMaxNearbyEntities),
+            Endec.INT.fieldOf("lineOfSightMaxRange", BaseConfig::getLineOfSightMaxRange),
+            Endec.INT.fieldOf("lineOfSightItemDetectionRange", BaseConfig::getLineOfSightItemDetectionRange),
             Endec.BOOLEAN.fieldOf("verbose", BaseConfig::isVerbose),
             Endec.INT.fieldOf("llmProcessingInterval", BaseConfig::getLlmProcessingInterval),
             Endec.INT.fieldOf("llmMinInterval", BaseConfig::getLlmMinInterval),
@@ -162,6 +182,8 @@ public class BaseConfig implements Configurable {
                 ",maxSharebookPages=" + maxSharebookPages +
                 ",maxNearbyBlocks=" + maxNearbyBlocks +
                 ",maxNearbyEntities=" + maxNearbyEntities +
+                ",lineOfSightMaxRange=" + lineOfSightMaxRange +
+                ",lineOfSightItemDetectionRange=" + lineOfSightItemDetectionRange +
                 ",verbose=" + verbose +
                 ",llmProcessingInterval=" + llmProcessingInterval +
                 ",llmMinInterval=" + llmMinInterval +"}";
@@ -177,6 +199,8 @@ public class BaseConfig implements Configurable {
     public static final String MAX_SHAREBOOK_PAGES_KEY = "Max Sharebook Pages";
     public static final String MAX_NEARBY_BLOCKS_KEY = "Max Nearby Blocks";
     public static final String MAX_NEARBY_ENTITIES_KEY = "Max Nearby Entities";
+    public static final String LINE_OF_SIGHT_MAX_RANGE_KEY = "Line of Sight Max Range (blocks)";
+    public static final String LINE_OF_SIGHT_ITEM_DETECTION_RANGE_KEY = "Line of Sight Item Detection Range (blocks)";
     public static final String VERBOSE_KEY = "Debug Mode";
     public static final String LLM_PROCESSING_INTERVAL_KEY = "LLM Processing Interval (seconds)";
     public static final String LLM_MIN_INTERVAL_KEY = "LLM Min Interval Between Success (seconds)";

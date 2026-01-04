@@ -14,6 +14,8 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.math.BlockPos;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -30,12 +32,23 @@ public class ContextProvider {
 	private MessageRepository messageRepository;
 	private SharebookRepository sharebookRepository;
 	private UUID npcUuid;
+	
+	// Navigation and line of sight
+	private final NavigationState navigationState;
+	private final LineOfSightProvider lineOfSightProvider;
 
 	public ContextProvider(ServerPlayerEntity npcEntity, BaseConfig config) {
 		this.npcEntity = npcEntity;
 		this.maxNearbyEntities = config.getMaxNearbyEntities();
 		this.baseConfig = config;
 		this.chunkManager = new ChunkManager(npcEntity, config);
+		this.navigationState = new NavigationState();
+		// Use config values for line of sight ranges
+		this.lineOfSightProvider = new LineOfSightProvider(
+			npcEntity, 
+			(double) config.getLineOfSightMaxRange(), 
+			(double) config.getLineOfSightItemDetectionRange()
+		);
 		buildContext();
 	}
 	
@@ -68,15 +81,26 @@ public class ContextProvider {
 					memoryData = buildMemoryData();
 				}
 				
-				WorldContext context = new WorldContext(
-						getNpcState(),
-						getInventoryState(),
-						chunkManager.getNearbyBlocks(),
-						getNearbyEntities(),
-						memoryData
-				);
-				this.cachedContext = context;
-				return context;
+			// Update navigation state based on current position
+			navigationState.update(npcEntity.getPos());
+			
+			// Build navigation data
+			ContextData.NavigationData navigationData = buildNavigationData();
+			
+			// Build line of sight data
+			ContextData.LineOfSightData lineOfSightData = buildLineOfSightData();
+			
+			WorldContext context = new WorldContext(
+					getNpcState(),
+					getInventoryState(),
+					chunkManager.getNearbyBlocks(),
+					getNearbyEntities(),
+					memoryData,
+					navigationData,
+					lineOfSightData
+			);
+			this.cachedContext = context;
+			return context;
 			} catch (Exception e) {
 				LogUtil.error("Error building NPC context", e);
 				throw new RuntimeException(e);
@@ -99,23 +123,35 @@ public class ContextProvider {
 		memory.put("privateBook", privatePages);
 		
 		// Add mail (messages) - only unread messages to avoid overwhelming context
-		// Auto-mark messages as read when included in context
+		// Delete messages after including in context (they've been sent to LLM, considered as read)
 		if (messageRepository != null && npcUuid != null) {
 			java.util.List<java.util.Map<String, Object>> messages = new java.util.ArrayList<>();
+			java.util.List<Long> messageIdsToDelete = new java.util.ArrayList<>();
+			
 			messageRepository.selectByRecipient(npcUuid, 10, true).forEach(msg -> {
-				// Mark message as read when included in context
-				if (!msg.getRead()) {
-					messageRepository.markAsRead(msg.getId());
-				}
-				
+				// Add message to context
 				java.util.Map<String, Object> msgMap = new java.util.HashMap<>();
 				msgMap.put("id", msg.getId());
 				msgMap.put("senderName", msg.getSenderName());
 				msgMap.put("content", msg.getContent());
 				msgMap.put("timestamp", msg.getTimestamp());
-				msgMap.put("read", true); // Always mark as read in context
+				msgMap.put("read", true); // Mark as read in context
 				messages.add(msgMap);
+				
+				// Mark message for deletion after it's been sent to LLM
+				messageIdsToDelete.add(msg.getId());
 			});
+			
+			// Delete messages after they've been included in context
+			// This happens after the context is built and sent to LLM
+			for (Long messageId : messageIdsToDelete) {
+				try {
+					messageRepository.delete(messageId);
+				} catch (Exception e) {
+					LogUtil.error("Error deleting message after sending to LLM: " + messageId, e);
+				}
+			}
+			
 			memory.put("mail", messages);
 		}
 		
@@ -212,5 +248,49 @@ public class ContextProvider {
 
 	public ServerPlayerEntity getNpcEntity() {
 		return npcEntity;
+	}
+	
+	/**
+	 * Gets the navigation state manager for this NPC.
+	 */
+	public NavigationState getNavigationState() {
+		return navigationState;
+	}
+	
+	/**
+	 * Gets the line of sight provider for this NPC.
+	 */
+	public LineOfSightProvider getLineOfSightProvider() {
+		return lineOfSightProvider;
+	}
+	
+	/**
+	 * Builds navigation data from the current navigation state.
+	 */
+	private ContextData.NavigationData buildNavigationData() {
+		Optional<BlockPos> destination = navigationState.getDestination();
+		return new ContextData.NavigationData(
+			navigationState.getState().name().toLowerCase(),
+			destination.orElse(null),
+			navigationState.getStateDescription(),
+			navigationState.getTimeInCurrentState()
+		);
+	}
+	
+	/**
+	 * Builds line of sight data using the line of sight provider.
+	 */
+	private ContextData.LineOfSightData buildLineOfSightData() {
+		List<ContextData.ItemEntityData> items = lineOfSightProvider.getItemsInLineOfSight();
+		List<ContextData.EntityData> entities = lineOfSightProvider.getEntitiesInLineOfSight();
+		ContextData.BlockData targetBlock = lineOfSightProvider.getBlockInLineOfSight();
+		List<ContextData.BlockData> visibleBlocks = lineOfSightProvider.getBlocksInLineOfSight(10); // Max 10 blocks
+		
+		return new ContextData.LineOfSightData(
+			items,
+			entities,
+			targetBlock,
+			visibleBlocks
+		);
 	}
 }

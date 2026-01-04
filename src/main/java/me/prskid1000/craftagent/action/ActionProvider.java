@@ -10,10 +10,18 @@ public class ActionProvider {
     
     private final MemoryActionHandler memoryHandler;
     private final CommunicationActionHandler communicationHandler;
+    private final NavigationActionHandler navigationHandler;
     
     public ActionProvider(MemoryActionHandler memoryHandler, CommunicationActionHandler communicationHandler) {
         this.memoryHandler = memoryHandler;
         this.communicationHandler = communicationHandler;
+        this.navigationHandler = null;
+    }
+    
+    public ActionProvider(MemoryActionHandler memoryHandler, CommunicationActionHandler communicationHandler, NavigationActionHandler navigationHandler) {
+        this.memoryHandler = memoryHandler;
+        this.communicationHandler = communicationHandler;
+        this.navigationHandler = navigationHandler;
     }
     
     /**
@@ -29,6 +37,9 @@ public class ActionProvider {
         if (communicationHandler instanceof ActionSyntaxProvider) {
             syntax.addAll(((ActionSyntaxProvider) communicationHandler).getActionSyntax());
         }
+        if (navigationHandler != null && navigationHandler instanceof ActionSyntaxProvider) {
+            syntax.addAll(((ActionSyntaxProvider) navigationHandler).getActionSyntax());
+        }
         return syntax;
     }
     
@@ -42,6 +53,7 @@ public class ActionProvider {
         List<String> syntax = new ArrayList<>();
         syntax.addAll(MemoryActionHandler.getStaticActionSyntax());
         syntax.addAll(CommunicationActionHandler.getStaticActionSyntax());
+        syntax.addAll(NavigationActionHandler.getStaticActionSyntax());
         return syntax;
     }
     
@@ -53,6 +65,7 @@ public class ActionProvider {
         return switch (actionType) {
             case "sharedbook", "privatebook" -> memoryHandler.handleAction(originalAction, parsed);
             case "mail" -> communicationHandler.handleAction(originalAction, parsed);
+            case "travel" -> navigationHandler != null && navigationHandler.handleAction(originalAction, parsed);
             default -> false;
         };
     }
@@ -65,6 +78,7 @@ public class ActionProvider {
         return switch (actionType) {
             case "sharedbook", "privatebook" -> memoryHandler.isValidAction(action, parsed);
             case "mail" -> communicationHandler.isValidAction(action, parsed);
+            case "travel" -> navigationHandler != null && navigationHandler.isValidAction(action, parsed);
             default -> false;
         };
     }

@@ -152,6 +152,32 @@
                                         </children>
                                     </flow-layout>
 
+                                    <flow-layout direction="vertical" id="lineOfSightMaxRangeRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="lineOfSightMaxRange-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="lineOfSightMaxRange" min="16" max="128">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
+
+                                    <flow-layout direction="vertical" id="lineOfSightItemDetectionRangeRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children>
+                                            <label id="lineOfSightItemDetectionRange-label"><shadow>true</shadow></label>
+                                            <discrete-slider id="lineOfSightItemDetectionRange" min="8" max="64">
+                                                <sizing>
+                                                    <horizontal method="fill">100</horizontal>
+                                                    <vertical method="fixed">18</vertical>
+                                                </sizing>
+                                            </discrete-slider>
+                                        </children>
+                                    </flow-layout>
+
                                     <flow-layout direction="vertical" id="verboseRow">
                                         <sizing><horizontal method="fill">100</horizontal></sizing>
                                         <children>

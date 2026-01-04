@@ -12,11 +12,19 @@ public record WorldContext(
 	ContextData.InventoryData inventory,
 	List<ContextData.BlockData> nearbyBlocks,
 	List<ContextData.EntityData> nearbyEntities,
-	Map<String, Object> memoryData
+	Map<String, Object> memoryData,
+	ContextData.NavigationData navigation,
+	ContextData.LineOfSightData lineOfSight
 ) {
 	public WorldContext(ContextData.StateData state, ContextData.InventoryData inventory, 
 	                   List<ContextData.BlockData> nearbyBlocks, List<ContextData.EntityData> nearbyEntities) {
-		this(state, inventory, nearbyBlocks, nearbyEntities, null);
+		this(state, inventory, nearbyBlocks, nearbyEntities, null, null, null);
+	}
+	
+	public WorldContext(ContextData.StateData state, ContextData.InventoryData inventory, 
+	                   List<ContextData.BlockData> nearbyBlocks, List<ContextData.EntityData> nearbyEntities,
+	                   Map<String, Object> memoryData) {
+		this(state, inventory, nearbyBlocks, nearbyEntities, memoryData, null, null);
 	}
 	
 	public Optional<ContextData.BlockData> findBlockByType(String type) {

@@ -426,6 +426,87 @@ public class WebServer {
         if (context.memoryData() != null) {
             map.put("memory", context.memoryData());
         }
+        
+        // Add navigation data
+        if (context.navigation() != null) {
+            Map<String, Object> navigation = new HashMap<>();
+            navigation.put("state", context.navigation().state());
+            navigation.put("stateDescription", context.navigation().stateDescription());
+            navigation.put("timeInCurrentState", context.navigation().timeInCurrentState());
+            if (context.navigation().destination() != null) {
+                Map<String, Object> dest = new HashMap<>();
+                dest.put("x", context.navigation().destination().getX());
+                dest.put("y", context.navigation().destination().getY());
+                dest.put("z", context.navigation().destination().getZ());
+                navigation.put("destination", dest);
+            }
+            map.put("navigation", navigation);
+        }
+        
+        // Add line of sight data
+        if (context.lineOfSight() != null) {
+            Map<String, Object> lineOfSight = new HashMap<>();
+            
+            // Items in line of sight
+            List<Map<String, Object>> itemsList = new ArrayList<>();
+            for (var item : context.lineOfSight().items()) {
+                Map<String, Object> itemMap = new HashMap<>();
+                itemMap.put("type", item.type());
+                itemMap.put("count", item.count());
+                itemMap.put("distance", item.distance());
+                Map<String, Object> itemPos = new HashMap<>();
+                itemPos.put("x", item.position().getX());
+                itemPos.put("y", item.position().getY());
+                itemPos.put("z", item.position().getZ());
+                itemMap.put("position", itemPos);
+                itemsList.add(itemMap);
+            }
+            lineOfSight.put("items", itemsList);
+            
+            // Entities in line of sight
+            List<Map<String, Object>> losEntitiesList = new ArrayList<>();
+            for (var entity : context.lineOfSight().entities()) {
+                Map<String, Object> entityMap = new HashMap<>();
+                entityMap.put("id", entity.id());
+                entityMap.put("name", entity.name());
+                entityMap.put("isPlayer", entity.isPlayer());
+                losEntitiesList.add(entityMap);
+            }
+            lineOfSight.put("entities", losEntitiesList);
+            
+            // Target block (where NPC is looking)
+            if (context.lineOfSight().targetBlock() != null) {
+                Map<String, Object> targetBlock = new HashMap<>();
+                targetBlock.put("type", context.lineOfSight().targetBlock().type());
+                Map<String, Object> blockPos = new HashMap<>();
+                blockPos.put("x", context.lineOfSight().targetBlock().position().getX());
+                blockPos.put("y", context.lineOfSight().targetBlock().position().getY());
+                blockPos.put("z", context.lineOfSight().targetBlock().position().getZ());
+                targetBlock.put("position", blockPos);
+                targetBlock.put("mineLevel", context.lineOfSight().targetBlock().mineLevel());
+                targetBlock.put("toolNeeded", context.lineOfSight().targetBlock().toolNeeded());
+                lineOfSight.put("targetBlock", targetBlock);
+            }
+            
+            // Visible blocks
+            List<Map<String, Object>> visibleBlocksList = new ArrayList<>();
+            for (var block : context.lineOfSight().visibleBlocks()) {
+                Map<String, Object> blockMap = new HashMap<>();
+                blockMap.put("type", block.type());
+                Map<String, Object> blockPos = new HashMap<>();
+                blockPos.put("x", block.position().getX());
+                blockPos.put("y", block.position().getY());
+                blockPos.put("z", block.position().getZ());
+                blockMap.put("position", blockPos);
+                blockMap.put("mineLevel", block.mineLevel());
+                blockMap.put("toolNeeded", block.toolNeeded());
+                visibleBlocksList.add(blockMap);
+            }
+            lineOfSight.put("visibleBlocks", visibleBlocksList);
+            
+            map.put("lineOfSight", lineOfSight);
+        }
+        
         return map;
     }
     
