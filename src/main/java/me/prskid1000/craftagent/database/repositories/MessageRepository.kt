@@ -28,11 +28,13 @@ class MessageRepository(
         sqliteClient.update(sql)
         
         // Add sender_type column if it doesn't exist (for existing databases)
+        // If this fails, RepositoryFactory will handle it by resetting the database
         try {
             val alterSql = "ALTER TABLE messages ADD COLUMN sender_type TEXT NOT NULL DEFAULT 'NPC';"
             sqliteClient.update(alterSql)
         } catch (e: Exception) {
-            // Column already exists, ignore
+            // Re-throw to let RepositoryFactory handle migration errors
+            throw e
         }
         
         val indexSql = "CREATE INDEX IF NOT EXISTS idx_message_recipient ON messages(recipient_uuid, read);"

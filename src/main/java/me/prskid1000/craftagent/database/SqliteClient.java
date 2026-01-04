@@ -14,12 +14,15 @@ public class SqliteClient {
 
 	private static final Logger LOGGER = LogManager.getLogger(SqliteClient.class);
 	private Connection connection;
+	private String databasePath;
+	private String databaseName;
 
 	/**
 	 * Create the database.
 	 */
 	public void initDatabase(String databaseName) {
-		String databasePath = initDataBaseDir();
+		this.databaseName = databaseName;
+		this.databasePath = initDataBaseDir();
 		try {
 			String jdbcUrl = String.format("jdbc:sqlite:%s/%s.db", databasePath, databaseName);
 			connection = DriverManager.getConnection(jdbcUrl);
@@ -98,12 +101,45 @@ public class SqliteClient {
 	/**
 	 * Create a table in the database.
 	 * @param sql the SQL query to create a table
+	 * @throws SQLException if the query fails (for migration error handling)
 	 */
-	public void update(String sql) {
+	public void update(String sql) throws SQLException {
+		if (connection == null || connection.isClosed()) {
+			throw new SQLException("Database connection is null or closed");
+		}
 		try (Statement statement = connection.createStatement()) {
 			statement.execute(sql);
 		} catch (SQLException e) {
 			LOGGER.error("Error executing query {} : {}", sql, e.getMessage());
+			throw e; // Re-throw to allow migration error handling
+		}
+	}
+
+	/**
+	 * Delete the database file and close the connection.
+	 * Used when migration errors occur to reset the database.
+	 */
+	public void deleteDatabase() {
+		try {
+			// Close connection first
+			if (connection != null && !connection.isClosed()) {
+				connection.close();
+			}
+			connection = null;
+			
+			// Delete database file
+			if (databasePath != null && databaseName != null) {
+				File dbFile = new File(databasePath, databaseName + ".db");
+				if (dbFile.exists()) {
+					if (dbFile.delete()) {
+						LOGGER.warn("Database deleted due to migration error: {}", dbFile.getAbsolutePath());
+					} else {
+						LOGGER.error("Failed to delete database file: {}", dbFile.getAbsolutePath());
+					}
+				}
+			}
+		} catch (SQLException e) {
+			LOGGER.error("Error closing database connection before deletion: {}", e.getMessage());
 		}
 	}
 
