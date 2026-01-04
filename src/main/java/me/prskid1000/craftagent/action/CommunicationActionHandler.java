@@ -13,7 +13,10 @@ import java.util.UUID;
 
 /**
  * Handles communication actions: sending mail.
- * Format: "mail send <recipient_name> <message>"
+ * Format: "mail send <recipient_name> '<message>'"
+ * 
+ * IMPORTANT: Message MUST be wrapped in single quotes ('...') to handle multi-word messages and special characters.
+ * Example: "mail send Alice 'Found iron mine, want to mine together?'"
  */
 public class CommunicationActionHandler {
     
@@ -33,27 +36,64 @@ public class CommunicationActionHandler {
     }
     
     public boolean handleAction(String action) {
-        if (action == null || action.trim().isEmpty()) return false;
+        if (action == null || action.trim().isEmpty()) {
+            LogUtil.error("CommunicationActionHandler: Action is null or empty");
+            return false;
+        }
         
-        String[] parts = action.trim().split("\\s+", 4);
-        if (parts.length < 4) return false;
+        String trimmed = action.trim();
+        String[] parts = trimmed.split("\\s+", 4);
+        if (parts.length < 4) {
+            LogUtil.error("CommunicationActionHandler: Invalid action format (need 4 parts): " + action);
+            return false;
+        }
         
         String actionType = parts[0].toLowerCase();
         String operation = parts[1].toLowerCase();
         String recipientName = parts[2];
         String messageContent = parts[3];
         
+        // Message content MUST be in single quotes
+        if (!messageContent.isEmpty()) {
+            if (!messageContent.startsWith("'") || !messageContent.endsWith("'")) {
+                LogUtil.error("CommunicationActionHandler: Message must be wrapped in single quotes. Action: " + action);
+                return false;
+            }
+            
+            // Strip surrounding single quotes
+            messageContent = messageContent.substring(1, messageContent.length() - 1);
+        }
+        
+        // Replace newlines and normalize whitespace
+        messageContent = messageContent.replaceAll("\\r\\n|\\r|\\n", " ").replaceAll("\\s+", " ").trim();
+        
+        LogUtil.info("CommunicationActionHandler: Processing action - type: " + actionType + ", op: " + operation + ", recipient: " + recipientName + ", message length: " + messageContent.length());
+        
         return switch (actionType) {
             case "mail" -> switch (operation) {
                 case "send" -> sendMessage(recipientName, messageContent);
-                default -> false;
+                default -> {
+                    LogUtil.error("CommunicationActionHandler: Unknown mail operation: " + operation);
+                    yield false;
+                }
             };
-            default -> false;
+            default -> {
+                LogUtil.error("CommunicationActionHandler: Unknown action type: " + actionType);
+                yield false;
+            }
         };
     }
     
     private boolean sendMessage(String recipientName, String content) {
-        if (messageRepository == null || content.isEmpty()) return false;
+        if (messageRepository == null) {
+            LogUtil.error("CommunicationActionHandler: MessageRepository is null");
+            return false;
+        }
+        
+        if (content.isEmpty()) {
+            LogUtil.error("CommunicationActionHandler: Cannot send mail with empty message. Recipient: " + recipientName);
+            return false;
+        }
         
         // Find recipient NPC by name
         NPC recipientNpc = null;
@@ -65,47 +105,64 @@ public class CommunicationActionHandler {
         }
         
         if (recipientNpc == null) {
-            LogUtil.info("Recipient NPC not found: " + recipientName);
+            LogUtil.info("CommunicationActionHandler: Recipient NPC not found: " + recipientName);
             return false;
         }
         
-        // Create and send message
-        Message message = new Message(
-            0,
-            recipientNpc.getConfig().getUuid(),
-            npcUuid,
-            npcName,
-            "NPC",
-            content.trim(),
-            System.currentTimeMillis(),
-            false
-        );
+        try {
+            // Create and send message
+            Message message = new Message(
+                0,
+                recipientNpc.getConfig().getUuid(),
+                npcUuid,
+                npcName,
+                "NPC",
+                content.trim(),
+                System.currentTimeMillis(),
+                false
+            );
+            
+            messageRepository.insert(message, baseConfig.getMaxMessages());
+            LogUtil.info("CommunicationActionHandler: Successfully sent mail from " + npcName + " to " + recipientName + ": " + content);
         
-        messageRepository.insert(message, baseConfig.getMaxMessages());
-        LogUtil.info("NPC " + npcName + " sent message to " + recipientName + ": " + content);
-        
-        // Broadcast update to web UI
-        if (npcService.webServer != null) {
-            Map<String, String> updateData = new HashMap<>();
-            updateData.put("uuid", recipientNpc.getConfig().getUuid().toString());
-            npcService.webServer.broadcastUpdate("mail-updated", updateData);
+            // Broadcast update to web UI
+            if (npcService.webServer != null) {
+                Map<String, String> updateData = new HashMap<>();
+                updateData.put("uuid", recipientNpc.getConfig().getUuid().toString());
+                npcService.webServer.broadcastUpdate("mail-updated", updateData);
+            }
+            
+            return true;
+        } catch (Exception e) {
+            LogUtil.error("CommunicationActionHandler: Error sending mail to " + recipientName, e);
+            return false;
         }
-        
-        return true;
     }
     
     public boolean isValidAction(String action) {
         if (action == null || action.trim().isEmpty()) return false;
-        String[] parts = action.trim().split("\\s+", 4);
+        
+        // Normalize newlines and extra whitespace
+        String normalized = action.replaceAll("\\r\\n|\\r|\\n", " ").replaceAll("\\s+", " ").trim();
+        String[] parts = normalized.split("\\s+", 4);
         if (parts.length < 4) return false;
         
         String actionType = parts[0].toLowerCase();
         String op = parts[1].toLowerCase();
         
-        return switch (actionType) {
-            case "mail" -> "send".equals(op);
-            default -> false;
-        };
+        if (!"mail".equals(actionType) || !"send".equals(op)) {
+            return false;
+        }
+        
+        // Message content MUST be wrapped in single quotes
+        String messageContent = parts[3];
+        if (!messageContent.startsWith("'") || !messageContent.endsWith("'")) return false;
+        
+        // Strip single quotes to check if message is not empty
+        messageContent = messageContent.substring(1, messageContent.length() - 1);
+        
+        // Message should not be empty after stripping quotes
+        return !messageContent.trim().isEmpty();
     }
 }
 

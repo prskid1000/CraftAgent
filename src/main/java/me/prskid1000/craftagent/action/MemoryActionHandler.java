@@ -10,7 +10,11 @@ import java.util.UUID;
 
 /**
  * Handles memory actions: SharedBook and PrivateBook.
- * Format: "sharedbook add <title> <content>" or "sharedbook remove <title>"
+ * Format: "sharedbook add <title> '<content>'" or "sharedbook remove <title>"
+ * 
+ * IMPORTANT: Content MUST be wrapped in single quotes ('...') for "add" operations.
+ * This allows multi-word content and special characters to be parsed correctly.
+ * Example: "sharedbook add location_oak_forest 'Oak forest at coordinates x=23, y=64, z=4.'"
  */
 public class MemoryActionHandler {
     
@@ -30,62 +34,133 @@ public class MemoryActionHandler {
     }
     
     public boolean handleAction(String action) {
-        if (action == null || action.trim().isEmpty()) return false;
+        if (action == null || action.trim().isEmpty()) {
+            LogUtil.error("MemoryActionHandler: Action is null or empty");
+            return false;
+        }
         
-        String[] parts = action.trim().split("\\s+", 4);
-        if (parts.length < 3) return false;
+        String trimmed = action.trim();
+        String[] parts = trimmed.split("\\s+", 4);
+        if (parts.length < 3) {
+            LogUtil.error("MemoryActionHandler: Invalid action format (need at least 3 parts): " + action);
+            return false;
+        }
         
         String bookType = parts[0].toLowerCase();
         String operation = parts[1].toLowerCase();
         String pageTitle = parts[2];
         String content = parts.length > 3 ? parts[3] : "";
         
+        // For "add" operations, content MUST be in single quotes
+        if ("add".equals(operation) && !content.isEmpty()) {
+            if (!content.startsWith("'") || !content.endsWith("'")) {
+                LogUtil.error("MemoryActionHandler: Content must be wrapped in single quotes for 'add' operation. Action: " + action);
+                return false;
+            }
+            
+            // Strip surrounding single quotes
+            content = content.substring(1, content.length() - 1);
+        }
+        
+        // Replace newlines and normalize whitespace
+        content = content.replaceAll("\\r\\n|\\r|\\n", " ").replaceAll("\\s+", " ").trim();
+        
+        LogUtil.info("MemoryActionHandler: Processing action - type: " + bookType + ", op: " + operation + ", title: " + pageTitle + ", content length: " + content.length());
+        
         return switch (bookType) {
             case "sharedbook" -> handleSharedBook(operation, pageTitle, content);
             case "privatebook" -> handlePrivateBook(operation, pageTitle, content);
-            default -> false;
+            default -> {
+                LogUtil.error("MemoryActionHandler: Unknown book type: " + bookType);
+                yield false;
+            }
         };
     }
     
     private boolean handleSharedBook(String op, String title, String content) {
-        if (sharebookRepository == null) return false;
+        if (sharebookRepository == null) {
+            LogUtil.error("MemoryActionHandler: SharebookRepository is null");
+            return false;
+        }
         
         return switch (op) {
             case "add" -> {
-                if (content.isEmpty()) yield false;
-                SharebookPage page = new SharebookPage(title, content.trim(), 
-                    npcUuid.toString(), System.currentTimeMillis());
-                sharebookRepository.insertOrUpdate(page, baseConfig.getMaxSharebookPages());
-                yield true;
+                if (content.isEmpty()) {
+                    LogUtil.error("MemoryActionHandler: Cannot add sharedbook page with empty content. Title: " + title);
+                    yield false;
+                }
+                try {
+                    SharebookPage page = new SharebookPage(title, content.trim(), 
+                        npcUuid.toString(), System.currentTimeMillis());
+                    sharebookRepository.insertOrUpdate(page, baseConfig.getMaxSharebookPages());
+                    LogUtil.info("MemoryActionHandler: Successfully added sharedbook page: " + title);
+                    yield true;
+                } catch (Exception e) {
+                    LogUtil.error("MemoryActionHandler: Error adding sharedbook page: " + title, e);
+                    yield false;
+                }
             }
             case "remove" -> {
-                sharebookRepository.delete(title, npcUuid.toString());
-                yield true;
+                try {
+                    sharebookRepository.delete(title, npcUuid.toString());
+                    LogUtil.info("MemoryActionHandler: Successfully removed sharedbook page: " + title);
+                    yield true;
+                } catch (Exception e) {
+                    LogUtil.error("MemoryActionHandler: Error removing sharedbook page: " + title, e);
+                    yield false;
+                }
             }
-            default -> false;
+            default -> {
+                LogUtil.error("MemoryActionHandler: Unknown sharedbook operation: " + op);
+                yield false;
+            }
         };
     }
     
     private boolean handlePrivateBook(String op, String title, String content) {
-        if (memoryManager == null) return false;
+        if (memoryManager == null) {
+            LogUtil.error("MemoryActionHandler: MemoryManager is null");
+            return false;
+        }
         
         return switch (op) {
             case "add" -> {
-                if (content.isEmpty()) yield false;
-                memoryManager.savePage(title, content.trim());
-                yield true;
+                if (content.isEmpty()) {
+                    LogUtil.error("MemoryActionHandler: Cannot add privatebook page with empty content. Title: " + title);
+                    yield false;
+                }
+                try {
+                    memoryManager.savePage(title, content.trim());
+                    LogUtil.info("MemoryActionHandler: Successfully added privatebook page: " + title);
+                    yield true;
+                } catch (Exception e) {
+                    LogUtil.error("MemoryActionHandler: Error adding privatebook page: " + title, e);
+                    yield false;
+                }
             }
             case "remove" -> {
-                memoryManager.deletePage(title);
-                yield true;
+                try {
+                    memoryManager.deletePage(title);
+                    LogUtil.info("MemoryActionHandler: Successfully removed privatebook page: " + title);
+                    yield true;
+                } catch (Exception e) {
+                    LogUtil.error("MemoryActionHandler: Error removing privatebook page: " + title, e);
+                    yield false;
+                }
             }
-            default -> false;
+            default -> {
+                LogUtil.error("MemoryActionHandler: Unknown privatebook operation: " + op);
+                yield false;
+            }
         };
     }
     
     public boolean isValidAction(String action) {
         if (action == null || action.trim().isEmpty()) return false;
-        String[] parts = action.trim().split("\\s+", 4);
+        
+        // Normalize newlines and extra whitespace
+        String normalized = action.replaceAll("\\r\\n|\\r|\\n", " ").replaceAll("\\s+", " ").trim();
+        String[] parts = normalized.split("\\s+", 4);
         if (parts.length < 3) return false;
         
         String bookType = parts[0].toLowerCase();
@@ -103,7 +178,23 @@ public class MemoryActionHandler {
         };
         if (!validOp) return false;
         
-        return !"add".equals(op) || parts.length >= 4;
+        // For "add" operation, need at least 4 parts (bookType, op, title, content)
+        // Content MUST be wrapped in single quotes
+        if ("add".equals(op)) {
+            if (parts.length < 4) return false;
+            String content = parts[3];
+            
+            // Content must be wrapped in single quotes
+            if (!content.startsWith("'") || !content.endsWith("'")) return false;
+            
+            // Strip single quotes to check if content is not empty
+            content = content.substring(1, content.length() - 1);
+            
+            // Content should not be empty after stripping quotes
+            return !content.trim().isEmpty();
+        }
+        
+        return true; // "remove" operation only needs 3 parts
     }
 }
 
