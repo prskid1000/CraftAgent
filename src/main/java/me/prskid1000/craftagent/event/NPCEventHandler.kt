@@ -62,6 +62,11 @@ class NPCEventHandler(
      */
     override fun processLLM(): Boolean {
         return try {
+            // Check if LLM requests should be skipped for this NPC
+            if (config.isSkipLLMRequests()) {
+                return true // Return true to indicate "success" (no error, just skipped)
+            }
+
             // Perform summarization if needed
             history.performSummarizationIfNeeded()
 

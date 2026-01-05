@@ -29,6 +29,7 @@ public class CommandManager {
 					.then(new NPCCreateCommand(npcService).getCommand())
 					.then(new NPCRemoveCommand(npcService, configProvider).getCommand())
 					// Syntax: /craftagent <npcName> <action> - executes action on specified NPC
+					// Syntax: /craftagent <npcName> llm - triggers LLM call for specified NPC
 					.then(argument("npcName", StringArgumentType.string())
 							.suggests((ctx, builder) -> {
 								npcService.getAllNPCs().forEach(npc -> 
@@ -36,6 +37,11 @@ public class CommandManager {
 								);
 								return builder.buildFuture();
 							})
+							.then(literal("llm")
+									.executes(context -> {
+										String npcName = StringArgumentType.getString(context, "npcName");
+										return new TriggerLLMCommand(npcService, configProvider).triggerLLM(context, npcName);
+									}))
 							.then(argument("action", StringArgumentType.greedyString())
 									.executes(context -> {
 										String npcName = StringArgumentType.getString(context, "npcName");

@@ -22,6 +22,7 @@ public class NPCConfig implements Configurable {
     private String llmModel = "nvidia_nemotron-3-nano-30b-a3b";
 	private String lmStudioUrl = "http://localhost:1234/v1";
 	private String skinUrl = "";
+	private boolean skipLLMRequests = false; // If true, skip sending requests to LLM
 
 	public NPCConfig() {}
 
@@ -41,7 +42,8 @@ public class NPCConfig implements Configurable {
         String llmModel,
 		String ollamaUrl,
 		String lmStudioUrl,
-		String skinUrl
+		String skinUrl,
+		boolean skipLLMRequests
 	) {
 		this.npcName = npcName;
 		this.uuid = UUID.fromString(uuid);
@@ -55,6 +57,7 @@ public class NPCConfig implements Configurable {
 		this.ollamaUrl = ollamaUrl;
 		this.lmStudioUrl = lmStudioUrl;
 		this.skinUrl = skinUrl;
+		this.skipLLMRequests = skipLLMRequests;
 	}
 
 	public static class Builder {
@@ -188,6 +191,14 @@ public class NPCConfig implements Configurable {
 		this.skinUrl = skinUrl;
 	}
 
+	public boolean isSkipLLMRequests() {
+		return skipLLMRequests;
+	}
+
+	public void setSkipLLMRequests(boolean skipLLMRequests) {
+		this.skipLLMRequests = skipLLMRequests;
+	}
+
 	@Override
 	public String getConfigName() {
 		return npcName.toLowerCase();
@@ -207,6 +218,7 @@ public class NPCConfig implements Configurable {
 			Endec.STRING.fieldOf("ollamaUrl", NPCConfig::getOllamaUrl),
 			Endec.STRING.fieldOf("lmStudioUrl", NPCConfig::getLmStudioUrl),
 			Endec.STRING.fieldOf("skinUrl", NPCConfig::getSkinUrl),
+			Endec.BOOLEAN.fieldOf("skipLLMRequests", NPCConfig::isSkipLLMRequests),
 			NPCConfig::new
 	);
 
@@ -223,7 +235,8 @@ public class NPCConfig implements Configurable {
                 config.llmModel,
                 config.ollamaUrl,
                 config.lmStudioUrl,
-                config.skinUrl
+                config.skinUrl,
+                config.skipLLMRequests
         );
     }
 
@@ -246,4 +259,5 @@ public class NPCConfig implements Configurable {
     public static final String LLM_MODEL = "LLM Model";
 	public static final String OLLAMA_URL = "Ollama URL";
 	public static final String LM_STUDIO_URL = "LM Studio URL";
+	public static final String SKIP_LLM_REQUESTS = "Skip LLM Requests";
 }

@@ -21,6 +21,7 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 - 👁️ **Line of Sight Detection**: NPCs detect items, entities, and blocks in their line of sight
 - ⚡ **Action State Management**: Track current actions (mining, building, crafting, hunting, farming, fishing, combat)
 - 🛠️ **Advanced Actions**: Mining, building, crafting, hunting, farming, fishing, and combat actions
+- ⏸️ **LLM Control**: Toggle to skip LLM requests per NPC and manual LLM trigger command
 
 ## Requirements
 
@@ -79,6 +80,7 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 - `/craftagent` - Open configuration GUI
 - `/craftagent add <name> <llmType>` - Create new NPC
 - `/craftagent remove <name>` - Remove NPC (keeps data)
+- `/craftagent <npcName> llm` - Manually trigger LLM call for specified NPC (case-insensitive NPC name)
 - `/craftagent <npcName> <action>` - Execute action on specified NPC (case-insensitive NPC name)
   - Example: `/craftagent steve mail send alice "Hello there"`
   - Example: `/craftagent Steve sharedbook add location "Iron mine at 150, 64, -200"`
@@ -141,6 +143,13 @@ CraftAgent includes a built-in web dashboard for monitoring NPCs in real-time. T
    - **LLM Type**: `ollama` or `lm_studio`
    - **Model**: Model name (e.g., `llama3`)
    - **URL**: LLM service URL (defaults: `http://localhost:11434` for Ollama, `http://localhost:1234/v1` for LM Studio)
+   - **Skip LLM Requests**: Toggle to disable automatic LLM processing for this NPC (useful for testing or when LLM service is unavailable)
+
+### Controlling LLM Processing
+
+- **Automatic Processing**: NPCs automatically process LLM calls at configured intervals (see `llmProcessingInterval` in base config)
+- **Skip LLM Requests**: Enable the "Skip LLM Requests" toggle in NPC config to disable all LLM calls (both automatic and manual) for that NPC
+- **Manual Trigger**: Use `/craftagent <npcName> llm` to manually trigger an LLM call for a specific NPC (only works if skipLLMRequests is disabled)
 
 ## LLM Setup
 
@@ -664,6 +673,7 @@ Config files are in `config/craftagent/`:
 | `age` | int | 20 | NPC age in years |
 | `gender` | String | "neutral" | Gender (male/female/neutral) |
 | `customSystemPrompt` | String | "" | Custom system prompt override |
+| `skipLLMRequests` | boolean | false | If true, skip sending requests to LLM (NPC will not process LLM calls automatically or manually) |
 
 ## Development
 

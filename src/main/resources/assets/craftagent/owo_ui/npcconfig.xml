@@ -53,6 +53,11 @@
                                         <children/>
                                     </flow-layout>
 
+                                    <flow-layout direction="vertical" id="skipLLMRow">
+                                        <sizing><horizontal method="fill">100</horizontal></sizing>
+                                        <children/>
+                                    </flow-layout>
+
                                     <flow-layout direction="vertical" id="llmInfo">
                                         <sizing>
                                             <horizontal method="fill">100</horizontal>

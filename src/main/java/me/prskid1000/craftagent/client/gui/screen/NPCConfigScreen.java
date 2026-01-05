@@ -38,6 +38,7 @@ public class NPCConfigScreen extends ConfigScreen<NPCConfig> {
 
         drawGenderRow(content);
         drawAgeRow(content);
+        drawSkipLLMRow(content);
 
         onPressSaveButton(rootComponent, button -> {
             if (isEdit) networkManager.sendPacket(new UpdateNpcConfigPacket(config));
@@ -195,5 +196,20 @@ public class NPCConfigScreen extends ConfigScreen<NPCConfig> {
 
         // Note: TextAreaComponent doesn't have active() method, but changes are already blocked by early return in onChanged
         ageRow.child(ageInput);
+    }
+
+    private void drawSkipLLMRow(FlowLayout content) {
+        FlowLayout skipLLMRow = content.childById(FlowLayout.class, "skipLLMRow");
+        skipLLMRow.clearChildren();
+
+        skipLLMRow.child(Components.label(Text.of(NPCConfig.SKIP_LLM_REQUESTS)).shadow(true));
+
+        CheckboxComponent skipLLMCheckbox = Components.checkbox(Text.of("Skip LLM Requests"));
+        skipLLMCheckbox.checked(config.isSkipLLMRequests());
+        skipLLMCheckbox.onChanged().subscribe(checked -> {
+            config.setSkipLLMRequests(checked);
+        });
+
+        skipLLMRow.child(skipLLMCheckbox);
     }
 }
