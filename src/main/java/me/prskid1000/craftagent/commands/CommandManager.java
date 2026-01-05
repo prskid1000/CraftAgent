@@ -43,6 +43,22 @@ public class CommandManager {
 										return new TriggerLLMCommand(npcService, configProvider).triggerLLM(context, npcName);
 									}))
 							.then(argument("action", StringArgumentType.greedyString())
+									.suggests((ctx, builder) -> {
+										// Get all available action syntaxes
+										java.util.List<String> allSyntaxes = me.prskid1000.craftagent.action.ActionProvider.getAllStaticActionSyntax();
+										
+										// Get what the user has typed so far
+										String input = builder.getRemaining().toLowerCase();
+										
+										// Filter and suggest matching syntaxes
+										for (String syntax : allSyntaxes) {
+											if (input.isEmpty() || syntax.toLowerCase().startsWith(input)) {
+												builder.suggest(syntax);
+											}
+										}
+										
+										return builder.buildFuture();
+									})
 									.executes(context -> {
 										String npcName = StringArgumentType.getString(context, "npcName");
 										return new GiveActionCommand(npcService, configProvider).executeAction(context, npcName);

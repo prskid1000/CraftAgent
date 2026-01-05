@@ -111,7 +111,10 @@ public class ActionProvider {
     
     /**
      * Static method to get all available action syntax without creating an instance.
-     * Used for generating instructions at runtime.
+     * Used for generating instructions at runtime and command suggestions.
+     * 
+     * IMPORTANT: When adding a new handler, add its getStaticActionSyntax() call here
+     * to ensure command suggestions work automatically.
      * 
      * @return List of action syntax strings
      */

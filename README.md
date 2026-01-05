@@ -82,8 +82,57 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 - `/craftagent remove <name>` - Remove NPC (keeps data)
 - `/craftagent <npcName> llm` - Manually trigger LLM call for specified NPC (case-insensitive NPC name)
 - `/craftagent <npcName> <action>` - Execute action on specified NPC (case-insensitive NPC name)
-  - Example: `/craftagent steve mail send alice "Hello there"`
-  - Example: `/craftagent Steve sharedbook add location "Iron mine at 150, 64, -200"`
+  
+  **Memory Actions:**
+  - `/craftagent Steve sharedbook add "Iron Mine" "Iron mine located at coordinates 150, 64, -200"`
+  - `/craftagent Steve sharedbook add BaseLocation "Our base is at spawn"`
+  - `/craftagent Steve sharedbook remove "Iron Mine"`
+  - `/craftagent Steve privatebook add "Secret Plan" "I will build a house tomorrow"`
+  - `/craftagent Steve privatebook add Notes "Remember to craft more tools"`
+  - `/craftagent Steve privatebook remove "Secret Plan"`
+  
+  **Communication Actions:**
+  - `/craftagent Steve mail send Alice "Hello there! Want to mine together?"`
+  - `/craftagent Steve mail send Bob "Found some diamonds at 200, 50, -100"`
+  
+  **Navigation Actions:**
+  - `/craftagent Steve travel to 100 64 200`
+  - `/craftagent Steve travel to entity Zombie`
+  - `/craftagent Steve travel to block iron_ore`
+  - `/craftagent Steve travel stop`
+  
+  **Mining Actions:**
+  - `/craftagent Steve mine iron_ore 5`
+  - `/craftagent Steve mine diamond_ore`
+  - `/craftagent Steve mine at 150 64 -200`
+  
+  **Building Actions:**
+  - `/craftagent Steve build stone_bricks at 100 65 200`
+  - `/craftagent Steve place oak_planks at 101 65 201`
+  
+  **Crafting Actions:**
+  - `/craftagent Steve craft iron_pickaxe`
+  - `/craftagent Steve craft wooden_sword`
+  
+  **Hunting Actions:**
+  - `/craftagent Steve hunt zombie`
+  - `/craftagent Steve hunt Creeper`
+  - `/craftagent Steve hunt Skeleton`
+  
+  **Farming Actions:**
+  - `/craftagent Steve farm plant wheat at 50 64 50`
+  - `/craftagent Steve farm plant carrot at 51 64 51`
+  - `/craftagent Steve farm harvest at 50 64 50`
+  - `/craftagent Steve farm harvest`
+  
+  **Fishing Actions:**
+  - `/craftagent Steve fish`
+  - `/craftagent Steve fish stop`
+  
+  **Combat Actions:**
+  - `/craftagent Steve attack Zombie`
+  - `/craftagent Steve attack zombie`
+  - `/craftagent Steve defend`
 
 ### Chat Messages
 

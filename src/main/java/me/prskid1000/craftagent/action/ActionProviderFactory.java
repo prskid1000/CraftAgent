@@ -18,6 +18,8 @@ import java.util.UUID;
  * 1. Create the handler class implementing ActionSyntaxProvider
  * 2. Add handler creation in createAllHandlers() method
  * 3. Add handler to ActionProvider constructor call
+ * 4. Add handler.getStaticActionSyntax() to ActionProvider.getAllStaticActionSyntax() method
+ *    (This ensures command suggestions work automatically)
  */
 public class ActionProviderFactory {
     
