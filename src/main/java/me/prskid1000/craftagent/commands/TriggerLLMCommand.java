@@ -41,10 +41,12 @@ public class TriggerLLMCommand {
                 return 0;
             }
 
-            String npcDisplayName = targetNpc.getConfig().getNpcName();
+            // Make final reference for use in lambda
+            final NPC finalTargetNpc = targetNpc;
+            String npcDisplayName = finalTargetNpc.getConfig().getNpcName();
             
             // Check if LLM requests are skipped for this NPC
-            if (targetNpc.getConfig().isSkipLLMRequests()) {
+            if (finalTargetNpc.getConfig().isSkipLLMRequests()) {
                 context.getSource().sendFeedback(() ->
                         LogUtil.formatError("LLM requests are disabled for NPC '" + npcDisplayName + "'!"), false);
                 return 0;
@@ -61,7 +63,7 @@ public class TriggerLLMCommand {
             // Trigger LLM call asynchronously to avoid blocking the server thread
             CompletableFuture.runAsync(() -> {
                 try {
-                    boolean success = targetNpc.getEventHandler().processLLM();
+                    boolean success = finalTargetNpc.getEventHandler().processLLM();
                     // Send feedback on server thread
                     server.execute(() -> {
                         if (success) {

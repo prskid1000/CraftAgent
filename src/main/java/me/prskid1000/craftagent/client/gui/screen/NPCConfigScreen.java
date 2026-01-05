@@ -206,9 +206,7 @@ public class NPCConfigScreen extends ConfigScreen<NPCConfig> {
 
         CheckboxComponent skipLLMCheckbox = Components.checkbox(Text.of("Skip LLM Requests"));
         skipLLMCheckbox.checked(config.isSkipLLMRequests());
-        skipLLMCheckbox.onChanged().subscribe(checked -> {
-            config.setSkipLLMRequests(checked);
-        });
+        skipLLMCheckbox.onChanged(config::setSkipLLMRequests);
 
         skipLLMRow.child(skipLLMCheckbox);
     }
