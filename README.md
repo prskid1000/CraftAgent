@@ -13,6 +13,7 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 - 🛠️ **Command System**: Uses Brigadier to discover and execute all Minecraft commands
 - 🌐 **Web Dashboard**: Built-in web UI (http://localhost:8080) with auto-refresh based on LLM processing intervals
 - 📧 **Mail System**: NPCs can send and receive messages via mail system
+- 💬 **Targeted Chat Messages**: Send messages to specific NPCs using "npcName: message" format, or broadcast to all NPCs
 - 🧠 **Memory System**: Private and shared memory (privateBook, sharebook) for persistent knowledge
 - ⚡ **Structured Actions**: LLM returns structured output with messages and executable actions
 - 🔄 **Real-Time Updates**: Web UI automatically updates without manual refresh
@@ -76,9 +77,20 @@ A Minecraft Fabric mod that brings intelligent AI-powered NPCs to your world. NP
 ### Commands
 
 - `/craftagent` - Open configuration GUI
-- `/craftagent create <name> <llmType>` - Create new NPC
+- `/craftagent add <name> <llmType>` - Create new NPC
 - `/craftagent remove <name>` - Remove NPC (keeps data)
-- `/craftagent delete <name>` - Permanently delete NPC
+- `/craftagent <npcName> <action>` - Execute action on specified NPC (case-insensitive NPC name)
+  - Example: `/craftagent steve mail send alice "Hello there"`
+  - Example: `/craftagent Steve sharedbook add location "Iron mine at 150, 64, -200"`
+
+### Chat Messages
+
+Players can send messages to NPCs via chat. Messages are automatically routed to NPCs:
+
+- **Targeted Messages**: `steve: Do your homework` - Sends message only to NPC named "steve" (case-insensitive)
+- **Broadcast Messages**: `Do your homework` - Sends message to all NPCs
+
+NPC names are matched case-insensitively, so `steve`, `STEVE`, and `Steve` all match the same NPC.
 
 ### Web Dashboard
 
@@ -324,8 +336,14 @@ sequenceDiagram
     participant Context as Context Provider
     participant LLM as LLM Client
     
-    Player->>ChatListener: Sends chat message
-    ChatListener->>NPCService: sendPlayerMessageToNpc()
+    Player->>ChatListener: Sends chat message<br/>(targeted: "npcName: message"<br/>or broadcast: "message")
+    ChatListener->>ChatListener: Parse message format
+    alt Targeted Message (npcName: message)
+        ChatListener->>ChatListener: Find NPC by name (case-insensitive)
+        ChatListener->>NPCService: sendPlayerMessageToNpc(specific NPC)
+    else Broadcast Message
+        ChatListener->>NPCService: sendPlayerMessageToNpc(all NPCs)
+    end
     NPCService->>MessageRepo: insert(message)
     MessageRepo-->>NPCService: Message stored
     Note over NPCService: Message available in context<br/>during next LLM call
@@ -415,6 +433,7 @@ graph TD
 | **ConversationHistory** | `me.prskid1000.craftagent.history` | Message history management | `add()`, `performSummarizationIfNeeded()` |
 | **CoordinationService** | `me.prskid1000.craftagent.coordination` | Inter-NPC communication | `sendDirectMessage()` |
 | **ActionProvider** | `me.prskid1000.craftagent.action` | Routes actions to handlers | `executeAction()`, `isValidAction()` |
+| **ActionProviderFactory** | `me.prskid1000.craftagent.action` | Creates ActionProvider with all handlers | `create()` |
 | **ActionExecutor** | `me.prskid1000.craftagent.action` | Executes LLM-generated actions, parses commands | `executeActions()`, `executeAction()` |
 | **ActionParser** | `me.prskid1000.craftagent.action` | Generic command parser with quote support | `parseQuotedArguments()`, `wasArgumentQuoted()` |
 | **MemoryActionHandler** | `me.prskid1000.craftagent.action` | Handles memory actions | `handleAction()` (sharedbook/privatebook) |
@@ -436,7 +455,7 @@ graph TD
 
 | Listener | Package | Event Type | Purpose |
 |----------|---------|------------|---------|
-| **ChatMessageListener** | `me.prskid1000.craftagent.listener` | `ServerMessageEvents.CHAT_MESSAGE` | Routes player messages to NPCs via mail |
+| **ChatMessageListener** | `me.prskid1000.craftagent.listener` | `ServerMessageEvents.CHAT_MESSAGE` | Routes player messages to NPCs via mail. Supports targeted messages (format: "npcName: message") and broadcast messages |
 | **AgeUpdateListener** | `me.prskid1000.craftagent.listener` | `ServerTickEvents.END_SERVER_TICK` | Updates NPC age over time |
 | **LLMProcessingScheduler** | `me.prskid1000.craftagent.listener` | `ServerTickEvents.END_SERVER_TICK` | Schedules LLM processing for NPCs |
 | **EventListenerRegisterer** | `me.prskid1000.craftagent.listener` | - | Registers all event listeners |
@@ -654,6 +673,7 @@ Config files are in `config/craftagent/`:
 - **NPCEventHandler**: Processes events and LLM interactions, handles structured output
 - **ContextProvider**: Gathers world state information (blocks, entities, inventory)
 - **ActionProvider**: Routes actions to appropriate handlers (memory, communication, navigation, mining, building, crafting, hunting, farming, fishing, combat)
+- **ActionProviderFactory**: Factory class that creates ActionProvider with all action handlers, centralizes handler creation logic
 - **ActionExecutor**: Executes actions from structured LLM responses, parses commands once
 - **ActionParser**: Generic utility for parsing command arguments with quote support
 - **MemoryActionHandler**: Handles memory-related actions (sharedbook, privatebook)
