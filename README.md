@@ -143,6 +143,11 @@ Players can send messages to NPCs via chat. Messages are automatically routed to
 
 NPC names are matched case-insensitively, so `steve`, `STEVE`, and `Steve` all match the same NPC.
 
+### Useful Minecraft Keys
+
+- **F3**: Opens the debug screen showing coordinates, FPS, chunk information, and other technical details. Useful for finding coordinates when giving NPCs travel commands.
+- **F3+P**: Toggles pause on focus loss. When enabled, the game continues running when you alt-tab away, which is useful for monitoring NPCs in the background.
+
 ### Web Dashboard
 
 CraftAgent includes a built-in web dashboard for monitoring NPCs in real-time. The dashboard automatically starts when the Minecraft server starts.

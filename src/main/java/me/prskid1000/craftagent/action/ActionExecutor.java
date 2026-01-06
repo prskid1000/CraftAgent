@@ -52,10 +52,11 @@ public class ActionExecutor {
      * Executes a single action.
      * 
      * @param action The action string to execute
+     * @return true if action executed successfully, false otherwise
      */
-    public void executeAction(String action) {
+    public boolean executeAction(String action) {
         if (action == null || action.trim().isEmpty()) {
-            return;
+            return false;
         }
         
         String trimmed = action.trim();
@@ -63,13 +64,14 @@ public class ActionExecutor {
         String[] parsed = ActionParser.parseQuotedArguments(trimmed);
         
         if (parsed.length == 0) {
-            return;
+            return false;
         }
         
         boolean success = actionProvider.executeAction(trimmed, parsed);
         if (!success) {
             LogUtil.error("Action execution failed or not implemented: " + action);
         }
+        return success;
     }
     
     /**

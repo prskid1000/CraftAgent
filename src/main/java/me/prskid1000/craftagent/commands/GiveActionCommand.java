@@ -77,13 +77,18 @@ public class GiveActionCommand {
             var actionExecutor = new ActionExecutor(targetNpc.getEntity(), actionProvider);
 
             // Execute the action
-            actionExecutor.executeAction(action.trim());
+            boolean success = actionExecutor.executeAction(action.trim());
 
             String npcDisplayName = targetNpc.getConfig().getNpcName();
-            context.getSource().sendFeedback(() ->
-                    LogUtil.formatInfo("Executed action on NPC '" + npcDisplayName + "': " + action), false);
+            if (success) {
+                context.getSource().sendFeedback(() ->
+                        LogUtil.formatInfo("Successfully executed action on NPC '" + npcDisplayName + "': " + action), false);
+            } else {
+                context.getSource().sendFeedback(() ->
+                        LogUtil.formatError("Failed to execute action on NPC '" + npcDisplayName + "': " + action), false);
+            }
             
-            return 1;
+            return success ? 1 : 0;
         } catch (Exception e) {
             LogUtil.error("Error executing action", e);
             context.getSource().sendFeedback(() ->
